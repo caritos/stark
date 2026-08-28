@@ -1,6 +1,9 @@
 #import "ExpoIcloudFile.h"
 #import <UIKit/UIKit.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <React/RCTUtils.h>
+
+static NSString *const kTodoFileName = @"todo.txt";
 
 @interface ExpoIcloudFile () <UIDocumentPickerDelegate>
 @property (nonatomic, copy, nullable) RCTPromiseResolveBlock pickResolve;
@@ -23,8 +26,7 @@ RCT_EXPORT_MODULE();
 
 #pragma mark - pickFolder
 
-RCT_EXPORT_METHOD(pickFolder:(NSString *)sourcePath
-                  resolver:(RCTPromiseResolveBlock)resolve
+RCT_EXPORT_METHOD(pickFolder:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 {
   if (self.pickResolve || self.pickReject) {
@@ -32,14 +34,14 @@ RCT_EXPORT_METHOD(pickFolder:(NSString *)sourcePath
     return;
   }
 
-  // sourcePath is a "file://"-prefixed URI (from Expo FileSystem.cacheDirectory),
-  // not a raw filesystem path — fileURLWithPath: would treat the literal "file://"
-  // prefix as part of the path and produce a URL pointing nowhere real, which
-  // crashes UIDocumentPickerViewController's exporting mode on presentation
-  // since its source file must actually exist.
-  NSURL *sourceURL = [NSURL URLWithString:sourcePath];
+  // Open mode (not exporting mode) so we get a handle to the folder itself
+  // without writing anything into it — the caller inspects the folder for a
+  // pre-existing todo.txt (checkExistingFile) before deciding what to write
+  // (finalizeFile). Exporting mode used to hand the destination collision
+  // entirely to iOS, silently replacing or renaming any existing file before
+  // this code ever ran.
   UIDocumentPickerViewController *picker =
-    [[UIDocumentPickerViewController alloc] initForExportingURLs:@[ sourceURL ]];
+    [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[ UTTypeFolder ]];
   picker.delegate = self;
   picker.modalPresentationStyle = UIModalPresentationFormSheet;
 
@@ -58,36 +60,35 @@ RCT_EXPORT_METHOD(pickFolder:(NSString *)sourcePath
   self.pickResolve = nil;
   self.pickReject = nil;
 
-  NSURL *fileURL = urls.firstObject;
-  if (!fileURL) {
-    if (reject) reject(@"PICK_FAILED", @"No file was picked.", nil);
+  NSURL *folderURL = urls.firstObject;
+  if (!folderURL) {
+    if (reject) reject(@"PICK_FAILED", @"No folder was picked.", nil);
     return;
   }
 
-  // fileURL is security-scoped for locations outside the app's sandbox (which
+  // folderURL is security-scoped for locations outside the app's sandbox (which
   // is exactly what an iCloud Drive folder is) — reading its bookmark data
   // without starting access first is denied by the sandbox, surfacing as a
-  // misleading "file doesn't exist" error even though the file is right there.
-  BOOL accessing = [fileURL startAccessingSecurityScopedResource];
+  // misleading "file doesn't exist" error even though the folder is right there.
+  BOOL accessing = [folderURL startAccessingSecurityScopedResource];
 
   NSError *bookmarkError = nil;
-  NSData *bookmark = [fileURL bookmarkDataWithOptions:NSURLBookmarkCreationMinimalBookmark
-                        includingResourceValuesForKeys:nil
-                                         relativeToURL:nil
-                                                 error:&bookmarkError];
+  NSData *bookmark = [folderURL bookmarkDataWithOptions:NSURLBookmarkCreationMinimalBookmark
+                          includingResourceValuesForKeys:nil
+                                           relativeToURL:nil
+                                                   error:&bookmarkError];
 
-  if (accessing) [fileURL stopAccessingSecurityScopedResource];
+  if (accessing) [folderURL stopAccessingSecurityScopedResource];
 
   if (!bookmark) {
-    if (reject) reject(@"BOOKMARK_FAILED", bookmarkError.localizedDescription ?: @"Could not create a bookmark for the picked file.", bookmarkError);
+    if (reject) reject(@"BOOKMARK_FAILED", bookmarkError.localizedDescription ?: @"Could not create a bookmark for the picked folder.", bookmarkError);
     return;
   }
 
-  NSString *folderName = fileURL.URLByDeletingLastPathComponent.lastPathComponent;
   if (resolve) {
     resolve(@{
-      @"bookmark": [bookmark base64EncodedStringWithOptions:0],
-      @"name": folderName ?: @"iCloud Drive",
+      @"folderBookmark": [bookmark base64EncodedStringWithOptions:0],
+      @"name": folderURL.lastPathComponent ?: @"iCloud Drive",
     });
   }
 }
@@ -221,6 +222,118 @@ RCT_EXPORT_METHOD(writeFile:(NSString *)bookmark
       return;
     }
     resolve(nil);
+  });
+}
+
+#pragma mark - checkExistingFile
+
+RCT_EXPORT_METHOD(checkExistingFile:(NSString *)folderBookmark
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    NSError *resolveError = nil;
+    NSURL *folderURL = [self resolveBookmark:folderBookmark error:&resolveError];
+    if (!folderURL) {
+      reject(@"BOOKMARK_STALE", resolveError.localizedDescription ?: @"Could not resolve the iCloud Drive location.", resolveError);
+      return;
+    }
+
+    BOOL accessing = [folderURL startAccessingSecurityScopedResource];
+    NSURL *fileURL = [folderURL URLByAppendingPathComponent:kTodoFileName];
+
+    if (![[NSFileManager defaultManager] fileExistsAtPath:fileURL.path]) {
+      if (accessing) [folderURL stopAccessingSecurityScopedResource];
+      resolve(@{ @"exists": @NO, @"content": [NSNull null] });
+      return;
+    }
+
+    NSNumber *isUbiquitous = nil;
+    [fileURL getResourceValue:&isUbiquitous forKey:NSURLIsUbiquitousItemKey error:nil];
+    if ([isUbiquitous boolValue]) {
+      NSError *downloadError = nil;
+      BOOL downloadStarted = [[NSFileManager defaultManager] startDownloadingUbiquitousItemAtURL:fileURL error:&downloadError];
+      if (downloadStarted) {
+        for (int i = 0; i < 60; i++) {
+          id status = nil;
+          [fileURL getResourceValue:&status forKey:NSURLUbiquitousItemDownloadingStatusKey error:nil];
+          if (status && ![status isEqual:NSURLUbiquitousItemDownloadingStatusNotDownloaded]) break;
+          [NSThread sleepForTimeInterval:0.5];
+        }
+      }
+    }
+
+    NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+    __block NSString *content = nil;
+    __block NSError *readError = nil;
+    NSError *coordinatorError = nil;
+    [coordinator coordinateReadingItemAtURL:fileURL options:0 error:&coordinatorError byAccessor:^(NSURL *newURL) {
+      content = [NSString stringWithContentsOfURL:newURL encoding:NSUTF8StringEncoding error:&readError];
+    }];
+
+    if (accessing) [folderURL stopAccessingSecurityScopedResource];
+
+    NSError *finalError = coordinatorError ?: readError;
+    if (finalError) {
+      reject(@"READ_FAILED", finalError.localizedDescription, finalError);
+      return;
+    }
+    resolve(@{ @"exists": @YES, @"content": content ?: @"" });
+  });
+}
+
+#pragma mark - finalizeFile
+
+RCT_EXPORT_METHOD(finalizeFile:(NSString *)folderBookmark
+                  content:(NSString *)content
+                  overwrite:(BOOL)overwrite
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    NSError *resolveError = nil;
+    NSURL *folderURL = [self resolveBookmark:folderBookmark error:&resolveError];
+    if (!folderURL) {
+      reject(@"BOOKMARK_STALE", resolveError.localizedDescription ?: @"Could not resolve the iCloud Drive location.", resolveError);
+      return;
+    }
+
+    BOOL accessing = [folderURL startAccessingSecurityScopedResource];
+    NSURL *fileURL = [folderURL URLByAppendingPathComponent:kTodoFileName];
+    BOOL fileExists = [[NSFileManager defaultManager] fileExistsAtPath:fileURL.path];
+
+    if (overwrite || !fileExists) {
+      NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+      __block NSError *writeError = nil;
+      NSError *coordinatorError = nil;
+      [coordinator coordinateWritingItemAtURL:fileURL
+                                       options:NSFileCoordinatorWritingForReplacing
+                                         error:&coordinatorError
+                                    byAccessor:^(NSURL *newURL) {
+        [content writeToURL:newURL atomically:NO encoding:NSUTF8StringEncoding error:&writeError];
+      }];
+
+      NSError *finalError = coordinatorError ?: writeError;
+      if (finalError) {
+        if (accessing) [folderURL stopAccessingSecurityScopedResource];
+        reject(@"WRITE_FAILED", finalError.localizedDescription, finalError);
+        return;
+      }
+    }
+
+    NSError *bookmarkError = nil;
+    NSData *bookmark = [fileURL bookmarkDataWithOptions:NSURLBookmarkCreationMinimalBookmark
+                          includingResourceValuesForKeys:nil
+                                           relativeToURL:nil
+                                                   error:&bookmarkError];
+
+    if (accessing) [folderURL stopAccessingSecurityScopedResource];
+
+    if (!bookmark) {
+      reject(@"BOOKMARK_FAILED", bookmarkError.localizedDescription ?: @"Could not create a bookmark for the todo.txt file.", bookmarkError);
+      return;
+    }
+    resolve(@{ @"bookmark": [bookmark base64EncodedStringWithOptions:0] });
   });
 }
 

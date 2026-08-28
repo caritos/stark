@@ -7,7 +7,8 @@ import {
   resolveWeekStart,
   resolveStorageInfo,
   setWeekStart as storeSetWeekStart,
-  enableICloudStorage,
+  pickICloudFolder as storePickICloudFolder,
+  finalizeICloudStorage,
   disableICloudStorage,
   clearICloudBookmark,
 } from '../store';
@@ -18,7 +19,8 @@ type TaskContextValue = {
   tasks: Task[];
   filePath: string;
   storageInfo: StorageInfo;
-  enableICloud: () => Promise<string>;
+  pickICloudFolder: () => Promise<{ folderBookmark: string; name: string; existingTasks: Task[] | null }>;
+  finalizeICloud: (folderBookmark: string, name: string, overwrite: boolean) => Promise<void>;
   disableICloud: () => Promise<void>;
   weekStart: 0 | 1;
   setWeekStart: (ws: 0 | 1) => Promise<void>;
@@ -92,14 +94,20 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     [filePath]
   );
 
-  const enableICloud = useCallback(async () => {
+  const pickICloudFolder = useCallback(async () => {
     if (!lastReadOkRef.current) {
       throw new Error('Cannot enable iCloud Drive: the current task list could not be loaded. Fix the storage issue shown above first, or restart the app.');
     }
-    const { name } = await enableICloudStorage(tasksRef.current);
-    await reload();
-    return name;
-  }, [reload]);
+    return storePickICloudFolder();
+  }, []);
+
+  const finalizeICloud = useCallback(
+    async (folderBookmark: string, name: string, overwrite: boolean) => {
+      await finalizeICloudStorage(folderBookmark, name, tasksRef.current, overwrite);
+      await reload();
+    },
+    [reload]
+  );
 
   const disableICloud = useCallback(async () => {
     if (!lastReadOkRef.current) {
@@ -128,7 +136,8 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
         tasks,
         filePath,
         storageInfo,
-        enableICloud,
+        pickICloudFolder,
+        finalizeICloud,
         disableICloud,
         weekStart,
         setWeekStart,

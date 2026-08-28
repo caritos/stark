@@ -12,6 +12,8 @@ jest.mock('react-native', () => ({
   NativeModules: {
     ExpoIcloudFile: {
       pickFolder: jest.fn(),
+      checkExistingFile: jest.fn(),
+      finalizeFile: jest.fn(),
       readFile: jest.fn(),
       writeFile: jest.fn(),
     },
@@ -40,7 +42,8 @@ import {
   writeTasks,
   resolveFile,
   resolveStorageInfo,
-  enableICloudStorage,
+  pickICloudFolder,
+  finalizeICloudStorage,
   disableICloudStorage,
 } from '../store';
 
@@ -150,40 +153,64 @@ describe('writeTasks', () => {
   });
 });
 
-describe('enableICloudStorage', () => {
+describe('pickICloudFolder', () => {
+  test('returns null existingTasks when the picked folder has no todo.txt yet', async () => {
+    mockIcloud.pickFolder.mockResolvedValueOnce({ folderBookmark: 'folder123', name: 'Stark' });
+    mockIcloud.checkExistingFile.mockResolvedValueOnce({ exists: false, content: null });
+
+    const result = await pickICloudFolder();
+
+    expect(mockIcloud.checkExistingFile).toHaveBeenCalledWith('folder123');
+    expect(result).toEqual({ folderBookmark: 'folder123', name: 'Stark', existingTasks: null });
+  });
+
+  test('parses the existing todo.txt into tasks when the picked folder already has one', async () => {
+    mockIcloud.pickFolder.mockResolvedValueOnce({ folderBookmark: 'folder123', name: 'Stark' });
+    mockIcloud.checkExistingFile.mockResolvedValueOnce({ exists: true, content: 'task one\ntask two\n' });
+
+    const result = await pickICloudFolder();
+
+    expect(result.folderBookmark).toBe('folder123');
+    expect(result.name).toBe('Stark');
+    expect(result.existingTasks).toHaveLength(2);
+  });
+
+  test('propagates cancellation without checking for an existing file', async () => {
+    const err = Object.assign(new Error('cancelled'), { code: 'CANCELLED' });
+    mockIcloud.pickFolder.mockRejectedValueOnce(err);
+
+    await expect(pickICloudFolder()).rejects.toThrow('cancelled');
+    expect(mockIcloud.checkExistingFile).not.toHaveBeenCalled();
+  });
+});
+
+describe('finalizeICloudStorage', () => {
   const tasks = [
     { line: 1, raw: 'task one', done: false, text: 'task one', projects: [], contexts: [], extensions: {} },
   ] as any;
 
-  test('writes a temp file, picks a folder, and persists the bookmark', async () => {
-    mockFs.writeAsStringAsync.mockResolvedValueOnce(undefined as any);
-    mockIcloud.pickFolder.mockResolvedValueOnce({ bookmark: 'abc123', name: 'Stark' });
+  test('writes tasks into the picked folder and persists the returned file bookmark', async () => {
+    mockIcloud.finalizeFile.mockResolvedValueOnce({ bookmark: 'file123' });
     mockFs.writeAsStringAsync.mockResolvedValueOnce(undefined as any); // config write
 
-    const result = await enableICloudStorage(tasks);
+    const result = await finalizeICloudStorage('folder123', 'Stark', tasks, true);
 
-    expect(mockFs.writeAsStringAsync).toHaveBeenNthCalledWith(
-      1,
-      'file:///mock-cache-dir/todo.txt',
-      'task one\n',
-      { encoding: 'utf8' }
-    );
-    expect(mockIcloud.pickFolder).toHaveBeenCalledWith('file:///mock-cache-dir/todo.txt');
-    expect(mockFs.writeAsStringAsync).toHaveBeenNthCalledWith(
-      2,
+    expect(mockIcloud.finalizeFile).toHaveBeenCalledWith('folder123', 'task one\n', true);
+    expect(mockFs.writeAsStringAsync).toHaveBeenCalledWith(
       'file:///mock-doc-dir/todo-config.json',
-      JSON.stringify({ icloudBookmark: 'abc123', icloudFolderName: 'Stark' }),
+      JSON.stringify({ icloudBookmark: 'file123', icloudFolderName: 'Stark' }),
       { encoding: 'utf8' }
     );
     expect(result).toEqual({ name: 'Stark' });
   });
 
-  test('propagates cancellation without writing config', async () => {
+  test('passes overwrite=false through so an existing file is left untouched natively', async () => {
+    mockIcloud.finalizeFile.mockResolvedValueOnce({ bookmark: 'file123' });
     mockFs.writeAsStringAsync.mockResolvedValueOnce(undefined as any);
-    const err = Object.assign(new Error('cancelled'), { code: 'CANCELLED' });
-    mockIcloud.pickFolder.mockRejectedValueOnce(err);
 
-    await expect(enableICloudStorage(tasks)).rejects.toThrow('cancelled');
+    await finalizeICloudStorage('folder123', 'Stark', tasks, false);
+
+    expect(mockIcloud.finalizeFile).toHaveBeenCalledWith('folder123', 'task one\n', false);
   });
 });
 

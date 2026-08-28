@@ -4,7 +4,9 @@ import { parseLine, serializeTasks } from '@shared/parser';
 import type { Task } from '@shared/parser';
 
 type ExpoIcloudFileModule = {
-  pickFolder(sourcePath: string): Promise<{ bookmark: string; name: string }>;
+  pickFolder(): Promise<{ folderBookmark: string; name: string }>;
+  checkExistingFile(folderBookmark: string): Promise<{ exists: boolean; content: string | null }>;
+  finalizeFile(folderBookmark: string, content: string, overwrite: boolean): Promise<{ bookmark: string }>;
   readFile(bookmark: string): Promise<string>;
   writeFile(bookmark: string, content: string): Promise<void>;
 };
@@ -142,11 +144,22 @@ export async function writeTasks(filePath: string, tasks: Task[]): Promise<void>
   await writeLocal(filePath, tasks);
 }
 
-export async function enableICloudStorage(tasks: Task[]): Promise<{ name: string }> {
-  const tempPath = FileSystem.cacheDirectory + 'todo.txt';
-  await FileSystem.writeAsStringAsync(tempPath, serializeTasks(tasks), { encoding: 'utf8' });
+// Picks a folder without writing anything to it yet, so the caller can
+// detect a pre-existing todo.txt and ask the user how to resolve it before
+// any content is written. See finalizeICloudStorage for the write step.
+export async function pickICloudFolder(): Promise<{ folderBookmark: string; name: string; existingTasks: Task[] | null }> {
+  const { folderBookmark, name } = await ExpoIcloudFile.pickFolder();
+  const { exists, content } = await ExpoIcloudFile.checkExistingFile(folderBookmark);
+  return { folderBookmark, name, existingTasks: exists ? parseTaskLines(content!) : null };
+}
 
-  const { bookmark, name } = await ExpoIcloudFile.pickFolder(tempPath);
+export async function finalizeICloudStorage(
+  folderBookmark: string,
+  name: string,
+  tasks: Task[],
+  overwrite: boolean
+): Promise<{ name: string }> {
+  const { bookmark } = await ExpoIcloudFile.finalizeFile(folderBookmark, serializeTasks(tasks), overwrite);
 
   const config = await readConfig();
   await writeConfig({ ...config, icloudBookmark: bookmark, icloudFolderName: name });

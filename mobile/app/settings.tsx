@@ -13,7 +13,7 @@ const appVersion = Constants.expoConfig?.version ?? '';
 const buildNumber = Constants.expoConfig?.ios?.buildNumber ?? '';
 
 export default function SettingsScreen() {
-  const { storageInfo, enableICloud, disableICloud, tasks, reload, weekStart, setWeekStart } = useTasks();
+  const { storageInfo, pickICloudFolder, finalizeICloud, disableICloud, tasks, reload, weekStart, setWeekStart } = useTasks();
   const insets = useSafeAreaInsets();
 
   async function handleExport() {
@@ -69,14 +69,41 @@ export default function SettingsScreen() {
   }
 
   async function handleUseICloud() {
+    let picked: Awaited<ReturnType<typeof pickICloudFolder>>;
     try {
-      const name = await enableICloud();
-      Alert.alert('iCloud Drive enabled', `Tasks are now stored in "${name}".`);
+      picked = await pickICloudFolder();
     } catch (e) {
       const code = (e as { code?: string }).code;
       if (code === 'CANCELLED') return;
       Alert.alert('Could not enable iCloud Drive', (e as Error).message);
+      return;
     }
+
+    const { folderBookmark, name, existingTasks } = picked;
+
+    const finalize = async (overwrite: boolean) => {
+      try {
+        await finalizeICloud(folderBookmark, name, overwrite);
+        Alert.alert('iCloud Drive enabled', `Tasks are now stored in "${name}".`);
+      } catch (e) {
+        Alert.alert('Could not enable iCloud Drive', (e as Error).message);
+      }
+    };
+
+    if (existingTasks === null) {
+      await finalize(true);
+      return;
+    }
+
+    Alert.alert(
+      'Existing todo.txt found',
+      `"${name}" already has a todo.txt with ${existingTasks.length} task(s). This device currently has ${tasks.length} task(s).`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: `Use iCloud's ${existingTasks.length} tasks`, onPress: () => finalize(false) },
+        { text: `Keep this device's ${tasks.length} tasks`, style: 'destructive', onPress: () => finalize(true) },
+      ]
+    );
   }
 
   function handleSwitchToLocal() {
