@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+
+# Xcode per-user state (not shared project content)
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.DS_Store
