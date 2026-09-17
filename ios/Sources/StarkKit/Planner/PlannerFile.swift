@@ -1,6 +1,19 @@
 // ios/Sources/StarkKit/Planner/PlannerFile.swift
 import Foundation
 
+/// Thrown by `PlannerFile.load` when a file genuinely exists but couldn't be read
+/// (a real I/O error, permissions issue, or corrupt encoding) — as opposed to the file
+/// simply not existing yet, which is a normal, expected state (nothing saved there yet)
+/// and is NOT an error.
+public struct PlannerFileReadError: Error, CustomStringConvertible {
+    public let fileName: String
+    public let underlying: Error
+
+    public var description: String {
+        "couldn't read \(fileName): \(underlying.localizedDescription)"
+    }
+}
+
 public final class PlannerFile {
     private let directory: URL
     private let pendingDirectory: URL
@@ -12,20 +25,30 @@ public final class PlannerFile {
         self.fileManager = fileManager
     }
 
-    public func loadRecurring() -> ICSParseResult {
-        load(fileName: "recurring.ics")
+    public func loadRecurring() throws -> ICSParseResult {
+        try load(fileName: "recurring.ics")
     }
 
-    public func loadMonth(_ month: YearMonth) -> ICSParseResult {
-        load(fileName: month.fileName)
+    public func loadMonth(_ month: YearMonth) throws -> ICSParseResult {
+        try load(fileName: month.fileName)
     }
 
-    private func load(fileName: String) -> ICSParseResult {
+    /// Returns an empty result only when the file genuinely doesn't exist yet.
+    /// If the file exists but can't be read (I/O error, corrupt encoding, etc.),
+    /// throws `PlannerFileReadError` instead of silently returning empty — a caller
+    /// must never treat a real read failure as "no items", since that can lead to
+    /// the empty in-memory state being persisted back over the real (unreadable) file.
+    private func load(fileName: String) throws -> ICSParseResult {
         let url = directory.appendingPathComponent(fileName)
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+        guard fileManager.fileExists(atPath: url.path) else {
             return ICSParseResult(events: [], reminders: [], warnings: [])
         }
-        return ICSParser.parse(content)
+        do {
+            let content = try String(contentsOf: url, encoding: .utf8)
+            return ICSParser.parse(content)
+        } catch {
+            throw PlannerFileReadError(fileName: fileName, underlying: error)
+        }
     }
 
     public func saveRecurring(events: [Event], reminders: [Reminder]) throws {

@@ -11,14 +11,30 @@ struct PlannerFileTests {
     }
 
     @Test("loading a missing month returns an empty result, not an error")
-    func missingMonthIsEmpty() {
+    func missingMonthIsEmpty() throws {
         let (directory, pending) = makeTempDirs()
         let file = PlannerFile(directory: directory, pendingDirectory: pending)
 
-        let result = file.loadMonth(YearMonth(year: 2026, month0: 8))
+        let result = try file.loadMonth(YearMonth(year: 2026, month0: 8))
 
         #expect(result.events.isEmpty)
         #expect(result.reminders.isEmpty)
+    }
+
+    @Test("a file that exists but can't be read throws, distinct from a merely-missing file")
+    func genuineReadFailureThrows() throws {
+        let (directory, pending) = makeTempDirs()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // Put a directory where the month file should be: `fileExists` returns true (so
+        // this must NOT take the "missing file" empty-result path), but reading it as a
+        // string genuinely fails.
+        let monthURL = directory.appendingPathComponent(YearMonth(year: 2026, month0: 8).fileName)
+        try FileManager.default.createDirectory(at: monthURL, withIntermediateDirectories: true)
+        let file = PlannerFile(directory: directory, pendingDirectory: pending)
+
+        #expect(throws: (any Error).self) {
+            try file.loadMonth(YearMonth(year: 2026, month0: 8))
+        }
     }
 
     @Test("saveMonth then loadMonth round-trips items")
@@ -28,7 +44,7 @@ struct PlannerFileTests {
         let event = Event(title: "Standup", start: DateMath.date(from: "2026-09-17"))
 
         try file.saveMonth(YearMonth(year: 2026, month0: 8), events: [event], reminders: [])
-        let result = file.loadMonth(YearMonth(year: 2026, month0: 8))
+        let result = try file.loadMonth(YearMonth(year: 2026, month0: 8))
 
         #expect(result.events.map(\.title) == ["Standup"])
     }
@@ -53,6 +69,6 @@ struct PlannerFileTests {
         file.retryPendingWrites()
 
         #expect(file.pendingWriteCount == 0)
-        #expect(file.loadMonth(YearMonth(year: 2026, month0: 8)).events.map(\.title) == ["Standup"])
+        #expect(try file.loadMonth(YearMonth(year: 2026, month0: 8)).events.map(\.title) == ["Standup"])
     }
 }

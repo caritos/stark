@@ -18,6 +18,17 @@ public enum OccurrenceExpander {
         var candidate = anchor
         var matchCount = 0
 
+        // When there's no fixed occurrence count to track, `matches()` computes each
+        // candidate's match purely from its calendar-arithmetic offset from `anchor`
+        // (day/week/month/year difference), never from how many steps the walk has taken —
+        // so it's safe to fast-forward straight to the display range instead of walking
+        // day-by-day from a potentially years-old anchor. When `count` is set we must still
+        // walk from `anchor`, since we need to know how many occurrences have already
+        // happened to stop at the right one.
+        if rule.count == nil, range.lowerBound > candidate {
+            candidate = range.lowerBound
+        }
+
         while candidate <= range.upperBound {
             if let until = rule.until, candidate > until { break }
 

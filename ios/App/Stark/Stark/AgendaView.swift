@@ -7,9 +7,7 @@ struct AgendaView: View {
     let onSelect: (AgendaItem) -> Void
 
     var body: some View {
-        let rangeStart = DateMath.date(from: DateMath.addDays(DateMath.isoDate(from: Date()), -14))
-        let rangeEnd = DateMath.date(from: DateMath.addDays(DateMath.isoDate(from: Date()), 60))
-        let items = buildAgendaItems(events: store.events, reminders: store.reminders, in: rangeStart...rangeEnd)
+        let items = buildAgendaItems(events: store.events, reminders: store.reminders, in: AgendaWindow.range(around: Date()))
 
         List(items) { item in
             Button {

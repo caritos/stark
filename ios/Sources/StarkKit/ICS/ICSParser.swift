@@ -102,10 +102,38 @@ public enum ICSParser {
         )
     }
 
+    /// Single left-to-right pass, not sequential `replacingOccurrences` calls. Sequential
+    /// replacement (old approach: `\n` → newline, then `\;` → `;`, then `\,` → `,`, then
+    /// `\\` → `\`, in that order) misparses an escaped literal backslash immediately
+    /// followed by the letter "n" (i.e. `\\n` in the ICS text, meaning "a backslash, then
+    /// n") — the `\n` → newline rule fires on the second and third characters of that
+    /// three-character sequence before the `\\` → `\` rule ever gets a chance to consume
+    /// the first two, producing a spurious newline instead of `\` + `n`. Scanning
+    /// character-by-character and deciding the escape from the single character following
+    /// each backslash avoids the ambiguity entirely.
     private static func unescape(_ text: String) -> String {
-        text.replacingOccurrences(of: "\\n", with: "\n")
-            .replacingOccurrences(of: "\\;", with: ";")
-            .replacingOccurrences(of: "\\,", with: ",")
-            .replacingOccurrences(of: "\\\\", with: "\\")
+        var result = ""
+        result.reserveCapacity(text.count)
+        var iterator = text.makeIterator()
+        while let char = iterator.next() {
+            guard char == "\\" else {
+                result.append(char)
+                continue
+            }
+            guard let next = iterator.next() else {
+                result.append(char)
+                break
+            }
+            switch next {
+            case "n": result.append("\n")
+            case ";": result.append(";")
+            case ",": result.append(",")
+            case "\\": result.append("\\")
+            default:
+                result.append(char)
+                result.append(next)
+            }
+        }
+        return result
     }
 }

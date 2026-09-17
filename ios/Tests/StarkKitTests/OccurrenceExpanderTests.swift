@@ -62,6 +62,26 @@ struct OccurrenceExpanderTests {
         #expect(dates == [d("2026-09-01"), d("2026-09-02")])
     }
 
+    @Test("an anchor far before the range still produces the exact same occurrences (fast-forward optimization)")
+    func fastForwardDoesNotChangeOutputForDistantAnchor() {
+        // Same rule/range as "weekly on specific weekdays", but anchored a year earlier
+        // instead of aligned to the range start — this exercises the `count == nil`
+        // fast-forward path in OccurrenceExpander without changing the expected output.
+        let rule = RecurrenceRule(frequency: .weekly, byDay: [.monday, .wednesday, .friday])
+        let dates = OccurrenceExpander.occurrences(anchor: d("2025-09-01"), rule: rule, exceptionDates: [], in: range("2026-09-01", "2026-09-11"))
+        #expect(dates == [d("2026-09-02"), d("2026-09-04"), d("2026-09-07"), d("2026-09-09"), d("2026-09-11")])
+    }
+
+    @Test("count is still honored correctly when the anchor is far before the range (no fast-forward)")
+    func countStillWalksFromAnchor() {
+        // With `count` set, the walk must still start at `anchor` — fast-forwarding into
+        // the range would lose track of how many occurrences already happened before it,
+        // and produce the wrong subset (or none) instead of correctly stopping after 2.
+        let rule = RecurrenceRule(frequency: .daily, count: 2)
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-09-01"), rule: rule, exceptionDates: [], in: range("2026-09-05", "2026-09-10"))
+        #expect(dates.isEmpty)
+    }
+
     @Test("exceptionDates skips a specific occurrence")
     func exceptionDatesSkip() {
         let rule = RecurrenceRule(frequency: .daily)

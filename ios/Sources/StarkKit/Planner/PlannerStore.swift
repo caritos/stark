@@ -19,24 +19,55 @@ public final class PlannerStore: ObservableObject {
         self.file = file
     }
 
-    public func start(around date: Date) {
-        let recurring = file.loadRecurring()
-        recurringEvents = recurring.events
-        recurringReminders = recurring.reminders
+    /// Loads every month covered by `[windowStart, windowEnd]` — this must always be the
+    /// same window `AgendaView` displays (see `AgendaWindow`). Loading a hardcoded
+    /// center-month ± 1 while the agenda displays a wider window let items beyond the
+    /// loaded months silently vanish on relaunch (they stayed visible only as long as the
+    /// in-memory state that added them was still alive).
+    public func start(windowStart: Date, windowEnd: Date) {
+        // Recover any writes that failed and were queued during a previous session before
+        // reading, so a recovered file's real content is what gets loaded.
+        file.retryPendingWrites()
 
-        let center = YearMonth(date: date)
-        for offset in -1...1 {
-            loadMonth(YearMonth(year: center.year, month0: center.month0 + offset))
+        do {
+            let recurring = try file.loadRecurring()
+            recurringEvents = recurring.events
+            recurringReminders = recurring.reminders
+        } catch {
+            // A genuine read failure must never be treated as "no recurring items" —
+            // leave whatever recurring state already existed untouched and surface the error.
+            self.error = "Couldn't read recurring items: \(error.localizedDescription)"
+        }
+
+        var month = YearMonth(date: windowStart)
+        let endMonth = YearMonth(date: windowEnd)
+        while month <= endMonth {
+            loadMonth(month)
+            month = YearMonth(year: month.year, month0: month.month0 + 1)
         }
         rebuild()
     }
 
+    /// Retries any writes that previously failed and were queued to disk. Safe to call
+    /// repeatedly (e.g. on scene-foreground) — in-memory state is always already correct
+    /// (mutations update it regardless of whether the persist succeeded), so this only
+    /// needs to reconcile what's on disk, never reload or rebuild.
+    public func retryPendingWrites() {
+        file.retryPendingWrites()
+    }
+
     public func loadMonth(_ month: YearMonth) {
         guard !loadedMonths.contains(month) else { return }
-        let result = file.loadMonth(month)
-        monthEvents[month] = result.events
-        monthReminders[month] = result.reminders
-        loadedMonths.insert(month)
+        do {
+            let result = try file.loadMonth(month)
+            monthEvents[month] = result.events
+            monthReminders[month] = result.reminders
+            loadedMonths.insert(month)
+        } catch {
+            // Do NOT mark as loaded and do NOT set an empty result — a real read failure
+            // must stay retryable and must never be silently treated as "this month is empty".
+            self.error = "Couldn't read \(month.fileName): \(error.localizedDescription)"
+        }
         rebuild()
     }
 
@@ -67,18 +98,30 @@ public final class PlannerStore: ObservableObject {
     }
 
     public func deleteEvent(id: String) {
+        let recurringCountBefore = recurringEvents.count
         recurringEvents.removeAll { $0.id == id }
-        for month in loadedMonths { monthEvents[month]?.removeAll { $0.id == id } }
-        persistRecurring()
-        for month in loadedMonths { persistMonth(month) }
+        if recurringEvents.count != recurringCountBefore {
+            persistRecurring()
+        }
+        for month in loadedMonths {
+            guard let events = monthEvents[month], events.contains(where: { $0.id == id }) else { continue }
+            monthEvents[month]?.removeAll { $0.id == id }
+            persistMonth(month)
+        }
         rebuild()
     }
 
     public func deleteReminder(id: String) {
+        let recurringCountBefore = recurringReminders.count
         recurringReminders.removeAll { $0.id == id }
-        for month in loadedMonths { monthReminders[month]?.removeAll { $0.id == id } }
-        persistRecurring()
-        for month in loadedMonths { persistMonth(month) }
+        if recurringReminders.count != recurringCountBefore {
+            persistRecurring()
+        }
+        for month in loadedMonths {
+            guard let reminders = monthReminders[month], reminders.contains(where: { $0.id == id }) else { continue }
+            monthReminders[month]?.removeAll { $0.id == id }
+            persistMonth(month)
+        }
         rebuild()
     }
 

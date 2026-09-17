@@ -45,6 +45,23 @@ struct ICSParserTests {
         #expect(result.reminders[0].priority == 1)
     }
 
+    @Test("a literal backslash immediately followed by the letter n round-trips exactly, distinct from an escaped newline")
+    func literalBackslashNRoundTrips() {
+        // The Swift string literal "a\\nb" is four characters: a, \, n, b — a literal
+        // backslash followed by the letter n, NOT a newline.
+        let original = Event(
+            id: "evt-2",
+            title: "a\\nb",
+            start: DateMath.date(from: "2026-09-17")
+        )
+
+        let text = ICSSerializer.serialize(events: [original], reminders: [])
+        let result = ICSParser.parse(text)
+
+        #expect(result.events.count == 1)
+        #expect(result.events[0].title == "a\\nb")
+    }
+
     @Test("skips a malformed block and still parses its valid siblings")
     func skipsMalformedBlock() {
         let text = """
