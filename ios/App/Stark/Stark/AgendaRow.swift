@@ -37,7 +37,7 @@ func buildAgendaItems(events: [Event], reminders: [Reminder], in range: ClosedRa
             items.append(.event(event, occurrence: occurrence))
         }
     }
-    for reminder in reminders {
+    for reminder in reminders where !reminder.isCompleted {
         for occurrence in OccurrenceExpander.expand(reminder: reminder, in: range) {
             items.append(.reminder(reminder, occurrence: occurrence))
         }
