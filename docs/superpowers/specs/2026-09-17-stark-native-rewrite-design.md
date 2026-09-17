@@ -11,10 +11,10 @@ target, TDD throughout the package, CLI-only build/ship tooling (no EAS).
 
 **Product pivot:** Stark moves away from the `todo.txt` single-line-text
 format entirely. The new app is a Fantastical-inspired blended
-calendar+reminders app: a single timeline mixing **Events** and **Tasks**,
-each a distinct data type, backed by the app's own `.ics`-based storage —
-not a sync target for the user's actual Apple Calendar/Reminders (no
-EventKit).
+calendar+reminders app: a single timeline mixing **Events** and
+**Reminders**, each a distinct data type, backed by the app's own
+`.ics`-based storage — not a sync target for the user's actual Apple
+Calendar/Reminders (no EventKit).
 
 **Ships as:** an update to the existing App Store listing ("Stark: To Do
 List & Calendar", Apple ID 6772774783), same bundle identifier
@@ -26,8 +26,8 @@ native app does not share code with them — it is its own self-contained
 Swift codebase under `ios/`.
 
 **First sub-project (MVP) scope:**
-- Blended agenda/day view (events + tasks together, by date)
-- Add / Edit / Delete Events and Tasks (structured forms, no NL parsing)
+- Blended agenda/day view (events + reminders together, by date)
+- Add / Edit / Delete Events and Reminders (structured forms, no NL parsing)
 - Recurrence via `RRULE`/`EXDATE`
 - Month calendar grid view
 - Local-only storage (Documents directory)
@@ -53,7 +53,7 @@ deliberately overrides:
 |---|---|---|
 | App identity | New app, `com.caritos.persistence-of-memory` | Replaces Stark, `com.caritos.todo-txt` |
 | Storage location | Private iCloud **ubiquity container** | Local Documents (iCloud Drive folder picker deferred) |
-| Data model | Unified `CalendarItem` (kind: event/reminder) | Separate `Event` + `Task` types |
+| Data model | Unified `CalendarItem` (kind: event/reminder) | Separate `Event` + `Reminder` types |
 | Recurrence encoding | Custom `X-EVERY`/`X-FREQ-DAY` properties | Standard `RRULE`/`EXDATE` |
 
 The storage choice matters most: a private ubiquity container is exactly
@@ -82,11 +82,11 @@ ios/
 │   ├── DateMath.swift                 ← ISO-date-string arithmetic (ported)
 │   ├── Models/
 │   │   ├── Event.swift
-│   │   ├── Task.swift
+│   │   ├── Reminder.swift
 │   │   └── RecurrenceRule.swift
 │   ├── ICS/
-│   │   ├── ICSParser.swift            ← VEVENT/VTODO → Event/Task
-│   │   └── ICSSerializer.swift        ← Event/Task → VEVENT/VTODO
+│   │   ├── ICSParser.swift            ← VEVENT/VTODO → Event/Reminder
+│   │   └── ICSSerializer.swift        ← Event/Reminder → VEVENT/VTODO
 │   ├── Planner/
 │   │   ├── OccurrenceExpander.swift   ← expands RRULE into dated occurrences
 │   │   ├── PlannerFile.swift          ← month-file + recurring.ics I/O, pending-write queue
@@ -128,7 +128,7 @@ Non-Goals. Adding it later is a one-field, additive model change, not a
 migration.)
 
 ```swift
-struct Task {
+struct Reminder {
     var id: String              // UID
     var title: String
     var notes: String?
@@ -151,7 +151,12 @@ struct RecurrenceRule {
 }
 ```
 
-`Event` ↔ `VEVENT`, `Task` ↔ `VTODO`. `ICSParser`/`ICSSerializer` only
+Named `Reminder`, not `Task` — Swift's standard library already defines a
+widely-used `Task` type for structured concurrency (`Task { await ... }`);
+naming our own model `Task` would shadow it throughout the app and cause
+confusing ambiguity in every async call site.
+
+`Event` ↔ `VEVENT`, `Reminder` ↔ `VTODO`. `ICSParser`/`ICSSerializer` only
 need to handle the subset of RFC 5545 this app itself emits — no need to
 preserve arbitrary third-party `.ics` quirks, since nothing else writes
 to these files.
@@ -160,7 +165,7 @@ to these files.
 
 ### File layout
 
-- **`recurring.ics`** — every `Event`/`Task` that has a `RecurrenceRule`,
+- **`recurring.ics`** — every `Event`/`Reminder` that has a `RecurrenceRule`,
   regardless of how far in the past it started. Always loaded, in full,
   on every launch. This is a deliberate fix to a gap in the
   persistence-of-memory spec: that design stored a recurring item once,
@@ -169,12 +174,12 @@ to these files.
   be found. Keeping all recurring masters in one small, always-loaded
   file removes the gap entirely without losing the "don't duplicate a
   recurring item across every month it recurs into" benefit.
-- **`YYYY-MM.ics`** (e.g. `2026-09.ics`) — every non-recurring `Event`/`Task`
+- **`YYYY-MM.ics`** (e.g. `2026-09.ics`) — every non-recurring `Event`/`Reminder`
   whose date falls in that month, plus **completion records**: when a
-  recurring `Task`'s occurrence is completed, that occurrence's date is
-  added to `exceptionDates` on the master in `recurring.ics`, and a
-  separate one-off completed `Task` is appended to the month file for the
-  date it was completed (mirroring `applyDone`'s "append a completed
+  recurring `Reminder`'s occurrence is completed, that occurrence's date
+  is added to `exceptionDates` on the master in `recurring.ics`, and a
+  separate one-off completed `Reminder` is appended to the month file for
+  the date it was completed (mirroring `applyDone`'s "append a completed
   copy" pattern from the old todo.txt app).
 
 Rejected (per the reasoning already validated in persistence-of-memory's
@@ -214,17 +219,17 @@ Full iCalendar `RECURRENCE-ID` single-instance overrides are skipped —
 they mainly exist for cross-app interop, and nothing else reads this file
 live. Instead:
 
-- **Completing one occurrence of a recurring `Task`**: add that
+- **Completing one occurrence of a recurring `Reminder`**: add that
   occurrence's date to `exceptionDates` on the master (in
-  `recurring.ics`), and append a non-recurring completed `Task` to the
+  `recurring.ics`), and append a non-recurring completed `Reminder` to the
   relevant month file (`isCompleted: true`, `completedDate` set).
-- **Non-recurring `Task`**: completing it flips `isCompleted`/`completedDate`
+- **Non-recurring `Reminder`**: completing it flips `isCompleted`/`completedDate`
   in place; undo flips it back.
-- `OccurrenceExpander.expand(event/task, in: dateRange)` is the single
-  source of truth for turning a recurring `Event`/`Task` into concrete
+- `OccurrenceExpander.expand(event/reminder, in: dateRange)` is the single
+  source of truth for turning a recurring `Event`/`Reminder` into concrete
   dated occurrences for the agenda — respects `recurrence.until`,
   `recurrence.count`, and `exceptionDates`.
-- An incomplete `Task` occurrence whose date has passed is surfaced
+- An incomplete `Reminder` occurrence whose date has passed is surfaced
   pinned to today, not silently hidden (matches the Expo app's overdue
   pinning).
 
@@ -244,17 +249,17 @@ live. Instead:
 
 ## UI layer
 
-- `AgendaView` — blended day-by-day list (events + tasks), built on
+- `AgendaView` — blended day-by-day list (events + reminders), built on
   `OccurrenceExpander` output for a rolling window, sorted by time
-  (all-day/multi-day first, then timed, untimed tasks grouped with
+  (all-day/multi-day first, then timed, untimed reminders grouped with
   untimed events).
 - `MonthGridView` — month calendar grid; tapping a date scrolls/jumps
   `AgendaView` to it. Swiping between months triggers `PlannerStore`'s
   lazy month loading.
 - `AddItemView` — structured form (no NL parsing in MVP), type toggle
-  (Event/Task), reusing the Braun/Bauhaus design tokens ported to a Swift
-  `Theme.swift` (Colors/Fonts/Spacing) — one accent color, JetBrains Mono,
-  hard edges.
+  (Event/Reminder), reusing the Braun/Bauhaus design tokens ported to a
+  Swift `Theme.swift` (Colors/Fonts/Spacing) — one accent color,
+  JetBrains Mono, hard edges.
 - `EditItemView` — detail/edit sheet, mirroring the Expo app's Task
   Detail: delete confirmation differs for recurring vs one-off items.
 
@@ -266,7 +271,7 @@ assumed).
 
 - `DateMathTests`, `RecurrenceRuleTests`, `OccurrenceExpanderTests` — pure
   logic, no I/O.
-- `ICSParserTests` / `ICSSerializerTests` — round-trip Event/Task ↔
+- `ICSParserTests` / `ICSSerializerTests` — round-trip Event/Reminder ↔
   VEVENT/VTODO text, including the malformed-block-skip behavior.
 - `PlannerFileTests` — against a temp local directory: read/write
   round-trip, missing-file-is-empty, pending-write-queue coalesce/retry.
