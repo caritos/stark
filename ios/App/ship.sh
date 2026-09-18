@@ -32,8 +32,16 @@ MARKETING_VERSION=$(sed -n 's/.*MARKETING_VERSION = \(.*\);/\1/p' "$PBXPROJ" | h
 CURRENT_BUILD=$(sed -n 's/.*CURRENT_PROJECT_VERSION = \(.*\);/\1/p' "$PBXPROJ" | head -1)
 NEXT_BUILD=$((CURRENT_BUILD + 1))
 
-echo "==> Bumping build number: $CURRENT_BUILD -> $NEXT_BUILD (version $MARKETING_VERSION)"
+# MARKETING_VERSION is MAJOR.MINOR.PATCH - bump PATCH on every ship, same as
+# the build-number counter below. App Store Connect rejects an upload whose
+# version isn't strictly greater than the current live one.
+IFS='.' read -r MV_MAJOR MV_MINOR MV_PATCH <<< "$MARKETING_VERSION"
+NEXT_MARKETING_VERSION="${MV_MAJOR}.${MV_MINOR}.$((MV_PATCH + 1))"
+
+echo "==> Bumping version: $MARKETING_VERSION -> $NEXT_MARKETING_VERSION (build $CURRENT_BUILD -> $NEXT_BUILD)"
+sed -i '' "s/MARKETING_VERSION = $MARKETING_VERSION;/MARKETING_VERSION = $NEXT_MARKETING_VERSION;/g" "$PBXPROJ"
 sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION = $NEXT_BUILD;/g" "$PBXPROJ"
+MARKETING_VERSION="$NEXT_MARKETING_VERSION"
 
 ARCHIVE_PATH="$BUILD_DIR/Stark.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export"
