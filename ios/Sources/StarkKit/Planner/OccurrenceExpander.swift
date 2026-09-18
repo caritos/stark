@@ -87,10 +87,26 @@ public enum OccurrenceExpander {
             return months >= 0 && months % rule.interval == 0
 
         case .yearly:
-            let anchorParts = calendar.dateComponents([.month, .day], from: anchor)
-            let expectedDay = min(anchorParts.day!, calendar.range(of: .day, in: .month, for: date)!.count)
-            guard calendar.component(.month, from: date) == anchorParts.month,
-                  calendar.component(.day, from: date) == expectedDay else { return false }
+            let candidateMonth = calendar.component(.month, from: date)
+            let monthMatches: Bool
+            if let byMonth = rule.byMonth, !byMonth.isEmpty {
+                monthMatches = byMonth.contains { $0.rawValue == candidateMonth }
+            } else {
+                monthMatches = candidateMonth == calendar.component(.month, from: anchor)
+            }
+            guard monthMatches else { return false }
+
+            let daysInMonth = calendar.range(of: .day, in: .month, for: date)!.count
+            let candidateDay = calendar.component(.day, from: date)
+            let dayMatches: Bool
+            if let byMonthDay = rule.byMonthDay, !byMonthDay.isEmpty {
+                dayMatches = byMonthDay.contains { min($0, daysInMonth) == candidateDay }
+            } else {
+                let anchorDay = calendar.component(.day, from: anchor)
+                dayMatches = candidateDay == min(anchorDay, daysInMonth)
+            }
+            guard dayMatches else { return false }
+
             let years = calendar.dateComponents([.year], from: anchor, to: date).year ?? 0
             return years >= 0 && years % rule.interval == 0
         }

@@ -55,6 +55,13 @@ struct OccurrenceExpanderTests {
         #expect(dates == [d("2025-02-28"), d("2026-02-28")])
     }
 
+    @Test("yearly matches any of several months")
+    func yearlyMultipleMonths() {
+        let rule = RecurrenceRule(frequency: .yearly, byMonth: [.march, .september])
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-03-15"), rule: rule, exceptionDates: [], in: range("2026-01-01", "2026-12-31"))
+        #expect(dates == [d("2026-03-15"), d("2026-09-15")])
+    }
+
     @Test("until excludes occurrences after the cutoff")
     func untilCutoff() {
         let rule = RecurrenceRule(frequency: .daily, until: d("2026-09-03"))
