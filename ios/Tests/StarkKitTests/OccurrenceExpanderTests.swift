@@ -102,4 +102,49 @@ struct OccurrenceExpanderTests {
         let dates = OccurrenceExpander.occurrences(anchor: d("2026-09-01"), rule: rule, exceptionDates: [d("2026-09-02")], in: range("2026-09-01", "2026-09-03"))
         #expect(dates == [d("2026-09-01"), d("2026-09-03")])
     }
+
+    @Test("monthly positional: 2nd Tuesday of the month")
+    func monthlyPositionalSpecificWeekday() {
+        let rule = RecurrenceRule(frequency: .monthly, byPositionalDay: [PositionalDay(position: .second, dayType: .weekday(.tuesday))])
+        // 2026-09-01 is a Tuesday; the 2nd Tuesday of September 2026 is the 8th.
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-09-01"), rule: rule, exceptionDates: [], in: range("2026-09-01", "2026-11-30"))
+        #expect(dates == [d("2026-09-08"), d("2026-10-13"), d("2026-11-10")])
+    }
+
+    @Test("monthly positional: last weekday of the month (generic day-type + BYSETPOS-style resolution)")
+    func monthlyPositionalGenericWeekday() {
+        let rule = RecurrenceRule(frequency: .monthly, byPositionalDay: [PositionalDay(position: .last, dayType: .weekdayOnly)])
+        // September 2026's last day (30th) is a Wednesday, so the last weekday IS the 30th.
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-09-01"), rule: rule, exceptionDates: [], in: range("2026-09-01", "2026-09-30"))
+        #expect(dates == [d("2026-09-30")])
+    }
+
+    @Test("yearly positional combined with byMonth: 4th Thursday of November (Thanksgiving)")
+    func yearlyPositionalWithMonth() {
+        let rule = RecurrenceRule(frequency: .yearly, byPositionalDay: [PositionalDay(position: .fourth, dayType: .weekday(.thursday))], byMonth: [.november])
+        // 2026-11-26 is the 4th Thursday of November 2026.
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-01-01"), rule: rule, exceptionDates: [], in: range("2026-01-01", "2027-12-31"))
+        #expect(dates == [d("2026-11-26"), d("2027-11-25")])
+    }
+
+    @Test("4th position resolves correctly at the minimum-occurrence boundary (28-day February)")
+    func positionalFourthAtMinimumBoundary() {
+        // Every weekday occurs at least 4 times in every possible month length (28-31 days) -
+        // a 28-day month is the tightest case, where every weekday occurs exactly 4 times.
+        // This is the boundary `resolvePositionalDay`'s .fourth case must get exactly right;
+        // there is no realistic month/weekday combination where .fourth fails to resolve at all
+        // (that would require 5 supported positions, which this model doesn't have).
+        let rule = RecurrenceRule(frequency: .monthly, byPositionalDay: [PositionalDay(position: .fourth, dayType: .weekday(.monday))])
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-02-01"), rule: rule, exceptionDates: [], in: range("2026-02-01", "2026-02-28"))
+        // February 2026 Mondays: 2, 9, 16, 23 — exactly 4, so the 4th Monday (23rd) is the last one.
+        #expect(dates == [d("2026-02-23")])
+    }
+
+    @Test("byPositionalDay takes precedence over byMonthDay when both are set")
+    func positionalTakesPrecedenceOverMonthDay() {
+        let rule = RecurrenceRule(frequency: .monthly, byMonthDay: [1], byPositionalDay: [PositionalDay(position: .second, dayType: .weekday(.tuesday))])
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-09-01"), rule: rule, exceptionDates: [], in: range("2026-09-01", "2026-09-30"))
+        // Should resolve via byPositionalDay (Sept 8), not byMonthDay (Sept 1).
+        #expect(dates == [d("2026-09-08")])
+    }
 }

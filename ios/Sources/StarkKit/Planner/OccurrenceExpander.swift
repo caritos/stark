@@ -73,16 +73,11 @@ public enum OccurrenceExpander {
             return weeks >= 0 && weeks % rule.interval == 0
 
         case .monthly:
+            let year = calendar.component(.year, from: date)
+            let month0 = calendar.component(.month, from: date) - 1
             let daysInMonth = calendar.range(of: .day, in: .month, for: date)!.count
             let candidateDay = calendar.component(.day, from: date)
-            let dayMatches: Bool
-            if let byMonthDay = rule.byMonthDay, !byMonthDay.isEmpty {
-                dayMatches = byMonthDay.contains { min($0, daysInMonth) == candidateDay }
-            } else {
-                let anchorDay = calendar.component(.day, from: anchor)
-                dayMatches = candidateDay == min(anchorDay, daysInMonth)
-            }
-            guard dayMatches else { return false }
+            guard dayMatches(candidateDay: candidateDay, daysInMonth: daysInMonth, year: year, month0: month0, rule: rule, anchor: anchor, calendar: calendar) else { return false }
             let months = calendar.dateComponents([.month], from: anchor, to: date).month ?? 0
             return months >= 0 && months % rule.interval == 0
 
@@ -96,19 +91,53 @@ public enum OccurrenceExpander {
             }
             guard monthMatches else { return false }
 
+            let year = calendar.component(.year, from: date)
+            let month0 = candidateMonth - 1
             let daysInMonth = calendar.range(of: .day, in: .month, for: date)!.count
             let candidateDay = calendar.component(.day, from: date)
-            let dayMatches: Bool
-            if let byMonthDay = rule.byMonthDay, !byMonthDay.isEmpty {
-                dayMatches = byMonthDay.contains { min($0, daysInMonth) == candidateDay }
-            } else {
-                let anchorDay = calendar.component(.day, from: anchor)
-                dayMatches = candidateDay == min(anchorDay, daysInMonth)
-            }
-            guard dayMatches else { return false }
+            guard dayMatches(candidateDay: candidateDay, daysInMonth: daysInMonth, year: year, month0: month0, rule: rule, anchor: anchor, calendar: calendar) else { return false }
 
             let years = calendar.dateComponents([.year], from: anchor, to: date).year ?? 0
             return years >= 0 && years % rule.interval == 0
         }
+    }
+
+    private static func matchesDayType(_ dayType: DayTypeOrWeekday, weekday: Weekday) -> Bool {
+        switch dayType {
+        case .weekday(let w): return weekday == w
+        case .anyDay: return true
+        case .weekdayOnly: return weekday != .sunday && weekday != .saturday
+        case .weekendDay: return weekday == .sunday || weekday == .saturday
+        }
+    }
+
+    private static func resolvePositionalDay(_ positional: PositionalDay, year: Int, month0: Int) -> Int? {
+        let daysInMonth = DateMath.daysInMonth(year: year, month0: month0)
+        var matchingDays: [Int] = []
+        for day in 1...daysInMonth {
+            let weekdayIndex = DateMath.weekday(year: year, month0: month0, day: day)
+            let weekday = Weekday(rawValue: weekdayIndex)!
+            if matchesDayType(positional.dayType, weekday: weekday) {
+                matchingDays.append(day)
+            }
+        }
+        switch positional.position {
+        case .first: return matchingDays.first
+        case .second: return matchingDays.count >= 2 ? matchingDays[1] : nil
+        case .third: return matchingDays.count >= 3 ? matchingDays[2] : nil
+        case .fourth: return matchingDays.count >= 4 ? matchingDays[3] : nil
+        case .last: return matchingDays.last
+        }
+    }
+
+    private static func dayMatches(candidateDay: Int, daysInMonth: Int, year: Int, month0: Int, rule: RecurrenceRule, anchor: Date, calendar: Calendar) -> Bool {
+        if let positionalDays = rule.byPositionalDay, !positionalDays.isEmpty {
+            return positionalDays.contains { resolvePositionalDay($0, year: year, month0: month0) == candidateDay }
+        }
+        if let byMonthDay = rule.byMonthDay, !byMonthDay.isEmpty {
+            return byMonthDay.contains { min($0, daysInMonth) == candidateDay }
+        }
+        let anchorDay = calendar.component(.day, from: anchor)
+        return candidateDay == min(anchorDay, daysInMonth)
     }
 }
