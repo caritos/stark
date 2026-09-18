@@ -9,6 +9,7 @@ struct AddItemView: View {
     @State private var kind: Kind = .event
     @State private var title = ""
     @State private var date = Date()
+    @State private var recurrence: RecurrenceRule?
 
     enum Kind: String, CaseIterable { case event = "Event", reminder = "Reminder" }
 
@@ -22,6 +23,16 @@ struct AddItemView: View {
 
                 TextField("Title", text: $title)
                 DatePicker(kind == .event ? "Start" : "Due", selection: $date)
+
+                NavigationLink {
+                    RepeatPickerView(recurrence: $recurrence)
+                } label: {
+                    HStack {
+                        Text("Repeat")
+                        Spacer()
+                        Text(recurrenceSummary).foregroundStyle(Colors.textSecondary)
+                    }
+                }
             }
             .navigationTitle("Add \(kind.rawValue)")
             .toolbar {
@@ -35,12 +46,24 @@ struct AddItemView: View {
         }
     }
 
+    private var recurrenceSummary: String {
+        guard let recurrence else { return "Never" }
+        switch (recurrence.frequency, recurrence.interval) {
+        case (.daily, 1): return "Every Day"
+        case (.weekly, 1): return "Every Week"
+        case (.weekly, 2): return "Every 2 Weeks"
+        case (.monthly, 1): return "Every Month"
+        case (.yearly, 1): return "Every Year"
+        default: return "Custom"
+        }
+    }
+
     private func add() {
         switch kind {
         case .event:
-            store.addEvent(Event(title: title, start: date))
+            store.addEvent(Event(title: title, start: date, recurrence: recurrence))
         case .reminder:
-            store.addReminder(Reminder(title: title, dueDate: date))
+            store.addReminder(Reminder(title: title, dueDate: date, recurrence: recurrence))
         }
         dismiss()
     }
