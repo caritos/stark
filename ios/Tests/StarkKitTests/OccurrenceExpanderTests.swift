@@ -36,9 +36,16 @@ struct OccurrenceExpanderTests {
 
     @Test("monthly clamps day-of-month to the shorter month")
     func monthlyClamped() {
-        let rule = RecurrenceRule(frequency: .monthly, byMonthDay: 31)
+        let rule = RecurrenceRule(frequency: .monthly, byMonthDay: [31])
         let dates = OccurrenceExpander.occurrences(anchor: d("2026-01-31"), rule: rule, exceptionDates: [], in: range("2026-01-31", "2026-04-30"))
         #expect(dates == [d("2026-01-31"), d("2026-02-28"), d("2026-03-31"), d("2026-04-30")])
+    }
+
+    @Test("monthly matches any of several days-of-month")
+    func monthlyMultipleDays() {
+        let rule = RecurrenceRule(frequency: .monthly, byMonthDay: [1, 15])
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-09-01"), rule: rule, exceptionDates: [], in: range("2026-09-01", "2026-10-31"))
+        #expect(dates == [d("2026-09-01"), d("2026-09-15"), d("2026-10-01"), d("2026-10-15")])
     }
 
     @Test("yearly clamps Feb 29 to Feb 28 in a non-leap year")

@@ -9,7 +9,9 @@ public enum RRuleCodec {
         if let byDay = rule.byDay, !byDay.isEmpty {
             parts.append("BYDAY=" + byDay.map { dayCodes[$0.rawValue] }.joined(separator: ","))
         }
-        if let byMonthDay = rule.byMonthDay { parts.append("BYMONTHDAY=\(byMonthDay)") }
+        if let byMonthDay = rule.byMonthDay, !byMonthDay.isEmpty {
+            parts.append("BYMONTHDAY=" + byMonthDay.map(String.init).joined(separator: ","))
+        }
         if let count = rule.count { parts.append("COUNT=\(count)") }
         if let until = rule.until { parts.append("UNTIL=\(ICSDateFormat.format(until, allDay: true))") }
         return parts.joined(separator: ";")
@@ -19,7 +21,7 @@ public enum RRuleCodec {
         var frequency: RecurrenceRule.Frequency?
         var interval = 1
         var byDay: [Weekday]?
-        var byMonthDay: Int?
+        var byMonthDay: [Int]?
         var count: Int?
         var until: Date?
 
@@ -32,7 +34,7 @@ public enum RRuleCodec {
             case "BYDAY": byDay = kv[1].split(separator: ",").compactMap { code in
                 dayCodes.firstIndex(of: String(code)).flatMap { Weekday(rawValue: $0) }
             }
-            case "BYMONTHDAY": byMonthDay = Int(kv[1])
+            case "BYMONTHDAY": byMonthDay = kv[1].split(separator: ",").compactMap { Int($0) }
             case "COUNT": count = Int(kv[1])
             case "UNTIL": until = ICSDateFormat.parse(String(kv[1]))?.date
             default: break

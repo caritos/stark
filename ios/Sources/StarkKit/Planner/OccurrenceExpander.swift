@@ -73,9 +73,16 @@ public enum OccurrenceExpander {
             return weeks >= 0 && weeks % rule.interval == 0
 
         case .monthly:
-            let anchorDay = rule.byMonthDay ?? calendar.component(.day, from: anchor)
-            let expectedDay = min(anchorDay, calendar.range(of: .day, in: .month, for: date)!.count)
-            guard calendar.component(.day, from: date) == expectedDay else { return false }
+            let daysInMonth = calendar.range(of: .day, in: .month, for: date)!.count
+            let candidateDay = calendar.component(.day, from: date)
+            let dayMatches: Bool
+            if let byMonthDay = rule.byMonthDay, !byMonthDay.isEmpty {
+                dayMatches = byMonthDay.contains { min($0, daysInMonth) == candidateDay }
+            } else {
+                let anchorDay = calendar.component(.day, from: anchor)
+                dayMatches = candidateDay == min(anchorDay, daysInMonth)
+            }
+            guard dayMatches else { return false }
             let months = calendar.dateComponents([.month], from: anchor, to: date).month ?? 0
             return months >= 0 && months % rule.interval == 0
 

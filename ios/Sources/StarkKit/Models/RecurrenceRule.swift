@@ -8,7 +8,9 @@ public struct RecurrenceRule: Equatable, Codable, Sendable {
     public var frequency: Frequency
     public var interval: Int
     public var byDay: [Weekday]?
-    public var byMonthDay: Int?
+    public var byMonthDay: [Int]?
+    public var byPositionalDay: [PositionalDay]?
+    public var byMonth: [Month]?
     public var count: Int?
     public var until: Date?
 
@@ -16,7 +18,9 @@ public struct RecurrenceRule: Equatable, Codable, Sendable {
         frequency: Frequency,
         interval: Int = 1,
         byDay: [Weekday]? = nil,
-        byMonthDay: Int? = nil,
+        byMonthDay: [Int]? = nil,
+        byPositionalDay: [PositionalDay]? = nil,
+        byMonth: [Month]? = nil,
         count: Int? = nil,
         until: Date? = nil
     ) {
@@ -24,6 +28,8 @@ public struct RecurrenceRule: Equatable, Codable, Sendable {
         self.interval = interval
         self.byDay = byDay
         self.byMonthDay = byMonthDay
+        self.byPositionalDay = byPositionalDay
+        self.byMonth = byMonth
         self.count = count
         self.until = until
     }
