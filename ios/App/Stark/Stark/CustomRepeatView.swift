@@ -176,30 +176,25 @@ struct CustomRepeatView: View {
         if byMonth.contains(month) { byMonth.remove(month) } else { byMonth.insert(month) }
     }
 
-    private func commit() {
-        recurrence = RecurrenceRule(
+    private func buildRule() -> RecurrenceRule {
+        RecurrenceRule(
             frequency: unit,
             interval: interval,
             byDay: unit == .weekly && !byDay.isEmpty ? Array(byDay).sorted { $0.rawValue < $1.rawValue } : nil,
-            byMonthDay: byMonthDay,
-            byPositionalDay: byPositionalDay,
+            byMonthDay: (unit == .monthly || unit == .yearly) ? byMonthDay : nil,
+            byPositionalDay: (unit == .monthly || unit == .yearly) ? byPositionalDay : nil,
             byMonth: unit == .yearly && !byMonth.isEmpty ? Array(byMonth).sorted { $0.rawValue < $1.rawValue } : nil,
             count: endMode == .afterCount ? occurrenceCount : nil,
             until: endMode == .onDate ? untilDate : nil
         )
     }
 
-    private var summary: String {
-        "Every \(interval == 1 ? "" : "\(interval) ")\(unitLabel)\(interval == 1 ? "" : "s")"
+    private func commit() {
+        recurrence = buildRule()
     }
 
-    private var unitLabel: String {
-        switch unit {
-        case .daily: return "day"
-        case .weekly: return "week"
-        case .monthly: return "month"
-        case .yearly: return "year"
-        }
+    private var summary: String {
+        buildRule().summary
     }
 
     private var onDaysSummary: String {

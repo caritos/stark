@@ -30,7 +30,14 @@ public enum OccurrenceExpander {
         }
 
         while candidate <= range.upperBound {
-            if let until = rule.until, candidate > until { break }
+            // Compare `until` at calendar-day granularity, not exact datetime. `until` is always
+            // encoded date-only (decodes to local midnight), but a real anchor almost always
+            // carries a non-midnight time-of-day - a candidate on the `until` date itself, at any
+            // time after midnight, would otherwise be `>` the midnight `until` value and get cut
+            // off one day early, silently dropping the very last occurrence the user configured
+            // ("ends on this date"). Fixed here (not by how `until` is encoded) so a `until` value
+            // arriving from anywhere else (e.g. an imported .ics) behaves the same way.
+            if let until = rule.until, calendar.startOfDay(for: candidate) > calendar.startOfDay(for: until) { break }
 
             if matches(candidate, anchor: anchor, rule: rule, calendar: calendar) {
                 matchCount += 1

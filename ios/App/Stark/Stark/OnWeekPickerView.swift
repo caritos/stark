@@ -16,12 +16,14 @@ struct OnWeekPickerView: View {
 
     var body: some View {
         Form {
-            ForEach(entries.indices, id: \.self) { index in
+            // Iterate by value/binding (id: \.self, PositionalDay is Hashable) rather than by
+            // index. Index-identity ForEach (`entries.indices, id: \.self`) combined with an
+            // in-place Remove button is a classic SwiftUI crash pattern once there are 2+ entries:
+            // during the removal animation, SwiftUI can evaluate a stale higher index against the
+            // already-shrunk array. Binding directly to each element removes that risk entirely.
+            ForEach($entries, id: \.self) { $entry in
                 Section {
-                    Picker("Position", selection: Binding(
-                        get: { entries[index].position },
-                        set: { entries[index].position = $0 }
-                    )) {
+                    Picker("Position", selection: $entry.position) {
                         Text("First").tag(Position.first)
                         Text("Second").tag(Position.second)
                         Text("Third").tag(Position.third)
@@ -32,20 +34,20 @@ struct OnWeekPickerView: View {
                     // plain BYMONTHDAY indistinguishable from a non-positional day-of-month rule
                     // on decode (see RRuleCodec's encoding notes), and is redundant with "On Days"
                     // anyway ("the 2nd day of the month" is just byMonthDay: [2]).
-                    .disabled(isAnyDay(entries[index].dayType))
+                    .disabled(isAnyDay(entry.dayType))
 
                     Picker("Day", selection: Binding(
-                        get: { entries[index].dayType },
+                        get: { entry.dayType },
                         set: { newValue in
-                            entries[index].dayType = newValue
+                            entry.dayType = newValue
                             switch newValue {
                             case .anyDay:
                                 // The only unambiguous pairing - force position to .last.
-                                entries[index].position = .last
-                                entries = [entries[index]]
+                                entry.position = .last
+                                entries = [entry]
                             case .weekdayOnly, .weekendDay:
                                 // Also must be the sole entry (see RRULE encoding constraint in the spec).
-                                entries = [entries[index]]
+                                entries = [entry]
                             case .weekday:
                                 break
                             }
@@ -64,7 +66,9 @@ struct OnWeekPickerView: View {
                     }
 
                     Button("Remove", role: .destructive) {
-                        entries.remove(at: index)
+                        if let index = entries.firstIndex(of: entry) {
+                            entries.remove(at: index)
+                        }
                     }
                 }
             }

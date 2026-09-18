@@ -10,14 +10,16 @@ public enum RRuleCodec {
         var parts = ["FREQ=\(rule.frequency.rawValue.uppercased())"]
         if rule.interval != 1 { parts.append("INTERVAL=\(rule.interval)") }
 
-        // Plain weekly BYDAY (unchanged from before this plan) is independent of the
-        // monthly/yearly positional-vs-plain-day-of-month branch below - a rule only ever
-        // has one of byDay (weekly) or byPositionalDay/byMonthDay (monthly/yearly) set.
+        // Plain weekly BYDAY and the monthly/yearly positional-or-plain-day-of-month branch are
+        // structurally mutually exclusive here (an if/else-if chain), not two independent `if`
+        // statements - a well-formed RecurrenceRule never has both byDay and
+        // byPositionalDay/byMonthDay set at once, but a rule constructed some other way (e.g.
+        // directly via the StarkKit API, bypassing the picker's own gating) must still never
+        // produce two BYDAY lines in one RRULE string, which RFC 5545 forbids and which the
+        // decoder cannot round-trip correctly.
         if let byDay = rule.byDay, !byDay.isEmpty {
             parts.append("BYDAY=" + byDay.map { dayCodes[$0.rawValue] }.joined(separator: ","))
-        }
-
-        if let positionalDays = rule.byPositionalDay, !positionalDays.isEmpty {
+        } else if let positionalDays = rule.byPositionalDay, !positionalDays.isEmpty {
             encodePositionalDays(positionalDays, into: &parts)
         } else if let byMonthDay = rule.byMonthDay, !byMonthDay.isEmpty {
             parts.append("BYMONTHDAY=" + byMonthDay.map(String.init).joined(separator: ","))
@@ -85,9 +87,20 @@ public enum RRuleCodec {
 
         let (byPositionalDay, byMonthDay) = decodeDaySpecifier(byDayRaw: byDayRaw, byMonthDayRaw: byMonthDayRaw, bySetPos: bySetPos)
 
+        // An empty-but-non-nil byDay (no valid weekday token found in a weekly BYDAY, e.g. a
+        // stray ordinal token like "1SU" left over from a malformed double-BYDAY rule) must
+        // decode to nil, not []. OccurrenceExpander's weekly matcher treats nil as "default to
+        // the anchor's weekday" but treats a non-nil empty array as "no day ever matches" -
+        // those two must never behave differently when there's nothing else to go on.
+        let decodedByDay: [Weekday]? = {
+            guard frequency == .weekly, let byDayRaw else { return nil }
+            let days = byDayRaw.compactMap { dayCodes.firstIndex(of: $0).flatMap(Weekday.init) }
+            return days.isEmpty ? nil : days
+        }()
+
         return RecurrenceRule(
             frequency: frequency, interval: interval,
-            byDay: frequency == .weekly ? byDayRaw?.compactMap { dayCodes.firstIndex(of: $0).flatMap(Weekday.init) } : nil,
+            byDay: decodedByDay,
             byMonthDay: byMonthDay, byPositionalDay: byPositionalDay, byMonth: byMonth,
             count: count, until: until
         )

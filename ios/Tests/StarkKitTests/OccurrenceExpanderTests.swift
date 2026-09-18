@@ -147,4 +147,44 @@ struct OccurrenceExpanderTests {
         // Should resolve via byPositionalDay (Sept 8), not byMonthDay (Sept 1).
         #expect(dates == [d("2026-09-08")])
     }
+
+    /// A non-midnight time-of-day, on the given ISO calendar day - mirrors a real anchor created
+    /// via AddItemView's DatePicker (which always carries an actual time), unlike `d(_:)`'s fixed
+    /// noon.
+    private func dt(_ iso: String, hour: Int, minute: Int) -> Date {
+        let c = DateMath.components(iso)
+        return cal.date(from: DateComponents(year: c.year, month: c.month0 + 1, day: c.day, hour: hour, minute: minute))!
+    }
+
+    @Test("until at day granularity: a non-midnight anchor still gets its final day's occurrence, not cut off by midnight-vs-time-of-day")
+    func untilIncludesFinalDayDespiteNonMidnightAnchor() {
+        // `until` is always encoded/decoded date-only (local midnight), but a real anchor almost
+        // always carries a non-midnight time-of-day. A raw datetime comparison
+        // (candidate > until) would judge 2026-09-05T15:42 as later than 2026-09-05T00:00 and
+        // wrongly cut off the last intended occurrence.
+        let anchor = dt("2026-09-01", hour: 15, minute: 42)
+        let until = dt("2026-09-05", hour: 0, minute: 0) // decoded from a date-only UNTIL=20260905
+        let rule = RecurrenceRule(frequency: .daily, until: until)
+        let dates = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-09-01", hour: 0, minute: 0)...dt("2026-09-10", hour: 0, minute: 0))
+        #expect(dates.count == 5)
+        #expect(dates.last == dt("2026-09-05", hour: 15, minute: 42))
+    }
+
+    @Test("until round-trips through encode/decode and still includes the final day's occurrence for a non-midnight anchor")
+    func untilEncodeDecodeExpandRoundTrip() {
+        let anchor = dt("2026-09-01", hour: 15, minute: 42)
+        let lastIntendedOccurrence = dt("2026-09-05", hour: 15, minute: 42)
+        let rule = RecurrenceRule(frequency: .daily, until: lastIntendedOccurrence)
+
+        let encoded = RRuleCodec.encode(rule)
+        #expect(encoded == "FREQ=DAILY;UNTIL=20260905") // date-only, decodes to local midnight
+
+        let decoded = RRuleCodec.decode(encoded)!
+        let dates = OccurrenceExpander.occurrences(
+            anchor: anchor, rule: decoded, exceptionDates: [],
+            in: dt("2026-09-01", hour: 0, minute: 0)...dt("2026-09-10", hour: 0, minute: 0)
+        )
+        #expect(dates.contains(lastIntendedOccurrence))
+        #expect(dates.count == 5)
+    }
 }

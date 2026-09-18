@@ -48,14 +48,7 @@ struct AddItemView: View {
 
     private var recurrenceSummary: String {
         guard let recurrence else { return "Never" }
-        switch (recurrence.frequency, recurrence.interval) {
-        case (.daily, 1): return "Every Day"
-        case (.weekly, 1): return "Every Week"
-        case (.weekly, 2): return "Every 2 Weeks"
-        case (.monthly, 1): return "Every Month"
-        case (.yearly, 1): return "Every Year"
-        default: return "Custom"
-        }
+        return recurrence.summary
     }
 
     private func add() {
