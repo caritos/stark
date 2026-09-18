@@ -131,11 +131,12 @@ Resolving a `PositionalDay` for a given month: find every day in that month
 matching the `dayType` (a specific weekday, or every day for `.anyDay`, or
 every Mon-Fri for `.weekdayOnly`, or every Sat/Sun for `.weekendDay`), then
 take the `position`-th one from the front (`.first`...`.fourth`) or the one
-at the end (`.last`). A `.fourth` position with a specific weekday can be
-absent in a short month (e.g. a 4th Tuesday that doesn't exist that month) —
-in that case the rule simply produces no occurrence for that month, rather
-than clamping or erroring (this matches real calendar semantics: "the 5th
-Friday of February" just doesn't happen most years).
+at the end (`.last`). In practice every weekday occurs at least 4 times in
+every possible month length (28-31 days), so `.first`...`.fourth` always
+resolve for a real weekday — the resolver still returns `nil` defensively
+if a position can't be found (kept for robustness and any future position
+beyond `.fourth`, e.g. a hypothetical "5th Friday"), and `matches()` treats
+that as "no occurrence this candidate," never an error.
 
 ## RRULE encoding (`RRuleCodec`)
 
@@ -148,7 +149,16 @@ Almost everything maps to standard, interoperable RRULE — no custom
 | `byMonth: [Month]` | `BYMONTH=3,9` (native list, 1-12) |
 | `byPositionalDay` with `.weekday(w)` | ordinal-prefixed `BYDAY`, e.g. `BYDAY=2TU,-1FR` |
 | `byPositionalDay` with `.weekdayOnly`/`.weekendDay` | `BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1` — `BYSETPOS` selects the Nth item (or -1 = last) from the set the other BY-rules generate; this is RRULE's real, standard mechanism for "last weekday of the month" style rules |
-| `byPositionalDay` with `.anyDay` | `BYMONTHDAY=<position.rawValue>` — `Position`'s raw values (1, 2, 3, 4, -1) already match `BYMONTHDAY`'s own encoding directly, so `.last` → `BYMONTHDAY=-1` ("last day of the month"), `.first` → `BYMONTHDAY=1`, etc. |
+| `byPositionalDay` with `.anyDay` at `.last` | `BYMONTHDAY=-1` ("last day of the month") — the only pairing the picker allows (see below) |
+
+**`.anyDay` is only meaningful at `.last`.** `.anyDay` at `.first`/`.second`/
+`.third`/`.fourth` would encode as `BYMONTHDAY=1`/`2`/`3`/`4` — indistinguishable
+from a plain `byMonthDay` rule on decode, and redundant with "On Days" anyway
+("the 2nd day of the month" is just `byMonthDay: [2]`). The picker only offers
+`.anyDay` paired with `.last`, which is both the only day-type/position
+combination genuinely useful here (no other way to express "the last day of
+the month," since month lengths vary) and the only one with an unambiguous
+encoding (`BYMONTHDAY=-1`).
 
 `byPositionalDay` as a *list* mixing specific-weekday and generic-day-type
 entries (e.g. "2nd Tuesday AND last weekday") requires combining an
