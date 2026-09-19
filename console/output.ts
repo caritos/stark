@@ -80,11 +80,23 @@ export function formatFocusTask(task: Task, todayStr: string, effectiveDate: str
     when = timePart ? `today ${timePart}` : 'today';
   } else {
     const d = new Date(datePart + 'T12:00:00');
-    const dm = `${MON_ABBR[d.getMonth()]} ${d.getDate()}`;
-    when = timePart ? `${DAY_ABBR[d.getDay()]} ${dm} ${timePart}` : `${DAY_ABBR[d.getDay()]} ${dm}`;
+    if (isNaN(d.getTime())) {
+      // A malformed date-like extension (e.g. start: written as a bare time with no
+      // date, like "17:30") must never render as "undefined undefined NaN" - show
+      // the raw value instead so it's at least legible and points at the bad data.
+      when = datePart || '?';
+    } else {
+      const dm = `${MON_ABBR[d.getMonth()]} ${d.getDate()}`;
+      when = timePart ? `${DAY_ABBR[d.getDay()]} ${dm} ${timePart}` : `${DAY_ABBR[d.getDay()]} ${dm}`;
+    }
   }
 
-  const endTimeExt = task.extensions['end-time'];
+  const rawStart = task.extensions['start'];
+  const rawEnd = task.extensions['end'];
+  const endTimeExt = task.extensions['end-time'] ??
+    (rawEnd && rawStart && rawEnd.length > 10 && rawEnd.slice(0, 10) === rawStart.slice(0, 10)
+      ? rawEnd.slice(11, 16)
+      : undefined);
   if (endTimeExt && timePart) when += `-${endTimeExt}`;
 
   const cleanText = task.text.replace(FOCUS_STRIP_RE, '').trim();
@@ -97,11 +109,9 @@ export function formatFocusTask(task: Task, todayStr: string, effectiveDate: str
   const whenCol = overdue ? c(A.red, when.padEnd(18)) : c(A.dim, when.padEnd(18));
   const recPart = recLabel ? `  ${c(A.dim, recLabel)}` : '';
   const streakPart = streak >= 2 ? `  ${c(A.dim, `×${streak}`)}` : '';
-  const end = task.extensions['end'];
-  const start = task.extensions['start'];
   let thruPart = '';
-  if (end && start && end.slice(0, 10) !== start.slice(0, 10)) {
-    const endDate = end.slice(0, 10);
+  if (rawEnd && rawStart && rawEnd.slice(0, 10) !== rawStart.slice(0, 10)) {
+    const endDate = rawEnd.slice(0, 10);
     const ed = new Date(endDate + 'T12:00:00');
     const yearSuffix = endDate.slice(0, 4) !== todayStr.slice(0, 4) ? ` ${ed.getFullYear()}` : '';
     thruPart = `  ${c(A.dim, `thru ${MON_ABBR[ed.getMonth()]} ${ed.getDate()}${yearSuffix}`)}`;

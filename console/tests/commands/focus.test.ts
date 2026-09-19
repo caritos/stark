@@ -73,6 +73,25 @@ describe('focus command', () => {
     expect(stdout).not.toContain('09:00-');
   });
 
+  test('shows end time range when end: carries a same-day datetime (no end-time: extension)', () => {
+    const start = addDays(today, 5);
+    writeFileSync(todoFile, `2026-05-06 Standup start:${start}T08:30 end:${start}T10:30 type:event\n`, 'utf8');
+    const { stdout } = run(['--file', todoFile, 'focus']);
+    expect(stdout).toContain('08:30-10:30');
+  });
+
+  test('does not render "undefined"/"NaN" when start: is a bare time with no date', () => {
+    // A malformed start: (e.g. accidentally typed as just a time, missing the date
+    // prefix) must never produce garbage output like "undefined undefined NaN" -
+    // see issue where `new Date("17:30T12:00:00")` is an Invalid Date.
+    writeFileSync(todoFile, `${today} pick up the girls from tennis practice start:17:30\n`, 'utf8');
+    const { stdout, code } = run(['--file', todoFile, 'focus']);
+    expect(code).toBe(0);
+    expect(stdout).toContain('tennis practice');
+    expect(stdout).not.toContain('undefined');
+    expect(stdout).not.toContain('NaN');
+  });
+
   test('does not crash when end-time: is set but start: has no time component', () => {
     const start = addDays(today, 5);
     writeFileSync(todoFile, `2026-05-06 All-day thing start:${start} end-time:09:30 type:event\n`, 'utf8');
