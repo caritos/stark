@@ -12,11 +12,11 @@ struct PlannerStoreTests {
         return (PlannerStore(file: file), file, root)
     }
 
-    /// Starts the store with the same window `AgendaView` actually displays, so tests can't
-    /// drift from the real app's window the way the original ± 1 month bug did.
+    /// Starts the store with the same load window the real app uses, so tests can't
+    /// drift from it the way the original ± 1 month bug did.
     @MainActor
     private func start(_ store: PlannerStore, around date: Date) {
-        let range = AgendaWindow.range(around: date)
+        let range = AgendaWindow.loadRange(around: date)
         store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
     }
 

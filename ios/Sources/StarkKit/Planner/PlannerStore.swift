@@ -19,8 +19,9 @@ public final class PlannerStore: ObservableObject {
         self.file = file
     }
 
-    /// Loads every month covered by `[windowStart, windowEnd]` — this must always be the
-    /// same window `AgendaView` displays (see `AgendaWindow`). Loading a hardcoded
+    /// Loads every month covered by `[windowStart, windowEnd]` — callers pass
+    /// `AgendaWindow.loadRange(around:)`, which must always cover the window `AgendaView`
+    /// displays (see `AgendaWindow`) plus the overdue lookback. Loading a hardcoded
     /// center-month ± 1 while the agenda displays a wider window let items beyond the
     /// loaded months silently vanish on relaunch (they stayed visible only as long as the
     /// in-memory state that added them was still alive).
