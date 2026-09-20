@@ -269,4 +269,44 @@ struct AgendaBuilderTests {
         // Overdue pair first (tie on occurrence => id), then the three same-time rows by id.
         #expect(forward.map(\.title) == ["Overdue A", "Overdue B", "Same time A", "Same time B", "Same time E"])
     }
+
+    // MARK: - Event outcome
+
+    @Test("an event occurrence reports the outcome recorded for its own day only")
+    func outcomePerOccurrence() {
+        let event = Event(
+            id: "e1",
+            title: "Class",
+            start: d("2026-09-25"),
+            recurrence: RecurrenceRule(frequency: .weekly),
+            outcomes: [
+                EventOutcomeRecord(date: d("2026-10-02"), outcome: .attended),
+                EventOutcomeRecord(date: d("2026-10-09"), outcome: .skipped),
+            ]
+        )
+
+        let items = Array(build(events: [event]).prefix(4))
+
+        #expect(items.map { iso($0.occurrence) } == ["2026-09-25", "2026-10-02", "2026-10-09", "2026-10-16"])
+        #expect(items.map(\.outcome) == [nil, .attended, .skipped, nil])
+    }
+
+    @Test("a record for a day the event no longer occurs on matches nothing")
+    func orphanedOutcomeIsIgnored() {
+        let event = Event(
+            id: "e1",
+            title: "Dinner",
+            start: d("2026-09-25"),
+            outcomes: [EventOutcomeRecord(date: d("2026-09-26"), outcome: .attended)]
+        )
+
+        #expect(build(events: [event])[0].outcome == nil)
+    }
+
+    @Test("reminders never have an outcome")
+    func reminderHasNoOutcome() {
+        let reminder = Reminder(id: "r1", title: "Pay rent", dueDate: d("2026-09-27"))
+
+        #expect(build(reminders: [reminder])[0].outcome == nil)
+    }
 }

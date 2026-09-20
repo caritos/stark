@@ -51,6 +51,15 @@ public struct AgendaItem: Identifiable, Equatable {
         case .reminder(let reminder): return reminder.recurrence != nil
         }
     }
+
+    /// Events only: what the user recorded for *this* occurrence (matched by calendar day), or nil
+    /// when nothing is recorded. Always nil for reminders. Derived, so it can never disagree with
+    /// the event it came from.
+    public var outcome: EventOutcome? {
+        guard case .event(let event) = kind else { return nil }
+        let calendar = Calendar(identifier: .gregorian)
+        return event.outcomes.first { calendar.isDate($0.date, inSameDayAs: occurrence) }?.outcome
+    }
 }
 
 /// Expands every event/reminder into concrete dated agenda rows and sorts them. The single
