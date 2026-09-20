@@ -85,7 +85,16 @@ Follows the repo's layering (`shared/` pure transforms, `console/` thin I/O):
   [--force]`: resolve the file (`--file` → `TODO_FILE` → `./todo.txt`, the
   existing order), call the transform, write `DIR` (default `./stark-export`),
   print the summary. Refuses to write into a non-empty `DIR` without
-  `--force`. Registered in `console/index.ts` and `help`.
+  `--force`. Registered in `console/index.ts` and `help`. `--out` must be a
+  non-empty value that does not start with `--`, and must not name an existing
+  non-directory. The export is built fully in memory first; a pre-scan then
+  refuses (touching nothing) if any export-named entry or file about to be
+  written is neither a regular file nor a symlink (e.g. a directory). New files
+  are written before stale export-named files are pruned (`--force`), so a
+  failure can never leave less than before, and a symlink sitting at a write
+  target is replaced, never written through (the target is `lstat`ed
+  unconditionally, so a case-variant link on a case-insensitive filesystem is
+  handled too).
 
 **Output:** `DIR/recurring.ics`, `DIR/YYYY-MM.ics` (one per month that has
 one-offs), and `DIR/export-report.txt` (human-readable) with the same content
@@ -143,7 +152,9 @@ without one is imported as an undated Reminder and reported
   all-day end is a decision for whenever multi-day display is built). A
   date-only `end:` on a *timed* event → `DTEND` on that date at the start's
   time-of-day. An end before the start → `DTEND` omitted, reported
-  (`end-before-start`).
+  (`end-before-start`). A bare `end:HH:MM` or an `end-time:` on an **all-day**
+  event is ignored by design, with no report entry (an all-day event has no
+  time to end at).
 - **Reminder due:** `DUE` = `start:` if present, else `due:`. A date-only value
   is written as `T000000` (the agenda already hides a midnight time). If both
   are present and are different dates, the `due:` date is preserved as a
@@ -184,7 +195,7 @@ without one is imported as an undated Reminder and reported
 | `…:<pos>-weekend-day` | `BYDAY=SA,SU;BYSETPOS=<pos or -1>` |
 | `frequency-month:Jan,…` | `BYMONTH=1,…` |
 | `recur-until:YYYY-MM-DD` | `UNTIL=YYYYMMDD` (date-only, as `RRuleCodec` writes) |
-| `exdate:d1,d2,…` | one `EXDATE` each, at the anchor's time-of-day (or `;VALUE=DATE` for all-day) |
+| `exdate:d1,d2,…` | one `EXDATE` each. An **Event** writes `EXDATE;VALUE=DATE:yyyyMMdd` when all-day, else `EXDATE:yyyyMMddTHHmmss` at the start's time-of-day. A **Reminder** never uses `;VALUE=DATE`: its `EXDATE` is always a date-time line, at the anchor's time-of-day (`EXDATE:yyyyMMddT000000` for a date-only reminder). A timed `exdate:` value is dropped and reported, not carried over |
 
 This matches `RRuleCodec.encode`/`decode` exactly (verified by the golden
 tests). Edge rules:
@@ -217,9 +228,11 @@ tests). Edge rules:
   app has no `last-done`, and this makes completed history unnecessary to
   replay as exceptions. A series with no later occurrence (`recur-until`
   passed) keeps its original anchor and its `UNTIL` and is reported
-  (`finished-series`). (1 line + the yearly ones today.)
-- `exdate:` values carry over unchanged; those before a re-based anchor are
-  harmless.
+  (`finished-series`). (0 today: the expired anniversaries are typed, so they
+  are Events and keep their anchor.)
+- `exdate:` date values carry over (a value that is not a real date, or that
+  carries a time, is dropped and reported as `ignored-extension`); those before
+  a re-based anchor are harmless.
 
 ### Identity and placement
 
@@ -230,7 +243,8 @@ tests). Edge rules:
   recurrence → `recurring.ics`; otherwise the month of the event's `start` or
   the reminder's `dueDate`. An undated reminder goes in the month of its
   creation date (`YYYY-MM-DD` after the optional priority) or, lacking one, the
-  earliest month present in the export — the native store would use "the
+  earliest month present in the export (`1970-01.ics` as a last resort, when
+  nothing in the export is dated at all) — the native store would use "the
   current month", which needs a clock; this stays deterministic and keeps
   `recurring.ics` holding recurring items only.
 - Within a file: events, then reminders, each in source order.
@@ -259,9 +273,16 @@ that container is untouched. The app reads the files on next launch.
    determinism (two runs identical), placement, and **reconciliation**: item
    count in the output equals input line count minus reported drops (none are
    expected).
-2. **Cross-language golden fixtures.** A synthetic `todo.txt` fixture covers
-   every recurrence form and escaping case (commas, semicolons, backslashes,
-   emoji, newlines in notes). Its export is checked in under
+2. **Cross-language golden fixtures.** A synthetic `todo.txt` fixture
+   (`sample.todo.txt`) covers weekly `BYDAY` with `UNTIL` and exdates,
+   positional first-weekday and last-day monthly rules, a yearly all-day event,
+   an `every` interval re-base, a fifth-Friday fallback, commas, semicolons,
+   backslashes and emoji in a title, and a note containing a comma. The
+   remaining rule forms (daily, numeric `BYMONTHDAY`, `BYSETPOS` weekday and
+   weekend sets, `BYMONTH`, reminder and all-day `EXDATE`, newline-joined
+   notes) are covered by the TypeScript unit tests, and were exercised against
+   the real Swift parser and expander by the real-data parity run (check 3).
+   The fixture's export is checked in under
    `shared/tests/fixtures/ics/`. The TypeScript test asserts the converter's
    output equals those files **byte for byte**; a Swift test in `StarkKitTests`
    parses the **same files** with the real `ICSParser`/`RRuleCodec.decode`
