@@ -12,7 +12,8 @@
 - **All day** toggle under the date on add and edit, for both kinds. On = date-only: the date picker shows the date only, the item is stored at start of day (the model already treats midnight as "date only" for reminders; events set `isAllDay`, written as `;VALUE=DATE`). Off = date and time as today. Existing items start with the toggle set from their data (`event.isAllDay`; reminder due date at exactly midnight). The stored date/time state is not mutated by the toggle, only normalised on save, so toggling on then off restores the time that was picked. A timed event turned all-day loses its `end`; all-day turned timed has no `end`; an unchanged all-day multi-day event keeps its (shifted) `end`.
 - **Notes**: multi-line field on add and edit for reminders and events; blank text is saved as no note. **Location**: events only, same blank rule.
 - **Priority**: reminders only (events never carry a priority — same product rule as the Expo app). Picker None / `!` / `!!` / `!!!`, mapped like Apple Reminders: `!` low = `PRIORITY:9`, `!!` medium = 5, `!!!` high = 1, None writes no line. An existing value maps to the nearest level for display (1-4 high, 5 medium, 6-9 low, anything else none) and is rewritten only if the user changes the level. The row shows the marks in the accent colour before the title of an incomplete reminder (a prefix survives truncation). Sort order is unchanged.
-- **Out of scope:** undated reminders, lists, location-based reminders, natural-language quick add, sorting by priority, an Expo-app change, the TypeScript converter.
+- **Ends (timed events only; added after the user compared Fantastical's New Event sheet):** timed events get "Starts" / "Ends" date+time pickers on add and edit. A new event defaults to one hour long. Moving the start moves the end by the same amount (duration kept); the Ends picker cannot go before the start; an end at or before the start is stored as no end (`EventSchedule.storedEnd`), so an existing event without an end is not given one by merely opening and saving it. All-day events show no Ends picker: an all-day event that stays all-day keeps whatever end it had (shifted with the start), and switching between all-day and timed drops the end. (Multi-day all-day events still show only on their first agenda day — a known gap — so an all-day end date would look ignored.)
+- **Out of scope:** undated reminders, lists, location-based reminders, natural-language quick add, sorting by priority, alerts/notifications, time zones, calendars, URL field, all-day multi-day end dates, an Expo-app change, the TypeScript converter.
 
 ## Global Constraints
 
@@ -24,7 +25,7 @@
 - **Baseline:** `swift test` currently passes 239 tests (three env-gated parity tests are skipped by design). It must stay green after every task.
 - **Theme:** only `Colors.*`, `Spacing.*`, `Fonts.mono` from `Theme.swift`; no hardcoded hex, no new colours, no rounded corners.
 - **Do not touch the author's phone** (no `xcrun devicectl`, no `deploy.sh`); the controller does the on-device check.
-- **App build check** (Tasks 2 and 3): `cd /Users/eladio/src/todo-txt/.claude/worktrees/add-edit-fields/ios/App/Stark && xcodebuild -project Stark.xcodeproj -scheme Stark -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5` must end in `** BUILD SUCCEEDED **`.
+- **App build check** (Tasks 3 and 4): `cd /Users/eladio/src/todo-txt/.claude/worktrees/add-edit-fields/ios/App/Stark && xcodebuild -project Stark.xcodeproj -scheme Stark -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5` must end in `** BUILD SUCCEEDED **`.
 
 ---
 
@@ -39,7 +40,7 @@
 - Modify test: `ios/Tests/StarkKitTests/AgendaBuilderTests.swift` (append inside the suite before its closing `}`)
 
 **Interfaces:**
-- Produces (used by Tasks 2-3):
+- Produces (used by Tasks 3-4):
   - `public enum ReminderPriority: Int, CaseIterable, Equatable, Sendable { case none, low, medium, high }` with `init(icalValue: Int?)`, `var icalValue: Int?`, `var marks: String`, `var pickerLabel: String`, `static func updated(original: Int?, chosen: ReminderPriority) -> Int?`
   - `public enum FormFields` with `static func trimmedOrNil(_ text: String) -> String?`, `static func normalizedStart(_ date: Date, allDay: Bool) -> Date`, `static func isAllDay(_ date: Date) -> Bool`
   - `Event.rescheduled(to date: Date, allDay: Bool) -> Event`
@@ -368,7 +369,175 @@ git -C /Users/eladio/src/todo-txt/.claude/worktrees/add-edit-fields commit -m "f
 
 ---
 
-### Task 2: Add and Edit screens
+### Task 2: Event end helpers (StarkKit)
+
+**Files:**
+- Create: `ios/Sources/StarkKit/Models/EventSchedule.swift`
+- Modify: `ios/Sources/StarkKit/Models/Event.swift` (add `scheduled(start:end:allDay:)` directly after `rescheduled(to:allDay:)`)
+- Create test: `ios/Tests/StarkKitTests/EventScheduleTests.swift`
+
+**Interfaces:**
+- Consumes (Task 1): `Event.rescheduled(to:allDay:)`, `FormFields`.
+- Produces (used by Task 3): `EventSchedule.defaultDuration: TimeInterval` (3600), `EventSchedule.shiftedEnd(_ end: Date, oldStart: Date, newStart: Date) -> Date`, `EventSchedule.storedEnd(_ end: Date, start: Date) -> Date?`, and `Event.scheduled(start: Date, end: Date?, allDay: Bool) -> Event`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `ios/Tests/StarkKitTests/EventScheduleTests.swift`:
+
+```swift
+// ios/Tests/StarkKitTests/EventScheduleTests.swift
+import Testing
+import Foundation
+@testable import StarkKit
+
+@Suite("EventSchedule")
+struct EventScheduleTests {
+    private let cal = Calendar(identifier: .gregorian)
+
+    private func at(_ iso: String, _ hour: Int, _ minute: Int = 0) -> Date {
+        let c = DateMath.components(iso)
+        return cal.date(from: DateComponents(year: c.year, month: c.month0 + 1, day: c.day, hour: hour, minute: minute))!
+    }
+
+    @Test("a new event defaults to one hour")
+    func defaultDuration() {
+        #expect(EventSchedule.defaultDuration == 3600)
+    }
+
+    @Test("moving the start moves the end by the same amount")
+    func shiftedEnd() {
+        let end = EventSchedule.shiftedEnd(at("2026-09-20", 15), oldStart: at("2026-09-20", 14), newStart: at("2026-09-21", 9))
+        #expect(end == at("2026-09-21", 10))
+    }
+
+    @Test("an end is stored only when strictly after the start")
+    func storedEnd() {
+        let start = at("2026-09-20", 14)
+        #expect(EventSchedule.storedEnd(at("2026-09-20", 15), start: start) == at("2026-09-20", 15))
+        #expect(EventSchedule.storedEnd(start, start: start) == nil)
+        #expect(EventSchedule.storedEnd(at("2026-09-20", 13), start: start) == nil)
+    }
+
+    @Test("a timed schedule takes the given start and end exactly and clears all-day")
+    func timedSchedule() {
+        let event = Event(id: "e", title: "Class", start: cal.startOfDay(for: at("2026-09-20", 12)), isAllDay: true)
+
+        let result = event.scheduled(start: at("2026-09-21", 14), end: at("2026-09-21", 15), allDay: false)
+
+        #expect(!result.isAllDay)
+        #expect(result.start == at("2026-09-21", 14))
+        #expect(result.end == at("2026-09-21", 15))
+    }
+
+    @Test("a timed schedule with no end clears the end")
+    func timedScheduleWithoutEnd() {
+        let event = Event(id: "e", title: "Class", start: at("2026-09-20", 9), end: at("2026-09-20", 10))
+
+        let result = event.scheduled(start: at("2026-09-20", 9), end: nil, allDay: false)
+
+        #expect(result.end == nil)
+    }
+
+    @Test("an all-day schedule follows rescheduled(to:allDay:): drops a timed end, keeps an all-day one")
+    func allDaySchedule() {
+        let timed = Event(id: "e", title: "Class", start: at("2026-09-20", 9), end: at("2026-09-20", 10))
+        let toAllDay = timed.scheduled(start: at("2026-09-20", 9), end: at("2026-09-20", 10), allDay: true)
+        #expect(toAllDay.isAllDay)
+        #expect(toAllDay.end == nil)
+
+        let start = cal.startOfDay(for: at("2026-09-20", 12))
+        let end = cal.startOfDay(for: at("2026-09-22", 12))
+        let multiDay = Event(id: "t", title: "Trip", start: start, end: end, isAllDay: true)
+        let moved = multiDay.scheduled(start: cal.startOfDay(for: at("2026-09-21", 12)), end: nil, allDay: true)
+        #expect(moved.isAllDay)
+        #expect(moved.end == cal.startOfDay(for: at("2026-09-23", 12)))
+    }
+
+    @Test("every other field is preserved")
+    func otherFieldsPreserved() {
+        let event = Event(
+            id: "e", title: "Class", notes: "n", start: at("2026-09-20", 9), location: "Room 4",
+            recurrence: RecurrenceRule(frequency: .weekly),
+            exceptionDates: [at("2026-09-27", 9)],
+            outcomes: [EventOutcomeRecord(date: at("2026-09-20", 9), outcome: .attended)]
+        )
+
+        let result = event.scheduled(start: at("2026-09-20", 10), end: at("2026-09-20", 11), allDay: false)
+
+        #expect(result.id == "e")
+        #expect(result.title == "Class")
+        #expect(result.notes == "n")
+        #expect(result.location == "Room 4")
+        #expect(result.recurrence == event.recurrence)
+        #expect(result.exceptionDates == event.exceptionDates)
+        #expect(result.outcomes == event.outcomes)
+    }
+}
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `cd /Users/eladio/src/todo-txt/.claude/worktrees/add-edit-fields/ios && swift test --filter EventScheduleTests`
+Expected: FAIL to compile — `EventSchedule` and `scheduled(start:end:allDay:)` not defined.
+
+- [ ] **Step 3: Implement**
+
+Create `ios/Sources/StarkKit/Models/EventSchedule.swift`:
+
+```swift
+// ios/Sources/StarkKit/Models/EventSchedule.swift
+import Foundation
+
+/// Pure rules for the add/edit screens' Starts/Ends pickers, kept out of the views so they are
+/// testable.
+public enum EventSchedule {
+    /// A new timed event is one hour long (the same default as Fantastical).
+    public static let defaultDuration: TimeInterval = 3600
+
+    /// The end after the start moved from `oldStart` to `newStart`: the duration is kept.
+    public static func shiftedEnd(_ end: Date, oldStart: Date, newStart: Date) -> Date {
+        end.addingTimeInterval(newStart.timeIntervalSince(oldStart))
+    }
+
+    /// The end to store for a timed event: nil unless strictly after the start, so an existing
+    /// event that had no end is not given one just by opening and saving it.
+    public static func storedEnd(_ end: Date, start: Date) -> Date? {
+        end > start ? end : nil
+    }
+}
+```
+
+In `Event.swift`, directly after `rescheduled(to:allDay:)` (inside the struct):
+
+```swift
+    /// A copy scheduled the way the add/edit form describes it. An all-day item follows
+    /// `rescheduled(to:allDay:)` (`end` is ignored: it keeps its own end, shifted with the start,
+    /// or drops it when switching from timed). A timed item takes `start` and `end` (nil = no
+    /// end) exactly as given. Every other field is left untouched.
+    public func scheduled(start: Date, end: Date?, allDay: Bool) -> Event {
+        if allDay { return rescheduled(to: start, allDay: true) }
+        var copy = self
+        copy.start = start
+        copy.end = end
+        copy.isAllDay = false
+        return copy
+    }
+```
+
+- [ ] **Step 4: Run to verify pass, then the full suite**
+
+Run: `swift test --filter EventScheduleTests` → PASS; then `swift test` → all pass (253 + 7 = 260; three env-gated tests skipped). Note: a `--filter` regex is matched against the fully qualified test name, so use the suite name `EventScheduleTests` exactly.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git -C /Users/eladio/src/todo-txt/.claude/worktrees/add-edit-fields add ios/Sources/StarkKit/Models/EventSchedule.swift ios/Sources/StarkKit/Models/Event.swift ios/Tests/StarkKitTests/EventScheduleTests.swift
+git -C /Users/eladio/src/todo-txt/.claude/worktrees/add-edit-fields commit -m "feat(ios): EventSchedule helpers and Event.scheduled for the Starts/Ends pickers" -m "Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 3: Add and Edit screens
 
 **Files:**
 - Modify: `ios/App/Stark/Stark/AddItemView.swift`
@@ -376,7 +545,18 @@ git -C /Users/eladio/src/todo-txt/.claude/worktrees/add-edit-fields commit -m "f
 
 **Interfaces:**
 - Consumes (Task 1): `FormFields.trimmedOrNil`, `FormFields.normalizedStart`, `FormFields.isAllDay`, `Event.rescheduled(to:allDay:)`, `ReminderPriority` (`allCases`, `pickerLabel`, `icalValue`, `init(icalValue:)`, `updated(original:chosen:)`).
-- No unit tests: SwiftUI wiring only; the logic is tested in Task 1. Verify with the app build check plus `swift test`.
+- Consumes (Task 2): `EventSchedule.defaultDuration`, `EventSchedule.shiftedEnd`, `EventSchedule.storedEnd`, `Event.scheduled(start:end:allDay:)`.
+- No unit tests: SwiftUI wiring only; the logic is tested in Tasks 1-2. Verify with the app build check plus `swift test`.
+
+**Ends (events, timed only) — do this in addition to Steps 1-2 below:**
+- Add screen: state `endDate`, initialised in an `init()` from a single `let now = Date()`: `_date = State(initialValue: now)` and `_endDate = State(initialValue: now.addingTimeInterval(EventSchedule.defaultDuration))`. For events, when `!allDay`, show `DatePicker("Ends", selection: $endDate, in: date..., displayedComponents: [.date, .hourAndMinute])` directly below the start picker, and label the start picker "Starts" for events ("Due" for reminders is unchanged). Add `.onChange(of: date)` that sets `endDate = EventSchedule.shiftedEnd(endDate, oldStart: oldValue, newStart: newValue)` (check the project's iOS deployment target: use the two-parameter `onChange(of:) { oldValue, newValue in }` if it is iOS 17+, otherwise the one-parameter form with a stored previous start). In `add()`, the event's `end` is `allDay ? nil : EventSchedule.storedEnd(endDate, start: date)`.
+- Edit screen: state `endDate`, initialised to `event.end ?? event.start` (an event without an end starts with Ends equal to Starts, which stores as no end); same "Ends" picker and `.onChange(of: date)` shift as above, shown only for events when `!allDay`. In `save()`, the event branch becomes:
+
+```swift
+            var updated = event.scheduled(start: date, end: EventSchedule.storedEnd(endDate, start: date), allDay: allDay)
+```
+
+  (replacing the `rescheduled(to:allDay:)` call in Step 2's `save()` below; `scheduled` handles the all-day cases itself.)
 
 - [ ] **Step 1: `AddItemView.swift`**
 
@@ -488,7 +668,7 @@ git -C /Users/eladio/src/todo-txt/.claude/worktrees/add-edit-fields commit -m "f
 
 ---
 
-### Task 3: Priority marks on the agenda row + docs
+### Task 4: Priority marks on the agenda row + docs
 
 **Files:**
 - Modify: `ios/App/Stark/Stark/AgendaRow.swift`
