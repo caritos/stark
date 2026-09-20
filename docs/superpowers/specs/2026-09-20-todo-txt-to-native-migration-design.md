@@ -48,8 +48,9 @@ Counted from the author's live file with the repo's own parser
 | **Total** | **8,302** | **3,337 Events + 4,965 Reminders** |
 
 Other facts that drive rules below: 371 open recurring items (270 weekly,
-70 yearly, 16 daily, 15 monthly); 178 with `frequency-day`; 10 monthly rules
-with `frequency-month-day` (3 numeric, 7 positional; none `fifth-*`); 24 with
+70 yearly, 16 daily, 15 monthly); 178 with `frequency-day` (177 weekly and 1
+monthly, which is an invalid combination); 11 rules with `frequency-month-day`
+(10 monthly: 3 numeric and 7 positional; 1 yearly; none `fifth-*`); 24 with
 `every`; 150 with `exdate`; 303 with `recur-until`; 929 all-day and 2,167 timed
 open events; 209 events whose `end:` date differs from `start:`; 818 events
 with no `end:`; 1,273 events with `location:`; 1,152 events and 21 tasks with
@@ -168,7 +169,7 @@ without one is imported as an undated Reminder and reported
 | `frequency:daily\|weekly\|monthly\|yearly` | `FREQ=DAILY\|WEEKLY\|MONTHLY\|YEARLY` |
 | `every:N` (N > 1) | `INTERVAL=N` |
 | `frequency-day:` (weekly) `M,T,W,Th,F,Sat,Sun` | `BYDAY=MO,TU,WE,TH,FR,SA,SU` (same order, mapped) |
-| `frequency-month-day:N` (monthly) | `BYMONTHDAY=N` |
+| `frequency-month-day:N` (monthly or yearly) | `BYMONTHDAY=N` |
 | `…:first\|second\|third\|fourth-<weekday>` | `BYDAY=1WE` etc. (ordinal + code) |
 | `…:last-<weekday>` | `BYDAY=-1FR` etc. |
 | `…:first…fourth-day` | `BYMONTHDAY=1…4` |
@@ -186,9 +187,12 @@ tests). Edge rules:
   `last`). Any recurrence the encoder cannot express falls back to importing
   the item as a **non-recurring** item at its `start:` and is reported
   (`unsupported-recurrence`, with the original text) — never dropped. (0 today.)
-- `frequency-day:` on a non-weekly rule and `frequency-month-day:` on a
-  non-monthly rule are ignored and reported (`ignored-extension`; 1 line each
-  today).
+- `frequency-day:` is only meaningful on a weekly rule; `frequency-month-day:`
+  only on monthly and yearly rules (the console's `help` documents both);
+  `frequency-month:` only on yearly. Anywhere else the extension is ignored and
+  reported (`ignored-extension`). Today that is exactly 1 line: a `frequency-day`
+  on a monthly rule. (The one yearly rule with `frequency-month-day` is valid and
+  converted.)
 - Yearly rules need no `BYMONTH`/`BYMONTHDAY`: the anchor supplies month and
   day, and both apps clamp a 31st / Feb 29 to the month's last day.
 
@@ -263,11 +267,16 @@ that container is untouched. The app reads the files on next launch.
    logic (`applyFocusForWindow` / `generateTaskOccurrences`) for a given day and
    window; a Swift test, enabled only when `STARK_PARITY_DIR` is set (Swift
    Testing `.enabled(if:)`), loads the export directory into a real
-   `PlannerStore`, runs `buildAgendaItems`, and compares. Compared: incomplete
-   reminders (date, time, overdue-ness) and events' start-day occurrences.
-   **Exempt, by design:** Expo's per-day rows for multi-day events (native shows
-   the start day only) and completed rows outside the native 14-day window.
-   Any other mismatch is a mapping bug to fix. The 7 weekly tasks with
+   `PlannerStore`, runs `buildAgendaItems`, and compares. **Compared:** (a)
+   every event start and every open reminder occurrence dated from today
+   through today + 14 days, by kind, date, time and title; (b) open one-off
+   reminders that are overdue by 1–90 days. **Not compared, by design:**
+   Expo's per-day rows for multi-day events (native shows the start day only),
+   completed rows, recurring-reminder overdue rows (Expo and native define
+   "overdue" differently for weekday-set and yearly series — that is covered by
+   the Swift `AgendaBuilder` unit tests, not a migration question), and
+   anything overdue by more than 90 days (see Known gaps). Any other mismatch
+   is a mapping bug to fix. The 7 weekly tasks with
    `every > 1` **and** `frequency-day` are the known risk (Expo cycles in 7-day
    blocks from `start:`; native aligns by calendar week); the parity run is
    what proves or disproves them.
@@ -285,6 +294,13 @@ that container is untouched. The app reads the files on next launch.
 - **All-day `DTEND` inclusive vs. exclusive** is written verbatim to match the
   Swift serializer. When native multi-day display is built, decide the
   convention and migrate; until then no native code interprets it.
+- **Old overdue tasks stay invisible.** The native agenda pins overdue
+  reminders to today only back to `AgendaWindow.overdueLookbackDays` (90 days),
+  and `PlannerStore.start` only loads month files inside that range. The
+  author's list has overdue one-off tasks going back to May, so those import
+  correctly but will not appear until the lookback is raised (or every month
+  file is loaded). The parity run counts them and lists them as exempt; the
+  fix is a native change, not a converter change.
 - **6 undated tasks** import as reminders with no `DUE`, so the native agenda
   cannot show them (`expand(reminder:)` needs a due date). They are also not
   shown by the Expo app today. Kept for a future "no date" list.
