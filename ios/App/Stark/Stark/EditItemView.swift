@@ -2,8 +2,8 @@
 import SwiftUI
 import StarkKit
 
-/// Edit + detail sheet for one agenda row. Editable fields (title, date, repeat) are committed
-/// only by Save; the action buttons act immediately and dismiss. Reminders show Done / Undo /
+/// Edit + detail sheet for one agenda row. Editable fields (title, date, all-day, end for timed
+/// events, repeat, notes, location for events, priority for reminders) are committed only by Save; the action buttons act immediately and dismiss. Reminders show Done / Undo /
 /// Skip This Occurrence / Delete; events show Attended / Didn't Attend / Clear / Remove This
 /// Occurrence / Delete.
 struct EditItemView: View {
@@ -13,30 +13,60 @@ struct EditItemView: View {
 
     @State private var title: String
     @State private var date: Date
+    /// Events only. An event with no end starts with Ends equal to Starts, which stores as no end.
+    @State private var endDate: Date
+    @State private var allDay: Bool
     @State private var recurrence: RecurrenceRule?
+    @State private var notes: String
+    @State private var location: String
+    @State private var priority: ReminderPriority
     @State private var showDeleteConfirm = false
 
-    /// The date the form started with, used to tell "left alone" from "edited".
+    /// The date and all-day flag the form started with, used to tell "left alone" from "edited".
     private let initialDate: Date
+    private let initialAllDay: Bool
 
     init(item: AgendaItem) {
         self.item = item
         let startDate: Date
+        let startEnd: Date
+        let startAllDay: Bool
         let startRecurrence: RecurrenceRule?
+        let startNotes: String
+        let startLocation: String
+        let startPriority: ReminderPriority
         switch item.kind {
         case .event(let event):
             startDate = event.start
+            // Switching from all-day to timed drops the end (see `Event.scheduled`), so an
+            // all-day event's own end is not offered as the timed one.
+            startEnd = event.isAllDay ? event.start : (event.end ?? event.start)
+            startAllDay = event.isAllDay
             startRecurrence = event.recurrence
+            startNotes = event.notes ?? ""
+            startLocation = event.location ?? ""
+            startPriority = .none
         case .reminder(let reminder):
             // For a recurring reminder `dueDate` is the series' anchor, not the tapped
             // occurrence (`item.occurrence`) — editing changes every occurrence.
             startDate = reminder.dueDate ?? item.occurrence
+            startEnd = startDate
+            startAllDay = reminder.dueDate.map(FormFields.isAllDay) ?? false
             startRecurrence = reminder.recurrence
+            startNotes = reminder.notes ?? ""
+            startLocation = ""
+            startPriority = ReminderPriority(icalValue: reminder.priority)
         }
         _title = State(initialValue: item.title)
         _date = State(initialValue: startDate)
+        _endDate = State(initialValue: startEnd)
+        _allDay = State(initialValue: startAllDay)
         _recurrence = State(initialValue: startRecurrence)
+        _notes = State(initialValue: startNotes)
+        _location = State(initialValue: startLocation)
+        _priority = State(initialValue: startPriority)
         initialDate = startDate
+        initialAllDay = startAllDay
     }
 
     var body: some View {
@@ -46,7 +76,17 @@ struct EditItemView: View {
             List {
                 Section {
                     TextField("Title", text: $title)
-                    DatePicker(dateLabel, selection: $date, displayedComponents: dateComponents)
+                    DatePicker(dateLabel, selection: $date,
+                               displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
+                        .onChange(of: date) { oldValue, newValue in
+                            // Moving the start moves the end with it, so the duration is kept.
+                            endDate = EventSchedule.shiftedEnd(endDate, oldStart: oldValue, newStart: newValue)
+                        }
+                    if isEvent && !allDay {
+                        DatePicker("Ends", selection: $endDate, in: date...,
+                                   displayedComponents: [.date, .hourAndMinute])
+                    }
+                    Toggle("All day", isOn: $allDay)
 
                     NavigationLink {
                         RepeatPickerView(recurrence: $recurrence)
@@ -57,6 +97,18 @@ struct EditItemView: View {
                             Text(recurrenceSummary).foregroundStyle(Colors.textSecondary)
                         }
                     }
+
+                    if isEvent {
+                        TextField("Location", text: $location)
+                    }
+                    if !isEvent {
+                        Picker("Priority", selection: $priority) {
+                            ForEach(ReminderPriority.allCases, id: \.self) { Text($0.pickerLabel) }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    TextField("Notes", text: $notes, axis: .vertical)
+                        .lineLimit(1...6)
                 } footer: {
                     if item.isRecurring {
                         Text("Changes apply to every occurrence.")
@@ -121,16 +173,7 @@ struct EditItemView: View {
         return false
     }
 
-    private var isAllDayEvent: Bool {
-        if case .event(let event) = item.kind { return event.isAllDay }
-        return false
-    }
-
-    private var dateLabel: String { isEvent ? "Start" : "Due" }
-
-    private var dateComponents: DatePickerComponents {
-        isAllDayEvent ? [.date] : [.date, .hourAndMinute]
-    }
+    private var dateLabel: String { isEvent ? "Starts" : "Due" }
 
     private var trimmedTitle: String {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -175,19 +218,24 @@ struct EditItemView: View {
     private func save() {
         switch item.kind {
         case .event(let event):
-            // `settingStart` shifts `end` by the same delta so the duration survives the edit.
-            var updated = event.settingStart(date)
+            // `scheduled` takes the picked start/end for a timed event, and for an all-day one
+            // stores the start of the day and drops `end` when switching between all-day and timed.
+            var updated = event.scheduled(start: date, end: EventSchedule.storedEnd(endDate, start: date), allDay: allDay)
             updated.title = trimmedTitle
             updated.recurrence = recurrence
+            updated.notes = FormFields.trimmedOrNil(notes)
+            updated.location = FormFields.trimmedOrNil(location)
             store.updateEvent(updated)
         case .reminder(let reminder):
             var updated = reminder
             updated.title = trimmedTitle
             // A reminder with no due date stays that way unless the user picked one.
-            if reminder.dueDate != nil || date != initialDate {
-                updated.dueDate = date
+            if reminder.dueDate != nil || date != initialDate || allDay != initialAllDay {
+                updated.dueDate = FormFields.normalizedStart(date, allDay: allDay)
             }
             updated.recurrence = recurrence
+            updated.notes = FormFields.trimmedOrNil(notes)
+            updated.priority = ReminderPriority.updated(original: reminder.priority, chosen: priority)
             store.updateReminder(updated)
         }
         dismiss()
