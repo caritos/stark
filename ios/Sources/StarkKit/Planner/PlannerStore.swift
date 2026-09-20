@@ -240,6 +240,23 @@ public final class PlannerStore: ObservableObject {
         rebuild()
     }
 
+    /// Reopens a completed one-off reminder (Undo). The completed copy made by completing a
+    /// recurring occurrence is just a one-off, so this covers it too; the master keeps its
+    /// exception date on purpose. No-op for an unknown id, a recurring master, or a reminder
+    /// that isn't completed.
+    public func uncompleteReminder(id: String) {
+        guard !recurringReminders.contains(where: { $0.id == id }) else { return }
+        for month in loadedMonths {
+            guard let idx = monthReminders[month]?.firstIndex(where: { $0.id == id }) else { continue }
+            guard monthReminders[month]?[idx].isCompleted == true else { return }
+            monthReminders[month]?[idx].isCompleted = false
+            monthReminders[month]?[idx].completedDate = nil
+            persistMonth(month)
+            rebuild()
+            return
+        }
+    }
+
     private func rebuild() {
         events = recurringEvents + monthEvents.values.flatMap { $0 }
         reminders = recurringReminders + monthReminders.values.flatMap { $0 }

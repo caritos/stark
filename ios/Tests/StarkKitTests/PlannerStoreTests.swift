@@ -358,4 +358,88 @@ struct PlannerStoreTests {
         #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
         #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
     }
+
+    // MARK: - uncompleteReminder
+
+    @Test("uncompleteReminder reopens a completed one-off reminder and persists across reload")
+    @MainActor
+    func uncompleteOneOffReminder() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+        store.completeReminder(id: "rem-1", on: DateMath.date(from: "2026-09-17"))
+        #expect(store.reminders.first { $0.id == "rem-1" }?.isCompleted == true)
+
+        store.uncompleteReminder(id: "rem-1")
+
+        let live = try #require(store.reminders.first { $0.id == "rem-1" })
+        #expect(!live.isCompleted)
+        #expect(live.completedDate == nil)
+        let reloaded = PlannerStore(file: file)
+        start(reloaded, around: Self.anchor)
+        let persisted = try #require(reloaded.reminders.first { $0.id == "rem-1" })
+        #expect(!persisted.isCompleted)
+        #expect(persisted.completedDate == nil)
+        #expect(reloaded.reminders.count == 1)
+    }
+
+    @Test("uncompleting the completed copy of a recurring occurrence leaves the master's exception alone and creates no duplicate")
+    @MainActor
+    func uncompleteCompletedCopyOfRecurringOccurrence() throws {
+        let (store, file, _) = makeStore()
+        let day = DateMath.date(from: "2026-09-17")
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: day, recurrence: RecurrenceRule(frequency: .weekly)))
+        store.completeReminder(id: "rem-rec", on: day)
+        let copy = try #require(store.reminders.first { $0.isCompleted })
+        #expect(copy.id != "rem-rec")
+
+        store.uncompleteReminder(id: copy.id)
+
+        let reopened = try #require(store.reminders.first { $0.id == copy.id })
+        #expect(!reopened.isCompleted)
+        #expect(reopened.completedDate == nil)
+        #expect(reopened.recurrence == nil)
+
+        let reloaded = PlannerStore(file: file)
+        start(reloaded, around: Self.anchor)
+        let calendar = Calendar(identifier: .gregorian)
+        let master = try #require(reloaded.reminders.first { $0.id == "rem-rec" })
+        #expect(master.exceptionDates.count == 1)
+        #expect(reloaded.reminders.count == 2)
+        // Exactly one open reminder lands on that date: the reopened one-off. The master's
+        // exception date still suppresses its own occurrence there.
+        let openOneOffsOnDay = reloaded.reminders.filter {
+            !$0.isCompleted && $0.recurrence == nil && $0.dueDate.map { calendar.isDate($0, inSameDayAs: day) } == true
+        }
+        #expect(openOneOffsOnDay.map(\.id) == [copy.id])
+        #expect(OccurrenceExpander.expand(reminder: master, in: day...DateMath.date(from: "2026-09-17")).isEmpty)
+        #expect(reloaded.reminders.filter(\.isCompleted).isEmpty)
+    }
+
+    @Test("uncompleteReminder is a no-op for an unknown id, a recurring master, or an open reminder")
+    @MainActor
+    func uncompleteReminderNoOps() throws {
+        let (store, _, root) = makeStore()
+        start(store, around: Self.anchor)
+        store.uncompleteReminder(id: "nope")
+        #expect(store.reminders.isEmpty)
+        #expect(store.error == nil)
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
+
+        store.addReminder(Reminder(id: "rem-open", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: DateMath.date(from: "2026-09-10"), recurrence: RecurrenceRule(frequency: .weekly)))
+        let before = store.reminders
+        // Delete both files so any rewrite by a no-op call would be visible as a reappearance.
+        try FileManager.default.removeItem(at: docsURL(root, sept.fileName))
+        try FileManager.default.removeItem(at: docsURL(root, "recurring.ics"))
+
+        store.uncompleteReminder(id: "rem-open")
+        store.uncompleteReminder(id: "rem-rec")
+
+        #expect(store.reminders == before)
+        // Neither no-op rewrote a file.
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
+    }
 }
