@@ -66,6 +66,23 @@ public enum ICSParser {
         }
     }
 
+    /// `X-STARK-ATTENDED` / `X-STARK-SKIPPED` lines in file order, so parse -> serialize is
+    /// byte-stable. Unparseable dates and unknown `X-STARK-*` names are ignored.
+    private static func outcomes(_ block: [String]) -> [EventOutcomeRecord] {
+        block.compactMap { line -> EventOutcomeRecord? in
+            guard let colon = line.firstIndex(of: ":") else { return nil }
+            let name = line[line.startIndex..<colon].split(separator: ";").first.map(String.init) ?? ""
+            let outcome: EventOutcome
+            switch name {
+            case "X-STARK-ATTENDED": outcome = .attended
+            case "X-STARK-SKIPPED": outcome = .skipped
+            default: return nil
+            }
+            guard let date = ICSDateFormat.parse(String(line[line.index(after: colon)...]))?.date else { return nil }
+            return EventOutcomeRecord(date: date, outcome: outcome)
+        }
+    }
+
     private static func parseEvent(_ block: [String]) -> Event? {
         let props = properties(block)
         guard let id = props["UID"], let title = props["SUMMARY"],
@@ -81,7 +98,8 @@ public enum ICSParser {
             isAllDay: allDay,
             location: props["LOCATION"].map(unescape),
             recurrence: props["RRULE"].flatMap(RRuleCodec.decode),
-            exceptionDates: exceptionDates(block)
+            exceptionDates: exceptionDates(block),
+            outcomes: outcomes(block)
         )
     }
 

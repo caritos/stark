@@ -13,6 +13,10 @@ public enum ICSSerializer {
         for exdate in event.exceptionDates {
             lines.append("EXDATE\(dateParam(event.isAllDay)):\(ICSDateFormat.format(exdate, allDay: event.isAllDay))")
         }
+        for record in event.outcomes {
+            let name = record.outcome == .attended ? "X-STARK-ATTENDED" : "X-STARK-SKIPPED"
+            lines.append("\(name)\(dateParam(event.isAllDay)):\(ICSDateFormat.format(record.date, allDay: event.isAllDay))")
+        }
         lines.append("END:VEVENT")
         return lines.joined(separator: "\r\n")
     }
