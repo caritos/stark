@@ -14,9 +14,14 @@ private let expectedDir = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent()   // repo root
     .appendingPathComponent("shared/tests/fixtures/ics/expected")
 
+private let fixtureNames = ["recurring.ics", "2026-08.ics", "2026-09.ics", "2026-10.ics"]
+
+private func readFixture(_ name: String) throws -> String {
+    try String(contentsOf: expectedDir.appendingPathComponent(name), encoding: .utf8)
+}
+
 private func load(_ name: String) throws -> ICSParseResult {
-    let text = try String(contentsOf: expectedDir.appendingPathComponent(name), encoding: .utf8)
-    return ICSParser.parse(text)
+    ICSParser.parse(try readFixture(name))
 }
 
 private func local(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ min: Int = 0) -> Date {
@@ -27,11 +32,28 @@ private func iso(_ date: Date) -> String { DateMath.isoDate(from: date) }
 
 @Suite("Migration export fixtures")
 struct ExportFixtureTests {
-    @Test("fixtures are CRLF, as the Swift serializer writes them")
+    @Test("every fixture is strictly CRLF, as the Swift serializer writes them")
     func fixturesAreCRLF() throws {
-        let text = try String(contentsOf: expectedDir.appendingPathComponent("2026-09.ics"), encoding: .utf8)
-        #expect(text.contains("\r\n"))
-        #expect(text.hasSuffix("END:VCALENDAR\r\n"))
+        for name in fixtureNames {
+            let text = try readFixture(name)
+            #expect(text.contains("\r\n"), "\(name) has no CRLF line endings")
+            #expect(text.hasSuffix("END:VCALENDAR\r\n"), "\(name) must end with END:VCALENDAR + CRLF")
+            // Swift treats "\r\n" as a single Character, so count on unicode scalars: after removing
+            // every CRLF pair, no LF and no CR may remain (i.e. no bare LF, no bare CR).
+            let stripped = text.replacingOccurrences(of: "\r\n", with: "")
+            #expect(!stripped.unicodeScalars.contains("\n"), "\(name) contains a bare LF")
+            #expect(!stripped.unicodeScalars.contains("\r"), "\(name) contains a bare CR")
+        }
+    }
+
+    @Test("every fixture is byte-exact ICSSerializer output (parse, re-serialize, compare)")
+    func fixturesAreByteExactSerializerOutput() throws {
+        for name in fixtureNames {
+            let text = try readFixture(name)
+            let parsed = ICSParser.parse(text)
+            let reserialized = ICSSerializer.serialize(events: parsed.events, reminders: parsed.reminders)
+            #expect(reserialized == text, "\(name) differs from what ICSSerializer would write")
+        }
     }
 
     @Test("recurring.ics: every recurrence form parses to the intended rule")
