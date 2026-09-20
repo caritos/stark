@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { parseLine } from '../../parser';
 import type { Task } from '../../parser';
-import { applyExportIcs, formatReport } from '../../commands/exportIcs';
+import { applyExportIcs, assertReconciled, formatReport } from '../../commands/exportIcs';
 
 const FIXTURES = join(import.meta.dir, '../fixtures/ics');
 const parse = (text: string): Task[] =>
@@ -68,6 +68,27 @@ describe('undated reminders', () => {
   test('with nothing else dated, fall back to 1970-01', () => {
     expect(Object.keys(applyExportIcs(parse('Buy milk\n')).files)).toEqual(['1970-01.ics']);
   });
+  test('an impossible creation date with nothing else dated falls back to 1970-01', () => {
+    expect(Object.keys(applyExportIcs(parse('2026-13-45 Buy milk\n')).files)).toEqual(['1970-01.ics']);
+  });
+  test('a creation month later than every dated month gets its own, later file', () => {
+    const r = applyExportIcs(parse('2026-12-05 Buy milk\n2026-09-01 X start:2026-09-22\n'));
+    expect(Object.keys(r.files)).toEqual(['2026-09.ics', '2026-12.ics']);
+    expect(r.files['2026-12.ics']).toContain('SUMMARY:Buy milk');
+    expect(r.files['2026-09.ics']).not.toContain('SUMMARY:Buy milk');
+  });
+});
+
+describe('assertReconciled', () => {
+  test('returns normally when the counts agree', () => {
+    expect(() => assertReconciled(3, 3)).not.toThrow();
+  });
+  test('throws when a line was lost', () => {
+    expect(() => assertReconciled(3, 2)).toThrow('export lost lines: 3 in, 2 out');
+  });
+  test('throws when a line was invented', () => {
+    expect(() => assertReconciled(2, 3)).toThrow('export lost lines: 2 in, 3 out');
+  });
 });
 
 describe('edges', () => {
@@ -79,6 +100,11 @@ describe('edges', () => {
   test('report entries are ordered by line', () => {
     const r = applyExportIcs(parse('Buy milk\nOdd start:2026-09-01T10:00 type:event frequency:monthly frequency-day:M\n'));
     expect(r.report.entries.map(e => e.line)).toEqual([1, 2]);
+  });
+  test('report entries are sorted even when the tasks arrive out of line order', () => {
+    const tasks = [parseLine('Nine', 9), parseLine('Two', 2), parseLine('Five', 5)];
+    const r = applyExportIcs(tasks);
+    expect(r.report.entries.map(e => e.line)).toEqual([2, 5, 9]);
   });
 });
 

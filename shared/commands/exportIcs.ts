@@ -26,13 +26,20 @@ export interface ExportResult {
 const RECURRING = 'recurring.ics';
 const monthFile = (date: string): string => `${date.slice(0, 7)}.ics`;
 
+// Items carry their source line so each file can be emitted in source order even when an
+// item (an undated reminder) is placed after the others.
+interface Placed<T> { line: number; value: T }
+const bySourceLine = <T>(a: Placed<T>, b: Placed<T>): number => a.line - b.line;
+
+/** A programmer error, not a data problem: every input line must come out as exactly one item. */
+export function assertReconciled(lines: number, emitted: number): void {
+  if (lines !== emitted) throw new Error(`export lost lines: ${lines} in, ${emitted} out`);
+}
+
 export function applyExportIcs(tasks: Task[], options: ExportOptions = {}): ExportResult {
   const uidFor = options.uid ?? ((task: Task, index: number) => makeUid(task.raw, index));
   const seen = new Map<string, number>();
 
-  // Items carry their source line so each file can be emitted in source order even when an
-  // item (an undated reminder) is placed after the others.
-  interface Placed<T> { line: number; value: T }
   const buckets = new Map<string, { events: Array<Placed<IcsEvent>>; reminders: Array<Placed<IcsReminder>> }>();
   const bucket = (name: string) => {
     let b = buckets.get(name);
@@ -63,10 +70,6 @@ export function applyExportIcs(tasks: Task[], options: ExportOptions = {}): Expo
     }
   }
 
-  if (report.events + report.reminders !== tasks.length) {
-    throw new Error(`export lost lines: ${tasks.length} in, ${report.events + report.reminders} out`);
-  }
-
   // An undated reminder goes in the month of its creation date, but only a REAL date: a
   // shape-only match (2026-13-45) would name a month file the app never loads.
   const earliest = [...buckets.keys()].filter(k => k !== RECURRING).sort()[0];
@@ -76,12 +79,16 @@ export function applyExportIcs(tasks: Task[], options: ExportOptions = {}): Expo
     bucket(created ?? earliest ?? '1970-01.ics').reminders.push({ line: task.line, value: reminder });
   }
 
+  // Reconcile against what is actually about to be serialized, after ALL placement.
+  let emitted = 0;
+  for (const b of buckets.values()) emitted += b.events.length + b.reminders.length;
+  assertReconciled(tasks.length, emitted);
+
   const names = [...buckets.keys()].sort((a, b) =>
     a === RECURRING ? -1 : b === RECURRING ? 1 : a.localeCompare(b));
   const files: Record<string, string> = {};
   for (const name of names) {
     const b = buckets.get(name)!;
-    const bySourceLine = <T>(a: Placed<T>, c: Placed<T>) => a.line - c.line;
     files[name] = serializeCalendar(
       [...b.events].sort(bySourceLine).map(p => p.value),
       [...b.reminders].sort(bySourceLine).map(p => p.value),
