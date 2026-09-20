@@ -11,6 +11,10 @@ enum Colors {
     static let textSecondary = Color(hex: 0x888888)
     static let separator = Color(hex: 0x333333)
     static let checkboxBorder = Color(hex: 0x555555)
+    /// A muted purple: a single, deliberate, user-approved exception to the one-accent-color
+    /// rule, scoped ONLY to the month grid's event density markers (`MonthGridView`), so a
+    /// glance tells task days (accent) from event days. Don't use it anywhere else.
+    static let eventDot = Color(hex: 0x8E5FD9)
 }
 
 enum Spacing {
