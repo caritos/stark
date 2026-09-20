@@ -5,8 +5,8 @@ import StarkKit
 /// One agenda row, Fantastical-style structure in Braun styling: a fixed-width marker column
 /// (square checkbox for reminders; for events a small filled square, a filled square with a
 /// check when attended, and an outlined square with a cross when skipped) and a text column
-/// with a small time line, the title,
-/// and (events) the location. The date lives in the section header, so the row never shows one
+/// with a small time line, the title (an incomplete reminder's priority marks `!`/`!!`/`!!!`
+/// come before it, in the accent colour), and (events) the location. The date lives in the section header, so the row never shows one
 /// except for an overdue reminder's missed date.
 ///
 /// This view is **visuals only** — nothing in it is tappable. The taps live in
@@ -26,6 +26,19 @@ struct AgendaRowView: View {
     /// and struck like a completed reminder. The marker (check vs cross) says which.
     private var hasOutcome: Bool { item.outcome != nil }
 
+    /// The `!` / `!!` / `!!!` prefix: only for a reminder that has a priority and doesn't yet
+    /// look done. It is a prefix so it survives the title's truncation.
+    private var showsPriorityMarks: Bool { item.priority != .none && !looksDone }
+
+    private var priorityWord: String {
+        switch item.priority {
+        case .high: "high"
+        case .medium: "medium"
+        case .low: "low"
+        case .none: ""
+        }
+    }
+
     var body: some View {
         let timeLine = self.timeLine
         HStack(alignment: .top, spacing: Spacing.sm) {
@@ -39,9 +52,16 @@ struct AgendaRowView: View {
                         .font(Fonts.mono(12))
                         .foregroundStyle(timeLine.isAccent ? Colors.accent : Colors.textSecondary)
                 }
-                Text(item.title)
-                    .strikethrough(looksDone || hasOutcome)
-                    .foregroundStyle(looksDone || hasOutcome ? Colors.textSecondary : Colors.text)
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
+                    if showsPriorityMarks {
+                        Text(item.priority.marks)
+                            .font(Fonts.mono(14))
+                            .foregroundStyle(Colors.accent)
+                    }
+                    Text(item.title)
+                        .strikethrough(looksDone || hasOutcome)
+                        .foregroundStyle(looksDone || hasOutcome ? Colors.textSecondary : Colors.text)
+                }
                 if let location {
                     Text(location)
                         .font(.footnote)
@@ -106,6 +126,7 @@ struct AgendaRowView: View {
         var parts: [String] = []
         if let timeLine { parts.append(timeLine.text) }
         parts.append(item.title)
+        if showsPriorityMarks { parts.append("\(priorityWord) priority") }
         if let location { parts.append(location) }
         if looksDone { parts.append("completed") }
         if item.outcome == .attended {
