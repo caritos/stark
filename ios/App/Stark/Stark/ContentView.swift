@@ -84,8 +84,8 @@ struct ContentView: View {
         let calendar = Calendar(identifier: .gregorian)
         let tapped = calendar.startOfDay(for: date)
         let window = AgendaWindow.range(around: agendaAnchor)
-        // Day granularity: the window's bounds are noon timestamps, so comparing raw dates
-        // would spuriously re-centre on a tap of the window's first or last day.
+        // Day granularity: the window runs from the start of its first day to the last second
+        // of its last, while a tapped day is a noon timestamp, so compare whole days.
         let firstDay = calendar.startOfDay(for: window.lowerBound)
         let lastDay = calendar.startOfDay(for: window.upperBound)
         if tapped < firstDay || tapped > lastDay {
