@@ -15,6 +15,7 @@ import { editCommand } from './commands/edit';
 import { importCommand } from './commands/import';
 import { remindersCommand } from './commands/reminders';
 import { skipCommand } from './commands/skip';
+import { exportIcsCommand } from './commands/export-ics';
 
 const args = process.argv.slice(2);
 
@@ -123,6 +124,11 @@ switch (cmd) {
 
   case 'skip': {
     skipCommand(filePath, filteredArgs[1]);
+    break;
+  }
+
+  case 'export-ics': {
+    exportIcsCommand(filePath, filteredArgs.slice(1));
     break;
   }
 

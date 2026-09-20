@@ -6,6 +6,7 @@ Commands:
   event <text>        Add a new event (creation date stamped, tagged type:event)
   import <ics-file>   Import events from an iCalendar (.ics) file
   reminders [list]    Import tasks from Apple Reminders (macOS only)
+  export-ics          Export to the native Stark app's .ics files (--out <dir>, --force)
   focus               Show tasks and events in the next 2 weeks
   list [filters]      List open tasks, sorted by priority. Filters: +project @context (A) keyword
   listall [filters]   List all tasks including completed
