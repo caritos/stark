@@ -717,6 +717,128 @@ struct PlannerStoreTests {
         #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
     }
 
+    // MARK: - completeReminder is idempotent
+
+    @Test("completing the same recurring occurrence twice yields one completed copy and one exception")
+    @MainActor
+    func completeRecurringTwiceIsIdempotent() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: DateMath.date(from: "2026-09-17"), recurrence: RecurrenceRule(frequency: .weekly)))
+        let day = DateMath.date(from: "2026-09-17")
+
+        store.completeReminder(id: "rem-rec", on: day, today: fixedToday)
+        store.completeReminder(id: "rem-rec", on: day, today: fixedToday)
+
+        #expect(store.reminders.filter(\.isCompleted).count == 1)
+        #expect(store.reminders.count == 2)
+        let master = try #require(store.reminders.first { $0.id == "rem-rec" })
+        #expect(master.exceptionDates.count == 1)
+        // On disk too, not just in memory.
+        let reloaded = PlannerStore(file: file)
+        start(reloaded, around: Self.anchor)
+        #expect(reloaded.reminders.filter(\.isCompleted).count == 1)
+        #expect(reloaded.reminders.first { $0.id == "rem-rec" }?.exceptionDates.count == 1)
+    }
+
+    @Test("a second completion on the same calendar day but at another time of day is also a no-op")
+    @MainActor
+    func completeRecurringSameDayOtherTimeIsNoOp() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: dt("2026-09-17", hour: 9, minute: 30), recurrence: RecurrenceRule(frequency: .weekly)))
+
+        store.completeReminder(id: "rem-rec", on: dt("2026-09-17", hour: 9, minute: 30), today: fixedToday)
+        store.completeReminder(id: "rem-rec", on: dt("2026-09-17", hour: 18, minute: 0), today: fixedToday)
+
+        #expect(store.reminders.filter(\.isCompleted).count == 1)
+        #expect(store.reminders.first { $0.id == "rem-rec" }?.exceptionDates.count == 1)
+    }
+
+    @Test("skip then complete of the same occurrence leaves exactly one resolution and no completed copy")
+    @MainActor
+    func skipThenCompleteLeavesOneResolution() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: DateMath.date(from: "2026-09-17"), recurrence: RecurrenceRule(frequency: .weekly)))
+        let day = DateMath.date(from: "2026-09-17")
+
+        store.skipReminder(id: "rem-rec", on: day, today: fixedToday)
+        store.completeReminder(id: "rem-rec", on: day, today: fixedToday)
+
+        #expect(store.reminders.filter(\.isCompleted).isEmpty)
+        #expect(store.reminders.count == 1)
+        #expect(store.reminders.first { $0.id == "rem-rec" }?.exceptionDates.count == 1)
+    }
+
+    @Test("complete then skip of the same occurrence leaves exactly one exception and one completed copy")
+    @MainActor
+    func completeThenSkipLeavesOneResolution() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: DateMath.date(from: "2026-09-17"), recurrence: RecurrenceRule(frequency: .weekly)))
+        let day = DateMath.date(from: "2026-09-17")
+
+        store.completeReminder(id: "rem-rec", on: day, today: fixedToday)
+        store.skipReminder(id: "rem-rec", on: day, today: fixedToday)
+
+        #expect(store.reminders.filter(\.isCompleted).count == 1)
+        #expect(store.reminders.first { $0.id == "rem-rec" }?.exceptionDates.count == 1)
+    }
+
+    @Test("completing an occurrence already cleared as an earlier miss is a no-op")
+    @MainActor
+    func completeAlreadyClearedEarlierMissIsNoOp() throws {
+        let (store, _) = makeWeeklyStore()
+        let overdue = try #require(overdueItem(store))
+        store.completeReminder(id: "rem-w", on: overdue.occurrence, today: fixedToday)
+        #expect(store.reminders.filter(\.isCompleted).count == 1)
+
+        // Sep 6 was exdated (without a copy) when Sep 13 was completed.
+        store.completeReminder(id: "rem-w", on: dt("2026-09-06", hour: 9, minute: 30), today: fixedToday)
+
+        #expect(store.reminders.filter(\.isCompleted).count == 1)
+        let master = try #require(store.reminders.first { $0.id == "rem-w" })
+        #expect(isoDays(master.exceptionDates).sorted() == ["2026-08-30", "2026-09-06", "2026-09-13"])
+    }
+
+    @Test("completing an already-completed one-off writes nothing and keeps its completed date")
+    @MainActor
+    func completeCompletedOneOffIsNoOp() throws {
+        let (store, _, root) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+        let firstCompletion = DateMath.date(from: "2026-09-17")
+        store.completeReminder(id: "rem-1", on: firstCompletion, today: fixedToday)
+        let completed = try #require(store.reminders.first { $0.id == "rem-1" })
+        #expect(completed.isCompleted)
+        // Delete the month file so any rewrite by the second call shows up as a reappearance.
+        try FileManager.default.removeItem(at: docsURL(root, sept.fileName))
+
+        store.completeReminder(id: "rem-1", on: DateMath.date(from: "2026-09-19"), today: fixedToday)
+
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
+        #expect(store.reminders.first { $0.id == "rem-1" }?.completedDate == firstCompletion)
+        #expect(store.error == nil)
+    }
+
+    @Test("completing an unknown id writes nothing")
+    @MainActor
+    func completeUnknownIdIsNoOp() throws {
+        let (store, _, root) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+        try FileManager.default.removeItem(at: docsURL(root, sept.fileName))
+        let before = store.reminders
+
+        store.completeReminder(id: "nope", on: DateMath.date(from: "2026-09-17"), today: fixedToday)
+
+        #expect(store.reminders == before)
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
+        #expect(store.error == nil)
+    }
+
     // MARK: - loadMonths(covering:)
 
     /// Writes a one-event month file straight to the store's docs directory.

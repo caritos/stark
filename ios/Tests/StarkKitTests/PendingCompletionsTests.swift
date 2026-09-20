@@ -290,6 +290,43 @@ struct PendingCompletionsTests {
         #expect(store.reminders.filter(\.isCompleted).count == 1)
     }
 
+    @Test("a pending completion that fires after Done resolved the same recurring occurrence completes nothing more")
+    @MainActor
+    func commitAfterDoneOnSameOccurrenceIsIdempotent() throws {
+        let store = makeStore()
+        let scheduler = ManualScheduler()
+        let pending = pendingBackedBy(store, scheduler)
+        let due = Date()
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: due, recurrence: RecurrenceRule(frequency: .weekly)))
+        pending.toggle(key: "k", reminderID: "rem-rec", occurrence: due)
+
+        // Done in the detail sheet resolves the occurrence while the checkbox is still pending.
+        store.completeReminder(id: "rem-rec", on: due)
+        scheduler.fire(0)
+
+        #expect(store.reminders.filter(\.isCompleted).count == 1)
+        let master = try #require(store.reminders.first { $0.id == "rem-rec" })
+        #expect(master.exceptionDates.count == 1)
+    }
+
+    @Test("a pending completion that fires after Skip resolved the same recurring occurrence makes no completed copy")
+    @MainActor
+    func commitAfterSkipOnSameOccurrenceMakesNoCopy() throws {
+        let store = makeStore()
+        let scheduler = ManualScheduler()
+        let pending = pendingBackedBy(store, scheduler)
+        let due = Date()
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: due, recurrence: RecurrenceRule(frequency: .weekly)))
+        pending.toggle(key: "k", reminderID: "rem-rec", occurrence: due)
+
+        store.skipReminder(id: "rem-rec", on: due)
+        scheduler.fire(0)
+
+        #expect(store.reminders.filter(\.isCompleted).isEmpty)
+        let master = try #require(store.reminders.first { $0.id == "rem-rec" })
+        #expect(master.exceptionDates.count == 1)
+    }
+
     @Test("completing a missed weekly occurrence through a pending completion clears the earlier misses")
     @MainActor
     func weeklyMissedCompletionClearsEarlierMisses() throws {

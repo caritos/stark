@@ -234,8 +234,16 @@ public final class PlannerStore: ObservableObject {
     /// `today`'s), every earlier un-exdated miss inside the overdue lookback is exdated too — with
     /// no completed copies — because the agenda only ever shows the latest miss, so resolving it
     /// would otherwise just surface the next-latest one. `today` is injectable for tests.
+    ///
+    /// Idempotent: a no-op (nothing written) for an unknown id, for a one-off that is already
+    /// completed, and for a recurring master that already has an exception on `date`'s calendar
+    /// day — whether that exception came from an earlier completion or from a skip. This is what
+    /// lets a checkbox's pending completion fire after Done/Skip in the detail sheet resolved the
+    /// same occurrence without adding a second exception or a second completed copy.
     public func completeReminder(id: String, on date: Date, today: Date = Date()) {
+        let calendar = Calendar(identifier: .gregorian)
         if let index = recurringReminders.firstIndex(where: { $0.id == id }) {
+            guard !recurringReminders[index].exceptionDates.contains(where: { calendar.isDate($0, inSameDayAs: date) }) else { return }
             let earlierMisses = earlierMissedOccurrences(of: recurringReminders[index], before: date, today: today)
             recurringReminders[index].exceptionDates.append(date)
             recurringReminders[index].exceptionDates.append(contentsOf: earlierMisses)
@@ -252,16 +260,18 @@ public final class PlannerStore: ObservableObject {
             monthReminders[month, default: []].append(completedCopy)
             persistRecurring()
             persistMonth(month)
+            rebuild()
         } else {
             for month in loadedMonths {
                 guard let idx = monthReminders[month]?.firstIndex(where: { $0.id == id }) else { continue }
+                guard monthReminders[month]?[idx].isCompleted != true else { return }
                 monthReminders[month]?[idx].isCompleted = true
                 monthReminders[month]?[idx].completedDate = date
                 persistMonth(month)
-                break
+                rebuild()
+                return
             }
         }
-        rebuild()
     }
 
     /// Reopens a completed one-off reminder (Undo). The completed copy made by completing a
