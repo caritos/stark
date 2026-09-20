@@ -68,8 +68,16 @@ export function exportIcsCommand(filePath: string, args: string[]): void {
   for (const [name, content] of contents) {
     const target = join(dir, name);
     try {
-      // Never write through a symlink: replace the link itself.
-      if (existing.includes(name) && lstatSync(target).isSymbolicLink()) unlinkSync(target);
+      // Never write through a symlink: replace the link itself. lstat every target unconditionally
+      // (not just names seen in the listing): a case-insensitive filesystem resolves `recurring.ics`
+      // to an existing `Recurring.ics` symlink that an exact-case name check would miss.
+      let stat: ReturnType<typeof lstatSync> | null = null;
+      try {
+        stat = lstatSync(target);
+      } catch {
+        stat = null; // not present: fine
+      }
+      if (stat?.isSymbolicLink()) unlinkSync(target);
       writeFileSync(target, content, 'utf8');
     } catch (err) {
       fail(`todo: cannot write ${target}: ${reason(err)}`);

@@ -188,6 +188,19 @@ describe('export-ics command: collisions, pruning, option validation (fix round 
     expect(readFileSync(join(out, 'recurring.ics'), 'utf8')).toContain('BEGIN:VCALENDAR');
   });
 
+  test('--force never writes through a case-variant symlink (case-insensitive filesystems resolve it)', () => {
+    mkdirSync(out);
+    const victim = join(dir, 'victim.txt');
+    writeFileSync(victim, 'precious');
+    symlinkSync(victim, join(out, 'Recurring.ics'));
+    const { code } = run('--file', todoFile, 'export-ics', '--out', out, '--force');
+    expect(code).toBe(0);
+    // Invariants that hold on both case-insensitive (link replaced) and case-sensitive (link survives) filesystems.
+    expect(readFileSync(victim, 'utf8')).toBe('precious');
+    expect(lstatSync(join(out, 'recurring.ics')).isFile()).toBe(true);
+    expect(readFileSync(join(out, 'recurring.ics'), 'utf8')).toContain('BEGIN:VCALENDAR');
+  });
+
   test.each([
     ['--out as the last argument', ['--out']],
     ['--out followed by --force', ['--out', '--force']],
