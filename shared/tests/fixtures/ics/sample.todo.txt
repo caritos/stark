@@ -1,0 +1,17 @@
+2026-09-01 Dentist start:2026-09-22T14:30 end:2026-09-22T15:30 type:event location:123_Main_St description:Bring_forms,_insurance_card
+2026-09-01 Company holiday start:2026-10-12 type:event
+2026-09-01 Conference start:2026-10-05 end:2026-10-08 type:event
+2026-09-01 Standup start:2026-09-21T09:00 end:2026-09-21T09:15 type:event frequency:weekly frequency-day:M,W,F exdate:2026-09-23,2026-09-25 recur-until:2026-12-18
+2026-09-01 Book club start:2026-10-07T19:00 type:event frequency:monthly frequency-month-day:first-wednesday
+2026-09-01 Payday start:2026-09-30T08:00 type:event frequency:monthly frequency-month-day:last-day
+Mom's birthday %birthday start:1975-05-15 type:birthday frequency:yearly
+2026-09-01 Pay rent start:2026-10-01 frequency:monthly
+(A) Call insurance start:2026-09-25T10:00 ~sam %phone bus:16:00
+2026-09-02 Water plants start:2026-09-13T07:00 frequency:weekly every:2 last-done:2026-09-20
+x 2026-09-18 2026-09-01 Take out trash
+x 2026-08-30 Renew passport start:2026-08-25
+x 2026-09-10 Old dentist start:2026-09-09T10:00 end:2026-09-09T11:00 type:event
+2026-09-01 Fifth Friday start:2026-10-30T18:00 type:event frequency:monthly frequency-month-day:fifth-friday
+2026-09-03 Buy milk
+2026-09-01 Meet Sam at 9:00 start:2026-09-24T09:00
+2026-09-01 Lunch; with, commas \ backslash 🍜 start:2026-09-26T12:00 type:event
