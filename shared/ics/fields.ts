@@ -99,6 +99,11 @@ function isValidBareTime(timeStr: string): boolean {
   return isValidTime(hour, minute);
 }
 
+/** True for a real bare time HH:MM (hour 0-23, minute 0-59). */
+export function isBareTime(value: string): boolean {
+  return isValidBareTime(value);
+}
+
 const sortKey = (w: Wall): string => `${w.date}T${w.time ?? '00:00'}`;
 
 export function resolveEventEnd(start: Wall, ext: Record<string, string>): EndResult {

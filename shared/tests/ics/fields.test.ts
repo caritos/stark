@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'bun:test';
-import { cleanTitle, decodeNote, parseWall, priorityToNumber, resolveEventEnd, joinNotes } from '../../ics/fields';
+import { cleanTitle, decodeNote, isBareTime, parseWall, priorityToNumber, resolveEventEnd, joinNotes } from '../../ics/fields';
 
 describe('cleanTitle', () => {
   test('removes only the known structural keys', () => {
@@ -124,5 +124,18 @@ describe('resolveEventEnd', () => {
   });
   test('end-time with out-of-range minute (12:60) is treated as absent', () => {
     expect(resolveEventEnd(timed, { 'end-time': '12:60' })).toEqual({ end: null, endBeforeStart: false });
+  });
+});
+
+describe('isBareTime', () => {
+  test('accepts a real HH:MM', () => {
+    expect(isBareTime('00:00')).toBe(true);
+    expect(isBareTime('09:30')).toBe(true);
+    expect(isBareTime('23:59')).toBe(true);
+  });
+  test('rejects out-of-range and malformed values', () => {
+    for (const v of ['24:00', '12:60', '25:99', '99:99', '9:30', '09:3', '09:30:00', 'garbage', '', '2026-09-22', '2026-09-22T09:30']) {
+      expect(isBareTime(v)).toBe(false);
+    }
   });
 });

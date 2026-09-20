@@ -217,6 +217,149 @@ describe('ruling: impossible exdates are skipped and reported', () => {
   });
 });
 
+describe('fix round 1: recurrence requires a parseable start', () => {
+  test('an open line with an impossible start is a one-off and reports both problems', () => {
+    const c = rem('Foo start:2026-13-45 frequency:weekly');
+    expect(c.source).toBe('open-task');
+    expect(c.reminder).toMatchObject({ due: null, rrule: null, exdates: [], completed: false });
+    expect(c.entries).toEqual([
+      { line: 1, kind: 'ignored-extension', detail: 'start:2026-13-45' },
+      { line: 1, kind: 'unsupported-recurrence', detail: 'frequency:weekly with unusable start:2026-13-45' },
+      { line: 1, kind: 'undated', detail: 'Foo' },
+    ]);
+  });
+  test('a done line with an impossible start is a completed one-off due on the x date', () => {
+    const c = rem('x 2026-01-01 Foo start:2026-13-45 frequency:weekly');
+    expect(c.source).toBe('done-recurring');
+    expect(c.reminder).toMatchObject({
+      due: { date: '2026-01-01', time: null }, completed: true, completedDate: { date: '2026-01-01', time: null },
+      rrule: null, exdates: [],
+    });
+    expect(c.entries).toEqual([
+      { line: 1, kind: 'ignored-extension', detail: 'start:2026-13-45' },
+      { line: 1, kind: 'unsupported-recurrence', detail: 'frequency:weekly with unusable start:2026-13-45' },
+    ]);
+  });
+  test('a typed birthday with an impossible start is an undated one-off, reported once per problem', () => {
+    const c = rem('Foo type:birthday start:1975-02-30 frequency:yearly');
+    expect(c.source).toBe('open-birthday');
+    expect(c.reminder).toMatchObject({ due: null, rrule: null, exdates: [], completed: false });
+    expect(c.entries).toEqual([
+      { line: 1, kind: 'event-without-start', detail: 'start:1975-02-30' },
+      { line: 1, kind: 'unsupported-recurrence', detail: 'frequency:yearly with unusable start:1975-02-30' },
+      { line: 1, kind: 'undated', detail: 'Foo' },
+    ]);
+  });
+  test('frequency with no start at all keeps the "without start:" wording', () => {
+    const c = rem('Vague due:2026-10-01 frequency:weekly');
+    expect(c.reminder).toMatchObject({ due: { date: '2026-10-01', time: null }, rrule: null, completed: false });
+    expect(c.entries).toEqual([{ line: 1, kind: 'unsupported-recurrence', detail: 'frequency:weekly without start:' }]);
+  });
+});
+
+describe('fix round 1: a done line is completed unless a valid RRULE is emitted', () => {
+  test('inexpressible recurrence on a done line is a completed reminder due at its start', () => {
+    const c = rem('x 2026-01-01 T start:2026-01-05 frequency:monthly frequency-month-day:fifth-friday');
+    expect(c.reminder).toMatchObject({
+      due: { date: '2026-01-05', time: null }, completed: true, completedDate: { date: '2026-01-01', time: null }, rrule: null,
+    });
+    expect(c.entries).toEqual([{ line: 1, kind: 'unsupported-recurrence', detail: 'frequency-month-day:fifth-friday' }]);
+  });
+  test('a done line with a valid series stays an open recurring reminder', () => {
+    const c = rem('x 2026-09-20 Water start:2026-09-13 frequency:weekly');
+    expect(c.reminder).toMatchObject({ completed: false, completedDate: null, rrule: 'FREQ=WEEKLY' });
+  });
+});
+
+describe('fix round 1: unparseable structural values are reported', () => {
+  test('done line with an impossible start time uses the x date and reports the start', () => {
+    const c = rem('x 2026-01-01 T start:2026-01-05T25:00');
+    expect(c.reminder).toMatchObject({ due: { date: '2026-01-01', time: null }, completed: true });
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'start:2026-01-05T25:00' }]);
+  });
+  test('an impossible start falls back to due: and is reported', () => {
+    const c = rem('Foo start:2026-13-45 due:2026-10-01');
+    expect(c.reminder.due).toEqual({ date: '2026-10-01', time: null });
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'start:2026-13-45' }]);
+  });
+  test('an impossible due: is dropped and reported', () => {
+    const c = rem('T start:2026-01-05 due:2026-13-45');
+    expect(c.reminder.due).toEqual({ date: '2026-01-05', time: null });
+    expect(c.reminder.notes).toBeNull();
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'due:2026-13-45' }]);
+  });
+  test('an out-of-range end-time is dropped and reported', () => {
+    const c = ev('E start:2026-09-22T10:00 type:event end-time:99:99');
+    expect(c.event.end).toBeNull();
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'end-time:99:99' }]);
+  });
+  test('a non-time end-time is dropped and reported', () => {
+    const c = ev('E start:2026-09-22T10:00 type:event end-time:garbage');
+    expect(c.event.end).toBeNull();
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'end-time:garbage' }]);
+  });
+  test('an out-of-range bare end: is dropped and reported', () => {
+    const c = ev('E start:2026-09-22T10:00 type:event end:25:99');
+    expect(c.event.end).toBeNull();
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'end:25:99' }]);
+  });
+  test('an impossible end: date is dropped and reported', () => {
+    const c = ev('E start:2026-10-05 type:event end:2026-10-32');
+    expect(c.event.end).toBeNull();
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'end:2026-10-32' }]);
+  });
+  test('VALID bare end: / end-time: on an all-day event are ignored by design, without an entry', () => {
+    const c = ev('E start:2026-10-12 type:event end:09:30 end-time:10:00');
+    expect(c.event.end).toBeNull();
+    expect(c.entries).toEqual([]);
+  });
+  test('an invalid end-time on an all-day event is still reported', () => {
+    const c = ev('E start:2026-10-12 type:event end-time:99:99');
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'end-time:99:99' }]);
+  });
+  test('a bogus last-done is reported and the series is not re-based', () => {
+    const c = rem('Water start:2026-09-13 frequency:weekly last-done:bogus');
+    expect(c.reminder).toMatchObject({ due: { date: '2026-09-13', time: null }, rrule: 'FREQ=WEEKLY' });
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'last-done:bogus' }]);
+  });
+  test('a last-done with a time part is also invalid', () => {
+    const c = rem('Water start:2026-09-13 frequency:weekly last-done:2026-09-20T10:00');
+    expect(c.reminder.due).toEqual({ date: '2026-09-13', time: null });
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'last-done:2026-09-20T10:00' }]);
+  });
+  test('an impossible last-done is reported', () => {
+    const c = rem('Water start:2026-09-13 frequency:weekly last-done:2026-02-30');
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'last-done:2026-02-30' }]);
+  });
+  test('valid values report nothing', () => {
+    expect(rem('Water start:2026-09-13 frequency:weekly last-done:2026-09-20').entries).toEqual([]);
+    expect(ev('E start:2026-09-22T10:00 type:event end:11:00').entries).toEqual([]);
+    expect(ev('E start:2026-09-22T10:00 type:event end-time:11:00').entries).toEqual([]);
+  });
+});
+
+describe('fix round 1: a done line without a usable start is due on the x date, keeping due: as a note', () => {
+  test('due: is preserved as a Due: note line', () => {
+    const c = rem('x 2026-01-01 T due:2026-02-01');
+    expect(c.source).toBe('done-plain');
+    expect(c.reminder).toMatchObject({
+      due: { date: '2026-01-01', time: null }, completed: true, completedDate: { date: '2026-01-01', time: null },
+      notes: 'Due: 2026-02-01',
+    });
+    expect(c.entries).toEqual([]);
+  });
+  test('a due: on the same date as the x date adds no note', () => {
+    const c = rem('x 2026-01-01 T due:2026-01-01');
+    expect(c.reminder.notes).toBeNull();
+  });
+  test('a done line with neither a start nor a usable x date falls back to due:', () => {
+    const c = rem('x T due:2026-02-01');
+    expect(c.reminder.due).toEqual({ date: '2026-02-01', time: null });
+    expect(c.reminder.notes).toBeNull();
+    expect(c.entries).toEqual([]);
+  });
+});
+
 describe('ruling: an impossible completion date is reported, not un-completed', () => {
   test('x 2026-13-45 keeps completed true with no completedDate', () => {
     const c = rem('x 2026-13-45 Something');
