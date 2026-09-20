@@ -416,12 +416,44 @@ describe('focus - overdue recurring tasks', () => {
     rmSync(dir, { recursive: true });
   });
 
-  test('weekly task with start yesterday and no last-done shows as overdue today', () => {
+  // Matches the `when` column format from formatFocusTask, e.g. "Sat Sep 19".
+  function whenLabel(dateStr: string): string {
+    const d = new Date(dateStr + 'T12:00:00');
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const MONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${DAYS[d.getDay()]} ${MONS[d.getMonth()]} ${d.getDate()}`;
+  }
+
+  test('weekly task with start yesterday and no last-done shows its missed date, not today', () => {
     const yesterday = daysAgo(1);
     writeFileSync(todoFile, `weekly review start:${yesterday} frequency:weekly\n`, 'utf8');
     const { stdout } = run(['--file', todoFile, 'focus']);
     expect(stdout).toContain('weekly review');
-    expect(stdout).toContain('today');
+    expect(stdout).toContain(whenLabel(yesterday));
+    expect(stdout).not.toContain('today');
+  });
+
+  test('weekly task whose last occurrence was missed shows that occurrence as past due (task 8152 shape)', () => {
+    // start 8 days ago, last done 14 days ago: occurrences at -8 (missed) and -1 (missed).
+    // The most recent missed occurrence is yesterday.
+    const yesterday = daysAgo(1);
+    writeFileSync(
+      todoFile,
+      `2026-01-01 driving practice start:${daysAgo(8)}T06:00 frequency:weekly last-done:${daysAgo(14)}\n`,
+      'utf8',
+    );
+    const { stdout } = run(['--file', todoFile, 'focus']);
+    expect(stdout).toContain('driving practice');
+    expect(stdout).toContain(`${whenLabel(yesterday)} 06:00`);
+    expect(stdout).not.toContain('today');
+  });
+
+  test('weekly task due exactly today (not yet done) still shows as today, not past due', () => {
+    // start 7 days ago → the current cycle's occurrence lands on today itself.
+    writeFileSync(todoFile, `weekly review start:${daysAgo(7)}T06:00 frequency:weekly\n`, 'utf8');
+    const { stdout } = run(['--file', todoFile, 'focus']);
+    expect(stdout).toContain('weekly review');
+    expect(stdout).toContain('today 06:00');
   });
 
   test('weekly task with start yesterday and last-done matching yesterday shows as next occurrence (not overdue)', () => {
@@ -442,7 +474,8 @@ describe('focus - overdue recurring tasks', () => {
     writeFileSync(todoFile, `monthly task start:${startDate} frequency:monthly\n`, 'utf8');
     const { stdout } = run(['--file', todoFile, 'focus']);
     expect(stdout).toContain('monthly task');
-    expect(stdout).toContain('today');
+    expect(stdout).toContain(whenLabel(yesterday));
+    expect(stdout).not.toContain('today');
   });
 
   test('weekly task with start tomorrow and last-done today shows next occurrence (not overdue)', () => {

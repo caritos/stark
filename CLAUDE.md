@@ -133,6 +133,8 @@ mobile/                       ← Expo Router iOS app
 
 **Focus clears the terminal**: `t` (no args) and `t focus` both write `\x1Bc` to stdout before rendering, giving a clean screen on every invocation.
 
+**Focus shows an overdue recurring task's missed date, not "today"** (`console/commands/focus.ts`): `applyFocus` returns both `effectiveDate` and `overdueDate` for each item, and they deliberately differ for an overdue recurring task — `effectiveDate` collapses to today (via `focusSortKey`) so the item buckets/sorts with today's list, while `overdueDate` is the actual missed occurrence. The console command formerly destructured only `effectiveDate`, so a weekly task last due yesterday and never completed rendered as a dim `today 06:00` even though the shared layer had correctly flagged it overdue (and sorted it among the other overdue rows). It now passes `overdueDate + effectiveDate.slice(10)` (keeping the start time-of-day) to `formatFocusTask` whenever `overdueDate < todayStr`, so the row shows e.g. `Sat Sep 19 06:00` in red via `formatFocusTask`'s existing `datePart < todayStr` check. A cycle whose occurrence lands exactly on today (`overdueDate === todayStr`, the issue #76 case) still renders as `today` — due, not past due. `formatFocusTask` itself is unchanged and knows nothing about overdue; the mapping belongs in the command, mirroring how mobile's Calendar reads `overdueDate` for its "due `<date>`" label.
+
 ## Mobile Layer
 
 **Tech stack**: Expo SDK 52, Expo Router v3, React Native (iOS only), expo-file-system, react-native-reanimated, react-native-gesture-handler, @expo-google-fonts/jetbrains-mono, chrono-node.

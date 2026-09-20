@@ -19,8 +19,14 @@ export function focusCommand(filePath: string): void {
   }
 
   const windowEnd = addDays(todayStr, 14);
-  items.forEach(({ task, effectiveDate, recurrenceLabel, streak }) => {
-    console.log(formatFocusTask(task, todayStr, effectiveDate, recurrenceLabel, streak));
+  items.forEach(({ task, effectiveDate, recurrenceLabel, streak, overdueDate }) => {
+    // effectiveDate collapses an overdue recurring task to today (for bucketing/sorting), which
+    // would render a missed occurrence as "today". Show the missed date instead so it reads as
+    // past due, keeping the start time-of-day. A cycle landing exactly on today stays "today".
+    const shownDate = overdueDate && overdueDate < todayStr
+      ? overdueDate + effectiveDate.slice(10)
+      : effectiveDate;
+    console.log(formatFocusTask(task, todayStr, shownDate, recurrenceLabel, streak));
   });
   console.log(`\x1b[2m${items.length} item${items.length === 1 ? '' : 's'} in focus (${todayStr} – ${windowEnd})\x1b[0m`);
 }
