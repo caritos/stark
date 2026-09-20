@@ -20,6 +20,14 @@ enum Spacing {
     static let lg: CGFloat = 24
 }
 
+// JetBrains Mono isn't bundled in the native app yet, so labels and headers use the
+// system monospaced design. Titles stay on the default system font.
+enum Fonts {
+    static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .monospaced)
+    }
+}
+
 private extension Color {
     init(hex: UInt32) {
         self.init(

@@ -8,11 +8,14 @@
 import SwiftUI
 import StarkKit
 
+/// One screen: month grid on top, day-grouped agenda filling the rest.
 struct ContentView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var selectedItem: AgendaItem?
+    @State private var selectedDate = Date()
+    @State private var scrollRequest: ScrollRequest?
 
     var body: some View {
         NavigationStack {
@@ -29,12 +32,21 @@ struct ContentView: View {
                             .background(Colors.accent)
                     }
                 }
-                AgendaView(onSelect: { selectedItem = $0 })
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Add", systemImage: "plus") { showAdd = true }
+                MonthGridView(selectedDate: selectedDate) { date in
+                    selectedDate = date
+                    scrollRequest = ScrollRequest(date: date)
                 }
+                Rectangle()
+                    .fill(Colors.separator)
+                    .frame(height: 1)
+                AgendaView(scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
+            }
+            .background(Colors.background)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Colors.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                AddToolbarItem { showAdd = true }
             }
             .sheet(isPresented: $showAdd) { AddItemView() }
             .sheet(item: $selectedItem) { item in EditItemView(item: item) }
@@ -47,6 +59,29 @@ struct ContentView: View {
                 if newPhase == .active {
                     store.retryPendingWrites()
                 }
+            }
+        }
+        .tint(Colors.accent)
+        // The design is dark-only (Colors.* are dark-theme tokens); without this, system
+        // sheets and Forms would render light with near-white text.
+        .preferredColorScheme(.dark)
+    }
+}
+
+/// The "Add" toolbar button. On iOS 26 toolbar items get a rounded glass capsule; the design
+/// has no rounded corners, so the shared background is hidden where the API exists.
+private struct AddToolbarItem: ToolbarContent {
+    let action: () -> Void
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Add", systemImage: "plus", action: action)
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Add", systemImage: "plus", action: action)
             }
         }
     }
