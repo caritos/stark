@@ -58,8 +58,14 @@ with no `end:`; 1,273 events with `location:`; 1,152 events and 21 tasks with
 `description:Review_finances_on_personal_capital`); 6 open tasks with neither
 `start:` nor `due:`; 39 lines with `key:value`-looking tokens that are not
 structural (times in prose such as `9:00`, and real custom keys like
-`bus:16:00`); 3 lines using `end-time:`. No priorities and no malformed
-`start:`/`end:`/`exdate:`/`recur-until:` values.
+`bus:16:00`); 3 lines using `end-time:`. No priorities. The first real export
+also surfaced data problems the converter reports instead of hiding: 1 open task
+with `frequency:yearly` and a `due:` but no `start:` (imported as a one-off,
+which is how the console's own focus logic treats it too), 2 *completed* lines
+with a malformed `start:` (`YYYY-MM-DD:HH:MM` with a colon, and a one-digit
+hour) that fall back to the completion date, and 3 lines whose `end:` is
+before their `start:`. (An earlier hand count missed these because it skipped
+completed lines and did not compare `end:` with `start:`.)
 
 ## Architecture
 

@@ -2115,8 +2115,8 @@ If any number differs, **stop and report** the difference; do not adjust the exp
 
 - [ ] **Step 3: Classify every report entry**
 
-Count entries by kind: `grep -c ": undated - " OUT/export-report.txt` (and likewise `ignored-extension`, `finished-series`, `end-before-start`, `unsupported-recurrence`, `event-without-start`, `untitled`). Expected: `undated` = 6; `ignored-extension` = 1 (a `frequency-day` on a monthly rule); `unsupported-recurrence`, `event-without-start` and `untitled` = 0. `finished-series` and `end-before-start` are data-dependent: list each with its line number in your report, and confirm by looking at the source line that each is real.
-If any `unsupported-recurrence`, `event-without-start` or `untitled` entry appears, **stop and report the lines**.
+Count entries by kind: `grep -c ": undated - " OUT/export-report.txt` (and likewise `ignored-extension`, `finished-series`, `end-before-start`, `unsupported-recurrence`, `event-without-start`, `untitled`). Expected on the author's real file (confirmed by the first real run): `undated` = 6; `ignored-extension` = 3 (one `frequency-day` on a monthly rule, and two completed lines with a malformed `start:`); `unsupported-recurrence` = 1 (a yearly task with `due:` and no `start:`, imported as a one-off like the console does); `end-before-start` = 3 (stale `end:` values); `event-without-start` and `untitled` = 0. `finished-series` and `end-before-start` are data-dependent: list each with its line number in your report, and confirm by looking at the source line that each is real.
+If any entry kind or count differs from the list above (an extra `unsupported-recurrence`, any `event-without-start` or `untitled`, or a new kind), **stop and report the lines**.
 
 - [ ] **Step 4: Document the command in CLAUDE.md**
 
