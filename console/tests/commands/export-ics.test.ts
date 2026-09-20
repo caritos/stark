@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, readdirSy
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-const CLI = './console/index.ts';
+const CLI = join(import.meta.dir, '../../index.ts');
 function run(...args: string[]) {
   const r = spawnSync('bun', [CLI, ...args], { encoding: 'utf8' });
   return { stdout: r.stdout ?? '', stderr: r.stderr ?? '', code: r.status ?? 0 };

@@ -8,9 +8,14 @@ const SAMPLE = join(import.meta.dir, '../../../shared/tests/fixtures/ics/sample.
 
 interface ParityRow { kind: string; date: string; time: string | null; title: string }
 
+const SCRIPT = join(import.meta.dir, '../../scripts/parity-expected.ts');
+
 const run = (file: string = SAMPLE, today = '2026-09-20') => {
-  const r = spawnSync('bun', ['console/scripts/parity-expected.ts', '--file', file, '--today', today], { encoding: 'utf8' });
-  return { code: r.status ?? 0, json: JSON.parse(r.stdout || '{}'), stderr: r.stderr ?? '' };
+  const r = spawnSync('bun', [SCRIPT, '--file', file, '--today', today], { encoding: 'utf8' });
+  // Assert here so an outright spawn/script failure can never look like an empty (vacuous) result.
+  expect(r.status).toBe(0);
+  expect(r.stdout).not.toBe('');
+  return { code: r.status ?? 0, json: JSON.parse(r.stdout), stderr: r.stderr ?? '' };
 };
 
 const keyOf = (r: ParityRow) => `${r.kind}|${r.date}|${r.time ?? '-'}|${r.title}`;
