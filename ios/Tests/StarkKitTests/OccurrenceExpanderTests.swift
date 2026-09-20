@@ -170,6 +170,102 @@ struct OccurrenceExpanderTests {
         #expect(dates.last == dt("2026-09-05", hour: 15, minute: 42))
     }
 
+    // MARK: - Fast-forward must preserve the anchor's time-of-day and alignment
+
+    /// Asserts the returned occurrences fall on exactly `days`, every one at 09:30 (the anchor's
+    /// time-of-day), regardless of the time-of-day the display range starts at.
+    private func expectNineThirty(_ dates: [Date], on days: [String], sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(dates.map { DateMath.isoDate(from: $0) } == days, sourceLocation: sourceLocation)
+        for date in dates {
+            let parts = cal.dateComponents([.hour, .minute, .second], from: date)
+            #expect(parts.hour == 9 && parts.minute == 30 && parts.second == 0, "\(date) should be 09:30:00", sourceLocation: sourceLocation)
+        }
+    }
+
+    @Test("weekly: a far-before anchor keeps 09:30 whether the range starts at noon or at midnight")
+    func weeklyKeepsAnchorTimeOfDay() {
+        // 2026-01-05 is a Monday; Sep 14 2026 is exactly 36 weeks later, so Mondays align.
+        let anchor = dt("2026-01-05", hour: 9, minute: 30)
+        let rule = RecurrenceRule(frequency: .weekly)
+        let end = dt("2026-10-14", hour: 12, minute: 0)
+
+        // Noon start: Sep 14 09:30 is before the range and must be trimmed.
+        let noon = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-09-14", hour: 12, minute: 0)...end)
+        expectNineThirty(noon, on: ["2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12"])
+
+        // Midnight start: Sep 14 09:30 is inside the range.
+        let midnight = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-09-14", hour: 0, minute: 0)...end)
+        expectNineThirty(midnight, on: ["2026-09-14", "2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12"])
+    }
+
+    @Test("daily interval 2: a far-before anchor keeps 09:30 AND the every-other-day alignment")
+    func dailyIntervalKeepsAnchorAlignment() {
+        // Sep 14 2026 is 252 days after the anchor (even), so the occurrence days are the even
+        // offsets: Sep 14, 16, 18, 20, 22, ...
+        let anchor = dt("2026-01-05", hour: 9, minute: 30)
+        let rule = RecurrenceRule(frequency: .daily, interval: 2)
+
+        let noon = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-09-15", hour: 12, minute: 0)...dt("2026-09-23", hour: 12, minute: 0))
+        expectNineThirty(noon, on: ["2026-09-16", "2026-09-18", "2026-09-20", "2026-09-22"])
+
+        // Midnight start: with the bug the day-difference is computed from a 00:00 candidate
+        // against a 09:30 anchor and rounds down, flipping the parity onto the wrong days.
+        let midnight = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-09-15", hour: 0, minute: 0)...dt("2026-09-23", hour: 12, minute: 0))
+        expectNineThirty(midnight, on: ["2026-09-16", "2026-09-18", "2026-09-20", "2026-09-22"])
+    }
+
+    @Test("monthly interval 2: a far-before anchor keeps 09:30 AND the every-other-month alignment")
+    func monthlyIntervalKeepsAnchorAlignment() {
+        // Anchor Jan 15: matching months are Jan, Mar, May, Jul, Sep, Nov.
+        let anchor = dt("2026-01-15", hour: 9, minute: 30)
+        let rule = RecurrenceRule(frequency: .monthly, interval: 2)
+        let end = dt("2026-10-20", hour: 12, minute: 0)
+
+        let noon = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-06-20", hour: 12, minute: 0)...end)
+        expectNineThirty(noon, on: ["2026-07-15", "2026-09-15"])
+
+        // Midnight start on the 15th itself: the 09:30 Jul 15 occurrence is inside the range.
+        // With the bug the month-difference from the 09:30 anchor to a 00:00 candidate rounds
+        // down to 5 (odd), so Jul 15 is wrongly rejected.
+        let midnight = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-07-15", hour: 0, minute: 0)...end)
+        expectNineThirty(midnight, on: ["2026-07-15", "2026-09-15"])
+    }
+
+    @Test("yearly interval 2: a far-before anchor keeps 09:30 AND the every-other-year alignment")
+    func yearlyIntervalKeepsAnchorAlignment() {
+        // Anchor Mar 10 2020: matching years are 2020, 2022, 2024, 2026, 2028, 2030.
+        let anchor = dt("2020-03-10", hour: 9, minute: 30)
+        let rule = RecurrenceRule(frequency: .yearly, interval: 2)
+        let end = dt("2030-12-31", hour: 12, minute: 0)
+
+        let noon = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-01-01", hour: 12, minute: 0)...end)
+        expectNineThirty(noon, on: ["2026-03-10", "2028-03-10", "2030-03-10"])
+
+        let midnight = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-01-01", hour: 0, minute: 0)...end)
+        expectNineThirty(midnight, on: ["2026-03-10", "2028-03-10", "2030-03-10"])
+    }
+
+    @Test("control: a count-limited rule (which walks from the anchor) already keeps 09:30")
+    func countLimitedKeepsAnchorTimeOfDay() {
+        // 30 daily occurrences: Sep 1 ... Sep 30. Range starts at noon on Sep 10, so Sep 10
+        // 09:30 is trimmed and Sep 11 ... Sep 30 remain.
+        let anchor = dt("2026-09-01", hour: 9, minute: 30)
+        let rule = RecurrenceRule(frequency: .daily, count: 30)
+        let dates = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: [], in: dt("2026-09-10", hour: 12, minute: 0)...dt("2026-10-05", hour: 12, minute: 0))
+        expectNineThirty(dates, on: (11...30).map { String(format: "2026-09-%02d", $0) })
+    }
+
+    @Test("fast-forward keeps until and exception dates day-granular")
+    func fastForwardKeepsUntilAndExceptionsDayGranular() {
+        let anchor = dt("2026-01-05", hour: 9, minute: 30)
+        // `until` decodes date-only (midnight): the Oct 5 09:30 occurrence must still be included.
+        let rule = RecurrenceRule(frequency: .weekly, until: dt("2026-10-05", hour: 0, minute: 0))
+        // The exception date carries a different time-of-day than the occurrence (noon vs 09:30).
+        let exceptions = [dt("2026-09-28", hour: 12, minute: 0)]
+        let dates = OccurrenceExpander.occurrences(anchor: anchor, rule: rule, exceptionDates: exceptions, in: dt("2026-09-14", hour: 12, minute: 0)...dt("2026-10-31", hour: 12, minute: 0))
+        expectNineThirty(dates, on: ["2026-09-21", "2026-10-05"])
+    }
+
     @Test("until round-trips through encode/decode and still includes the final day's occurrence for a non-midnight anchor")
     func untilEncodeDecodeExpandRoundTrip() {
         let anchor = dt("2026-09-01", hour: 15, minute: 42)

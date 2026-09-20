@@ -25,8 +25,18 @@ public enum OccurrenceExpander {
         // day-by-day from a potentially years-old anchor. When `count` is set we must still
         // walk from `anchor`, since we need to know how many occurrences have already
         // happened to stop at the right one.
-        if rule.count == nil, range.lowerBound > candidate {
-            candidate = range.lowerBound
+        //
+        // The fast-forward target must carry the ANCHOR's time-of-day (on the day `lowerBound`
+        // falls on), never `lowerBound`'s own: every later candidate is derived from this one by
+        // whole-day steps, so a foreign time-of-day would stamp every returned occurrence with it,
+        // and `matches()`'s day/month/year differences (computed from `anchor` to the candidate)
+        // would truncate differently and shift interval > 1 alignment. Landing at or before
+        // `lowerBound` is fine: the `candidate >= range.lowerBound` check below trims anything
+        // that precedes the range.
+        if rule.count == nil, range.lowerBound > candidate,
+           let fastForwarded = sameTimeOfDay(as: anchor, onDayOf: range.lowerBound, calendar: calendar),
+           fastForwarded > candidate {
+            candidate = fastForwarded
         }
 
         while candidate <= range.upperBound {
@@ -53,6 +63,17 @@ public enum OccurrenceExpander {
         }
 
         return results
+    }
+
+    /// The moment on `day`'s calendar day that has `reference`'s wall-clock time-of-day.
+    private static func sameTimeOfDay(as reference: Date, onDayOf day: Date, calendar: Calendar) -> Date? {
+        var components = calendar.dateComponents([.year, .month, .day], from: day)
+        let time = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: reference)
+        components.hour = time.hour
+        components.minute = time.minute
+        components.second = time.second
+        components.nanosecond = time.nanosecond
+        return calendar.date(from: components)
     }
 
     public static func expand(event: Event, in range: ClosedRange<Date>) -> [Date] {
