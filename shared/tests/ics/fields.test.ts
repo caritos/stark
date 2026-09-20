@@ -8,7 +8,7 @@ describe('cleanTitle', () => {
       .toBe('Standup');
   });
   test('keeps tags exactly as written', () => {
-    expect(cleanTitle('~sophia %driving %practice start:2026-09-12T06:00')).toBe('~sophia %driving %practice');
+    expect(cleanTitle('~alex %errand %weekly start:2026-09-12T06:00')).toBe('~alex %errand %weekly');
     expect(cleanTitle('Trip +family @home %birthday')).toBe('Trip +family @home %birthday');
   });
   test('keeps unknown key:value tokens and times in prose', () => {

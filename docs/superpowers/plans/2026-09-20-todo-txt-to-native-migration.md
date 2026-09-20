@@ -916,7 +916,7 @@ describe('cleanTitle', () => {
       .toBe('Standup');
   });
   test('keeps tags exactly as written', () => {
-    expect(cleanTitle('~sophia %driving %practice start:2026-09-12T06:00')).toBe('~sophia %driving %practice');
+    expect(cleanTitle('~alex %errand %weekly start:2026-09-12T06:00')).toBe('~alex %errand %weekly');
     expect(cleanTitle('Trip +family @home %birthday')).toBe('Trip +family @home %birthday');
   });
   test('keeps unknown key:value tokens and times in prose', () => {
@@ -2480,8 +2480,8 @@ Run from the worktree root: `bun test shared console` → all pass. Run from `io
 The author has confirmed the export looks right in the report. Back up first (the app currently holds only test data, but the copy overwrites same-named month files):
 
 ```bash
-xcrun devicectl device copy from --device 10539A81-F4D9-5E4D-B12F-A1DA064374FE --domain-type appDataContainer --domain-identifier com.caritos.todo-txt --source /Documents --destination PHONE_BACKUP
-xcrun devicectl device copy to --device 10539A81-F4D9-5E4D-B12F-A1DA064374FE --domain-type appDataContainer --domain-identifier com.caritos.todo-txt --source OUT --destination /Documents
+xcrun devicectl device copy from --device <device-id> --domain-type appDataContainer --domain-identifier com.caritos.todo-txt --source /Documents --destination PHONE_BACKUP
+xcrun devicectl device copy to --device <device-id> --domain-type appDataContainer --domain-identifier com.caritos.todo-txt --source OUT --destination /Documents
 ```
 
 (`PHONE_BACKUP` is a scratch directory. The phone must be unlocked. Do not copy `export-report.txt` into the app if you prefer a clean folder: it is ignored by the app either way.) Then the author force-quits and reopens Stark and checks by eye: today's agenda against `t focus`; a busy month's density markers; a known weekly item (e.g. church); a birthday; a checkbox completion on an imported reminder; and that the known gaps behave as documented (multi-day events on their first day only; undated and >90-day-old overdue tasks absent).

@@ -23,8 +23,8 @@ every existing user, including the author, on an empty calendar.
 3. **Completed history:** import all of it (4,990 lines), as completed
    reminders / past events.
 4. **Tags:** `+project`, `~person`, `%tag`, `@context` stay in the title exactly
-   as written. Many real lines are *only* tags (e.g. `~sophia %driving
-   %practice`), so moving them out would leave empty titles.
+   as written. Many real lines are *only* tags (e.g. `~alex %errand
+   %weekly`), so moving them out would leave empty titles.
 
 **Not goals:** an in-app importer; keeping the two apps in sync (this is a
 one-way, re-runnable export); multi-day event *display* (a native feature gap,
@@ -55,7 +55,7 @@ monthly, which is an invalid combination); 11 rules with `frequency-month-day`
 open events; 209 events whose `end:` date differs from `start:`; 818 events
 with no `end:`; 1,273 events with `location:`; 1,152 events and 21 tasks with
 `description:`/`note:` (encoded with `_` for spaces, e.g.
-`description:Review_finances_on_personal_capital`); 6 open tasks with neither
+`description:Review_monthly_budget`); 6 open tasks with neither
 `start:` nor `due:`; 39 lines with `key:value`-looking tokens that are not
 structural (times in prose such as `9:00`, and real custom keys like
 `bus:16:00`); 3 lines using `end-time:`. No priorities. The first real export
