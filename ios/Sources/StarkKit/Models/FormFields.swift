@@ -18,4 +18,10 @@ public enum FormFields {
     public static func isAllDay(_ date: Date) -> Bool {
         Calendar(identifier: .gregorian).startOfDay(for: date) == date
     }
+
+    /// The All-day toggle's initial value when a reminder is opened for editing: on for a
+    /// date-only due date; an undated reminder is not all-day.
+    public static func isAllDay(_ reminder: Reminder) -> Bool {
+        reminder.dueDate.map(isAllDay) ?? false
+    }
 }

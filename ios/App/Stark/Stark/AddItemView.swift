@@ -59,10 +59,14 @@ struct AddItemView: View {
                     TextField("Location", text: $location)
                 }
                 if kind == .reminder {
-                    Picker("Priority", selection: $priority) {
-                        ForEach(ReminderPriority.allCases, id: \.self) { Text($0.pickerLabel) }
+                    // A segmented picker drops its label on iOS, so it is shown by the row.
+                    LabeledContent("Priority") {
+                        Picker("Priority", selection: $priority) {
+                            ForEach(ReminderPriority.allCases, id: \.self) { Text($0.pickerLabel) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
                     }
-                    .pickerStyle(.segmented)
                 }
                 TextField("Notes", text: $notes, axis: .vertical)
                     .lineLimit(1...6)

@@ -38,7 +38,8 @@ public enum ReminderPriority: Int, CaseIterable, Equatable, Sendable {
 
     /// The value to store after the user edits: the original is kept untouched while the chosen
     /// level still matches it (an imported `PRIORITY:3` stays 3), otherwise the chosen level's
-    /// value is written.
+    /// value is written. An original outside 1...9 (for example 0 or 12) reads as `.none`, so it
+    /// is kept as-is unless the user picks a level.
     public static func updated(original: Int?, chosen: ReminderPriority) -> Int? {
         ReminderPriority(icalValue: original) == chosen ? original : chosen.icalValue
     }

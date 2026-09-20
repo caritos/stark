@@ -40,7 +40,7 @@ struct EditItemView: View {
             startDate = event.start
             // Switching from all-day to timed drops the end (see `Event.scheduled`), so an
             // all-day event's own end is not offered as the timed one.
-            startEnd = event.isAllDay ? event.start : (event.end ?? event.start)
+            startEnd = EventSchedule.formEnd(for: event)
             startAllDay = event.isAllDay
             startRecurrence = event.recurrence
             startNotes = event.notes ?? ""
@@ -51,7 +51,7 @@ struct EditItemView: View {
             // occurrence (`item.occurrence`) — editing changes every occurrence.
             startDate = reminder.dueDate ?? item.occurrence
             startEnd = startDate
-            startAllDay = reminder.dueDate.map(FormFields.isAllDay) ?? false
+            startAllDay = FormFields.isAllDay(reminder)
             startRecurrence = reminder.recurrence
             startNotes = reminder.notes ?? ""
             startLocation = ""
@@ -102,10 +102,14 @@ struct EditItemView: View {
                         TextField("Location", text: $location)
                     }
                     if !isEvent {
-                        Picker("Priority", selection: $priority) {
-                            ForEach(ReminderPriority.allCases, id: \.self) { Text($0.pickerLabel) }
+                        // A segmented picker drops its label on iOS, so it is shown by the row.
+                        LabeledContent("Priority") {
+                            Picker("Priority", selection: $priority) {
+                                ForEach(ReminderPriority.allCases, id: \.self) { Text($0.pickerLabel) }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
                         }
-                        .pickerStyle(.segmented)
                     }
                     TextField("Notes", text: $notes, axis: .vertical)
                         .lineLimit(1...6)
