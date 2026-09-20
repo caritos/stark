@@ -32,4 +32,15 @@ public struct Event: Equatable, Codable, Identifiable, Sendable {
         self.recurrence = recurrence
         self.exceptionDates = exceptionDates
     }
+
+    /// A copy starting at `newStart`, with `end` (if any) shifted by the same delta so the
+    /// event's duration is preserved. Every other field is left untouched.
+    public func settingStart(_ newStart: Date) -> Event {
+        var copy = self
+        copy.start = newStart
+        if let end {
+            copy.end = end.addingTimeInterval(newStart.timeIntervalSince(start))
+        }
+        return copy
+    }
 }
