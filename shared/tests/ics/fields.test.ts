@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'bun:test';
+import { parseLine } from '../../parser';
 import { cleanTitle, decodeNote, isBareTime, parseWall, priorityToNumber, resolveEventEnd, joinNotes } from '../../ics/fields';
 
 describe('cleanTitle', () => {
@@ -21,6 +22,19 @@ describe('cleanTitle', () => {
     expect(cleanTitle('  a   b  type:event ')).toBe('a b');
     expect(cleanTitle('start:2026-09-24 type:event')).toBe('');
   });
+  test('a tab-separated structural token is removed like a space-separated one', () => {
+    const task = parseLine('Standup\tstart:2026-09-21T09:00\ttype:event\t~alex', 1);
+    expect(cleanTitle(task.text)).toBe('Standup ~alex');
+  });
+  test('a CRLF-saved line: the trailing \\r never keeps the last structural token in the title', () => {
+    const task = parseLine('Standup start:2026-09-21T09:00 type:event\r', 1);
+    expect(task.text.endsWith('\r')).toBe(true);
+    const title = cleanTitle(task.text);
+    expect(title).toBe('Standup');
+    expect(title).not.toContain('\r');
+    expect(title).not.toContain('type:');
+    expect(cleanTitle(parseLine('Buy milk\r', 1).text)).toBe('Buy milk');
+  });
 });
 
 describe('decodeNote / joinNotes', () => {
@@ -30,6 +44,11 @@ describe('decodeNote / joinNotes', () => {
   test('joinNotes skips empties and joins with a newline', () => {
     expect(joinNotes(['a', null, undefined, '', 'b'])).toBe('a\nb');
     expect(joinNotes([null, undefined])).toBeNull();
+  });
+  test('joinNotes drops parts that are blank after trimming, and is null when nothing real remains', () => {
+    expect(joinNotes([' ', '\t'])).toBeNull();
+    expect(joinNotes([' ', 'a', '  '])).toBe('a');
+    expect(joinNotes([' padded '])).toBe(' padded ');
   });
 });
 

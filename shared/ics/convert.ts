@@ -17,6 +17,13 @@ export type Converted =
 
 const TYPED = new Set(['event', 'birthday', 'anniversary']);
 
+/** A decoded note/location, or null when absent or blank after decoding (`description:_`). */
+function decodedOrNull(value: string | undefined): string | null {
+  if (value === undefined) return null;
+  const text = decodeNote(value);
+  return text.trim() === '' ? null : text;
+}
+
 function titleOf(task: Task, entries: ReportEntry[]): string {
   const title = cleanTitle(task.text);
   if (title === '') {
@@ -75,8 +82,8 @@ function buildEvent(task: Task, uid: string, entries: ReportEntry[]): IcsEvent |
     start,
     end,
     allDay: start.time === null,
-    notes: joinNotes([ext['description'] ? decodeNote(ext['description']) : null, ext['note'] ? decodeNote(ext['note']) : null]),
-    location: ext['location'] ? decodeNote(ext['location']) : null,
+    notes: joinNotes([decodedOrNull(ext['description']), decodedOrNull(ext['note'])]),
+    location: decodedOrNull(ext['location']),
     rrule,
     exdates: rrule ? exdatesOf(task, start.time, entries) : [],
   };
@@ -125,7 +132,13 @@ function buildReminder(task: Task, uid: string, entries: ReportEntry[], reportSt
       }
     }
     const anchor = rebaseAnchor(task);
-    if (anchor.finished) entries.push({ line: task.line, kind: 'finished-series', detail: `recur-until:${ext['recur-until'] ?? ''}` });
+    if (anchor.finished) {
+      // recur-until is the cause only when it is a usable date (a malformed one is reported as
+      // ignored above); otherwise the next occurrence simply lies out of range (e.g. a huge every).
+      const until = parseWall(ext['recur-until']);
+      const detail = until !== null && until.time === null ? `recur-until:${ext['recur-until']}` : 'no later occurrence';
+      entries.push({ line: task.line, kind: 'finished-series', detail });
+    }
     due = parseWall(anchor.start);
     if (anchor.pinnedDay !== null) {
       // A clamped re-base (Jan 31 -> Feb 28, Feb 29 -> Feb 28) must keep the series on its
@@ -139,8 +152,9 @@ function buildReminder(task: Task, uid: string, entries: ReportEntry[], reportSt
     // One-off. A done line without a usable start is due on its x date (spec rule 4), even when
     // it carries a due: (kept as a note below); an open line falls back to due:.
     due = task.done ? (startWall ?? completionWall ?? dueWall) : (startWall ?? dueWall);
-    if (dueWall && due && dueWall.date !== due.date) dueExtra = `Due: ${ext['due']}`;
   }
+  // A valid due: on a different date than the reminder's own is kept as a note (one-off or recurring).
+  if (dueWall && due && dueWall.date !== due.date) dueExtra = `Due: ${ext['due']}`;
 
   // A done line is a completed reminder unless a valid RRULE is emitted (the series continues).
   const completed = task.done && rrule === null;
@@ -149,15 +163,16 @@ function buildReminder(task: Task, uid: string, entries: ReportEntry[], reportSt
   }
   const completedDate: Wall | null = completed ? completionWall : null;
   if (due === null) entries.push({ line: task.line, kind: 'undated', detail: title });
+  const location = decodedOrNull(ext['location']);
 
   return {
     uid,
     title,
     due,
     notes: joinNotes([
-      ext['location'] ? `Location: ${decodeNote(ext['location'])}` : null,
-      ext['description'] ? decodeNote(ext['description']) : null,
-      ext['note'] ? decodeNote(ext['note']) : null,
+      location !== null ? `Location: ${location}` : null,
+      decodedOrNull(ext['description']),
+      decodedOrNull(ext['note']),
       dueExtra,
     ]),
     priority: task.done ? null : priorityToNumber(task.priority),

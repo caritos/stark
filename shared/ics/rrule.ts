@@ -61,8 +61,10 @@ export function buildRRule(ext: Record<string, string>): RRuleResult {
 
   const every = ext['every'];
   if (every !== undefined) {
+    // Digits only, and a safe integer: `1e21` or a 21-digit number would stringify as
+    // `INTERVAL=1e+21`, which the native decoder silently reads as interval 1.
     const n = Number(every);
-    if (!Number.isInteger(n) || n < 1) return unsupported(`every:${every}`);
+    if (!/^\d+$/.test(every) || !Number.isSafeInteger(n) || n < 1) return unsupported(`every:${every}`);
     if (n > 1) parts.push(`INTERVAL=${n}`);
   }
 

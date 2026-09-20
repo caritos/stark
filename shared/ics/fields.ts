@@ -34,7 +34,7 @@ function isValidTime(hour: number, minute: number): boolean {
 
 export function cleanTitle(text: string): string {
   return text
-    .split(' ')
+    .split(/\s+/) // any whitespace: tabs, and the \r a CRLF-saved line leaves on its last token
     .filter(token => {
       const m = TOKEN_RE.exec(token);
       return !(m && STRUCTURAL_KEYS.has(m[1]!));
@@ -49,7 +49,8 @@ export function decodeNote(value: string): string {
 }
 
 export function joinNotes(parts: Array<string | null | undefined>): string | null {
-  const present = parts.filter((p): p is string => !!p);
+  // A part that is blank after trimming (e.g. `description:_` decodes to " ") is absent.
+  const present = parts.filter((p): p is string => !!p && p.trim() !== '');
   return present.length > 0 ? present.join('\n') : null;
 }
 

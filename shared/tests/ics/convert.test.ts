@@ -385,3 +385,69 @@ describe('ruling: an impossible completion date is reported, not un-completed', 
     expect(c.entries).toEqual([]);
   });
 });
+
+describe('final review: a recurring reminder keeps a valid due: as a note', () => {
+  test('a different due: date is preserved as a Due: note; rule and due are unchanged', () => {
+    const c = rem('2026-01-01 Recur with due start:2026-09-22 due:2026-12-31 frequency:weekly');
+    expect(c.reminder.notes).toBe('Due: 2026-12-31');
+    expect(c.reminder.rrule).toBe('FREQ=WEEKLY');
+    expect(c.reminder.due).toEqual({ date: '2026-09-22', time: null });
+    expect(c.entries).toEqual([]);
+  });
+  test('a re-based series compares due: with the re-based date', () => {
+    const c = rem('Recur start:2026-09-13 due:2026-12-31 frequency:weekly last-done:2026-09-20');
+    expect(c.reminder.due).toEqual({ date: '2026-09-27', time: null });
+    expect(c.reminder.notes).toBe('Due: 2026-12-31');
+  });
+  test('a due: on the same date as the reminder adds no note', () => {
+    expect(rem('Recur start:2026-09-22 due:2026-09-22 frequency:weekly').reminder.notes).toBeNull();
+    expect(rem('Recur start:2026-09-22T09:00 due:2026-09-22 frequency:weekly').reminder.notes).toBeNull();
+  });
+  test('an unusable due: is still only reported, never a note', () => {
+    const c = rem('Recur start:2026-09-22 due:garbage frequency:weekly');
+    expect(c.reminder.notes).toBeNull();
+    expect(c.entries).toEqual([{ line: 1, kind: 'ignored-extension', detail: 'due:garbage' }]);
+  });
+});
+
+describe('final review: blank notes and locations are absent, not whitespace', () => {
+  test('an event whose description and location decode to blanks has null notes and location', () => {
+    const c = ev('Party start:2026-09-22T10:00 type:event description:_ location:__');
+    expect(c.event.notes).toBeNull();
+    expect(c.event.location).toBeNull();
+  });
+  test('a reminder with only blank description/note/location has null notes', () => {
+    expect(rem('Task start:2026-09-22 description:_ note:___ location:_').reminder.notes).toBeNull();
+  });
+  test('a blank part never survives next to a real one', () => {
+    expect(rem('Task start:2026-09-22 description:_ note:Real').reminder.notes).toBe('Real');
+    expect(rem('Task start:2026-09-22 location:_ note:Real').reminder.notes).toBe('Real');
+  });
+});
+
+describe('final review: finished-series detail names the real cause', () => {
+  test('recur-until keeps its exact detail (existing behaviour)', () => {
+    const c = rem('Old start:2026-01-05 frequency:weekly recur-until:2026-02-01 last-done:2026-03-01');
+    expect(c.entries).toEqual([{ line: 1, kind: 'finished-series', detail: 'recur-until:2026-02-01' }]);
+  });
+  test('a huge every with no recur-until says there is no later occurrence, not an empty recur-until:', () => {
+    const c = rem('Old start:2026-01-05 frequency:daily every:99999999 last-done:2026-03-01');
+    expect(c.reminder.rrule).toBe('FREQ=DAILY;INTERVAL=99999999');
+    expect(c.entries).toEqual([{ line: 1, kind: 'finished-series', detail: 'no later occurrence' }]);
+  });
+  test('a malformed recur-until is reported as ignored and does not masquerade as the cause', () => {
+    const c = rem('Old start:2026-01-05 frequency:daily every:99999999 recur-until:nonsense last-done:2026-03-01');
+    expect(c.entries).toEqual([
+      { line: 1, kind: 'ignored-extension', detail: 'recur-until:nonsense' },
+      { line: 1, kind: 'finished-series', detail: 'no later occurrence' },
+    ]);
+  });
+});
+
+describe('final review: CRLF-terminated lines never leak a structural token into the title', () => {
+  test('a typed line ending in \\r has a clean title', () => {
+    const c = convertTask(parseLine('Standup start:2026-09-21T09:00 type:event\r', 1), 'U');
+    if (c.kind !== 'event') throw new Error('expected event');
+    expect(c.event.title).toBe('Standup');
+  });
+});

@@ -18,6 +18,18 @@ describe('buildRRule: basics', () => {
   test('an invalid every is unsupported', () => {
     expect(r({ frequency: 'daily', every: '0' })).toEqual({ rrule: null, unsupported: 'every:0', ignored: [] });
   });
+  test.each(['1e21', '1e2', '123456789012345678901', '1.5', '-2', '0', 'abc', '', ' 3', '+3'])(
+    'every:%p is not a positive safe integer, so it is unsupported (never a garbage INTERVAL)',
+    (value) => {
+      expect(r({ frequency: 'daily', every: value })).toEqual({ rrule: null, unsupported: `every:${value}`, ignored: [] });
+    },
+  );
+  test('leading zeros are read as the number (007 is 7); the largest safe integer is accepted', () => {
+    expect(r({ frequency: 'daily', every: '007' }).rrule).toBe('FREQ=DAILY;INTERVAL=7');
+    expect(r({ frequency: 'daily', every: '001' }).rrule).toBe('FREQ=DAILY');
+    expect(r({ frequency: 'daily', every: String(Number.MAX_SAFE_INTEGER) }).rrule).toBe(`FREQ=DAILY;INTERVAL=${Number.MAX_SAFE_INTEGER}`);
+    expect(r({ frequency: 'daily', every: String(Number.MAX_SAFE_INTEGER + 1) }).unsupported).toBe(`every:${Number.MAX_SAFE_INTEGER + 1}`);
+  });
   test('an unknown frequency is unsupported', () => {
     expect(r({ frequency: 'hourly' }).unsupported).toBe('frequency:hourly');
   });
