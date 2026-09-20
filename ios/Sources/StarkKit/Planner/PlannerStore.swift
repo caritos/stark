@@ -125,6 +125,93 @@ public final class PlannerStore: ObservableObject {
         rebuild()
     }
 
+    /// Replaces the event with the same `id` wherever it currently lives, then places the
+    /// updated event where it now belongs (same routing as `addEvent`). Unknown id => no-op.
+    /// Mutates memory first, then persists each affected file exactly once, so there is never
+    /// a persisted state where the item is missing (as a delete + add would produce).
+    public func updateEvent(_ event: Event) {
+        var sources: Set<StoreLocation> = []
+        if recurringEvents.contains(where: { $0.id == event.id }) { sources.insert(.recurring) }
+        for month in loadedMonths where monthEvents[month]?.contains(where: { $0.id == event.id }) == true {
+            sources.insert(.month(month))
+        }
+        guard !sources.isEmpty else { return }
+
+        let destination: StoreLocation = event.recurrence != nil ? .recurring : .month(YearMonth(date: event.start))
+        // Load the destination before touching anything: if it can't be read, abort so the
+        // item stays where it was rather than being written over an unread file.
+        if case .month(let month) = destination {
+            loadMonth(month)
+            guard loadedMonths.contains(month) else { return }
+        }
+
+        if sources == [destination] {
+            // Same file: replace in place so the item keeps its position.
+            switch destination {
+            case .recurring:
+                if let index = recurringEvents.firstIndex(where: { $0.id == event.id }) { recurringEvents[index] = event }
+            case .month(let month):
+                if let index = monthEvents[month]?.firstIndex(where: { $0.id == event.id }) { monthEvents[month]?[index] = event }
+            }
+        } else {
+            for source in sources {
+                switch source {
+                case .recurring: recurringEvents.removeAll { $0.id == event.id }
+                case .month(let month): monthEvents[month]?.removeAll { $0.id == event.id }
+                }
+            }
+            switch destination {
+            case .recurring: recurringEvents.append(event)
+            case .month(let month): monthEvents[month, default: []].append(event)
+            }
+        }
+
+        persist(sources.union([destination]))
+        rebuild()
+    }
+
+    /// Reminder counterpart of `updateEvent(_:)`; routes by `recurrence` / `dueDate ?? Date()`
+    /// exactly like `addReminder`.
+    public func updateReminder(_ reminder: Reminder) {
+        var sources: Set<StoreLocation> = []
+        if recurringReminders.contains(where: { $0.id == reminder.id }) { sources.insert(.recurring) }
+        for month in loadedMonths where monthReminders[month]?.contains(where: { $0.id == reminder.id }) == true {
+            sources.insert(.month(month))
+        }
+        guard !sources.isEmpty else { return }
+
+        let destination: StoreLocation = reminder.recurrence != nil
+            ? .recurring
+            : .month(YearMonth(date: reminder.dueDate ?? Date()))
+        if case .month(let month) = destination {
+            loadMonth(month)
+            guard loadedMonths.contains(month) else { return }
+        }
+
+        if sources == [destination] {
+            switch destination {
+            case .recurring:
+                if let index = recurringReminders.firstIndex(where: { $0.id == reminder.id }) { recurringReminders[index] = reminder }
+            case .month(let month):
+                if let index = monthReminders[month]?.firstIndex(where: { $0.id == reminder.id }) { monthReminders[month]?[index] = reminder }
+            }
+        } else {
+            for source in sources {
+                switch source {
+                case .recurring: recurringReminders.removeAll { $0.id == reminder.id }
+                case .month(let month): monthReminders[month]?.removeAll { $0.id == reminder.id }
+                }
+            }
+            switch destination {
+            case .recurring: recurringReminders.append(reminder)
+            case .month(let month): monthReminders[month, default: []].append(reminder)
+            }
+        }
+
+        persist(sources.union([destination]))
+        rebuild()
+    }
+
     public func completeReminder(id: String, on date: Date) {
         if let index = recurringReminders.firstIndex(where: { $0.id == id }) {
             recurringReminders[index].exceptionDates.append(date)
@@ -156,6 +243,20 @@ public final class PlannerStore: ObservableObject {
     private func rebuild() {
         events = recurringEvents + monthEvents.values.flatMap { $0 }
         reminders = recurringReminders + monthReminders.values.flatMap { $0 }
+    }
+
+    private enum StoreLocation: Hashable {
+        case recurring
+        case month(YearMonth)
+    }
+
+    private func persist(_ locations: Set<StoreLocation>) {
+        for location in locations {
+            switch location {
+            case .recurring: persistRecurring()
+            case .month(let month): persistMonth(month)
+            }
+        }
     }
 
     private func persistRecurring() {

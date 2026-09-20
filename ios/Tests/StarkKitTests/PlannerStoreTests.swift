@@ -172,4 +172,190 @@ struct PlannerStoreTests {
 
         #expect(!FileManager.default.fileExists(atPath: recurringURL.path))
     }
+
+    // MARK: - update APIs
+
+    private static let anchor = DateMath.date(from: "2026-09-20")
+
+    private func docsURL(_ root: URL, _ name: String) -> URL {
+        root.appendingPathComponent("docs").appendingPathComponent(name)
+    }
+
+    private let sept = YearMonth(year: 2026, month0: 8)
+    private let oct = YearMonth(year: 2026, month0: 9)
+
+    @Test("updateEvent keeps the id, changes the title in place, and rewrites only that month file")
+    @MainActor
+    func updateEventSameMonth() throws {
+        let (store, file, root) = makeStore()
+        start(store, around: Self.anchor)
+        store.addEvent(Event(id: "evt-1", title: "Standup", start: DateMath.date(from: "2026-09-17")))
+        store.addEvent(Event(id: "evt-rec", title: "Weekly", start: DateMath.date(from: "2026-09-01"), recurrence: RecurrenceRule(frequency: .weekly)))
+        // If update wrongly rewrote recurring.ics it would reappear.
+        try FileManager.default.removeItem(at: docsURL(root, "recurring.ics"))
+
+        var edited = try #require(store.events.first { $0.id == "evt-1" })
+        edited.title = "Standup (moved to Zoom)"
+        store.updateEvent(edited)
+
+        #expect(store.events.filter { $0.id == "evt-1" }.map(\.title) == ["Standup (moved to Zoom)"])
+        #expect(store.events.count == 2)
+        let onDisk = try file.loadMonth(sept)
+        #expect(onDisk.events.map(\.id) == ["evt-1"])
+        #expect(onDisk.events.map(\.title) == ["Standup (moved to Zoom)"])
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
+        #expect(store.error == nil)
+    }
+
+    @Test("updateEvent moves an event to a different month's file when its date changes month")
+    @MainActor
+    func updateEventMovesMonth() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addEvent(Event(id: "evt-1", title: "Standup", start: DateMath.date(from: "2026-09-17")))
+
+        var edited = try #require(store.events.first { $0.id == "evt-1" })
+        edited.start = DateMath.date(from: "2026-10-05")
+        store.updateEvent(edited)
+
+        #expect(try file.loadMonth(sept).events.isEmpty)
+        #expect(try file.loadMonth(oct).events.map(\.id) == ["evt-1"])
+        let reloaded = PlannerStore(file: file)
+        start(reloaded, around: Self.anchor)
+        #expect(reloaded.events.map(\.id) == ["evt-1"])
+        #expect(reloaded.events.first?.start == DateMath.date(from: "2026-10-05"))
+    }
+
+    @Test("updateEvent moves a one-off event into recurring.ics when a recurrence is added")
+    @MainActor
+    func updateEventOneOffToRecurring() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addEvent(Event(id: "evt-1", title: "Standup", start: DateMath.date(from: "2026-09-17")))
+
+        var edited = try #require(store.events.first { $0.id == "evt-1" })
+        edited.recurrence = RecurrenceRule(frequency: .weekly)
+        store.updateEvent(edited)
+
+        #expect(try file.loadMonth(sept).events.isEmpty)
+        #expect(try file.loadRecurring().events.map(\.id) == ["evt-1"])
+        #expect(store.events.filter { $0.id == "evt-1" }.count == 1)
+    }
+
+    @Test("updateEvent moves a recurring event into its month file when the recurrence is removed")
+    @MainActor
+    func updateEventRecurringToOneOff() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addEvent(Event(id: "evt-1", title: "Standup", start: DateMath.date(from: "2026-09-17"), recurrence: RecurrenceRule(frequency: .weekly)))
+
+        var edited = try #require(store.events.first { $0.id == "evt-1" })
+        edited.recurrence = nil
+        store.updateEvent(edited)
+
+        #expect(try file.loadRecurring().events.isEmpty)
+        #expect(try file.loadMonth(sept).events.map(\.id) == ["evt-1"])
+        #expect(store.events.filter { $0.id == "evt-1" }.count == 1)
+    }
+
+    @Test("updateEvent with an unknown id is a no-op and sets no error")
+    @MainActor
+    func updateEventUnknownIdIsNoOp() {
+        let (store, _, root) = makeStore()
+        start(store, around: Self.anchor)
+
+        store.updateEvent(Event(id: "nope", title: "Ghost", start: DateMath.date(from: "2026-09-17")))
+
+        #expect(store.events.isEmpty)
+        #expect(store.error == nil)
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
+    }
+
+    @Test("updateReminder keeps the id, changes the title in place, and rewrites only that month file")
+    @MainActor
+    func updateReminderSameMonth() throws {
+        let (store, file, root) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: DateMath.date(from: "2026-09-01"), recurrence: RecurrenceRule(frequency: .weekly)))
+        try FileManager.default.removeItem(at: docsURL(root, "recurring.ics"))
+
+        var edited = try #require(store.reminders.first { $0.id == "rem-1" })
+        edited.title = "Buy oat milk"
+        store.updateReminder(edited)
+
+        #expect(store.reminders.filter { $0.id == "rem-1" }.map(\.title) == ["Buy oat milk"])
+        #expect(store.reminders.count == 2)
+        let onDisk = try file.loadMonth(sept)
+        #expect(onDisk.reminders.map(\.id) == ["rem-1"])
+        #expect(onDisk.reminders.map(\.title) == ["Buy oat milk"])
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
+        #expect(store.error == nil)
+    }
+
+    @Test("updateReminder moves a reminder to a different month's file when its due date changes month")
+    @MainActor
+    func updateReminderMovesMonth() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+
+        var edited = try #require(store.reminders.first { $0.id == "rem-1" })
+        edited.dueDate = DateMath.date(from: "2026-10-05")
+        store.updateReminder(edited)
+
+        #expect(try file.loadMonth(sept).reminders.isEmpty)
+        #expect(try file.loadMonth(oct).reminders.map(\.id) == ["rem-1"])
+        let reloaded = PlannerStore(file: file)
+        start(reloaded, around: Self.anchor)
+        #expect(reloaded.reminders.map(\.id) == ["rem-1"])
+        #expect(reloaded.reminders.first?.dueDate == DateMath.date(from: "2026-10-05"))
+    }
+
+    @Test("updateReminder moves a one-off reminder into recurring.ics when a recurrence is added")
+    @MainActor
+    func updateReminderOneOffToRecurring() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+
+        var edited = try #require(store.reminders.first { $0.id == "rem-1" })
+        edited.recurrence = RecurrenceRule(frequency: .weekly)
+        store.updateReminder(edited)
+
+        #expect(try file.loadMonth(sept).reminders.isEmpty)
+        #expect(try file.loadRecurring().reminders.map(\.id) == ["rem-1"])
+        #expect(store.reminders.filter { $0.id == "rem-1" }.count == 1)
+    }
+
+    @Test("updateReminder moves a recurring reminder into its month file when the recurrence is removed")
+    @MainActor
+    func updateReminderRecurringToOneOff() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17"), recurrence: RecurrenceRule(frequency: .weekly)))
+
+        var edited = try #require(store.reminders.first { $0.id == "rem-1" })
+        edited.recurrence = nil
+        store.updateReminder(edited)
+
+        #expect(try file.loadRecurring().reminders.isEmpty)
+        #expect(try file.loadMonth(sept).reminders.map(\.id) == ["rem-1"])
+        #expect(store.reminders.filter { $0.id == "rem-1" }.count == 1)
+    }
+
+    @Test("updateReminder with an unknown id is a no-op and sets no error")
+    @MainActor
+    func updateReminderUnknownIdIsNoOp() {
+        let (store, _, root) = makeStore()
+        start(store, around: Self.anchor)
+
+        store.updateReminder(Reminder(id: "nope", title: "Ghost", dueDate: DateMath.date(from: "2026-09-17")))
+
+        #expect(store.reminders.isEmpty)
+        #expect(store.error == nil)
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
+    }
 }
