@@ -716,4 +716,85 @@ struct PlannerStoreTests {
         #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
         #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
     }
+
+    // MARK: - loadMonths(covering:)
+
+    /// Writes a one-event month file straight to the store's docs directory.
+    private func seedMonth(_ root: URL, _ month: YearMonth, title: String, day: String) throws {
+        let docs = root.appendingPathComponent("docs")
+        try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
+        let content = ICSSerializer.serialize(events: [Event(title: title, start: DateMath.date(from: day))], reminders: [])
+        try content.write(to: docs.appendingPathComponent(month.fileName), atomically: true, encoding: .utf8)
+    }
+
+    @Test("loadMonths loads months outside the initial window, and their items appear")
+    @MainActor
+    func loadMonthsLoadsMonthsOutsideInitialWindow() throws {
+        let (store, _, root) = makeStore()
+        try seedMonth(root, YearMonth(year: 2026, month0: 8), title: "Sept item", day: "2026-09-02")
+        try seedMonth(root, YearMonth(year: 2027, month0: 0), title: "Jan item", day: "2027-01-15")
+        start(store, around: Self.anchor)
+        #expect(store.events.map(\.title) == ["Sept item"])
+
+        store.loadMonths(covering: AgendaWindow.range(around: DateMath.date(from: "2027-01-15")))
+
+        #expect(Set(store.events.map(\.title)) == ["Sept item", "Jan item"])
+        #expect(store.error == nil)
+    }
+
+    @Test("loadMonths loads every month from the start month through the end month inclusive")
+    @MainActor
+    func loadMonthsCoversEveryMonthInclusive() throws {
+        let (store, _, root) = makeStore()
+        try seedMonth(root, YearMonth(year: 2026, month0: 11), title: "Dec", day: "2026-12-10")
+        try seedMonth(root, YearMonth(year: 2027, month0: 0), title: "Jan", day: "2027-01-10")
+        try seedMonth(root, YearMonth(year: 2027, month0: 1), title: "Feb", day: "2027-02-10")
+        try seedMonth(root, YearMonth(year: 2027, month0: 2), title: "Mar", day: "2027-03-10")
+        start(store, around: Self.anchor)
+
+        // 2026-12-20 ... 2027-02-14: touches Dec, Jan, Feb (a year boundary), not Mar.
+        store.loadMonths(covering: DateMath.date(from: "2026-12-20")...DateMath.date(from: "2027-02-14"))
+
+        #expect(Set(store.events.map(\.title)) == ["Dec", "Jan", "Feb"])
+    }
+
+    @Test("loadMonths does not re-read a month that is already loaded")
+    @MainActor
+    func loadMonthsDoesNotRereadLoadedMonths() throws {
+        let (store, _, root) = makeStore()
+        try seedMonth(root, sept, title: "Original", day: "2026-09-02")
+        start(store, around: Self.anchor)
+        #expect(store.events.map(\.title) == ["Original"])
+
+        // Change the file behind the store's back: a re-read would pick this up.
+        try seedMonth(root, sept, title: "Changed on disk", day: "2026-09-02")
+        store.loadMonths(covering: AgendaWindow.range(around: Self.anchor))
+
+        #expect(store.events.map(\.title) == ["Original"])
+    }
+
+    @Test("a failing month read sets error, loads nothing for it, and stays retryable")
+    @MainActor
+    func loadMonthsFailureIsRetryable() throws {
+        let (store, _, root) = makeStore()
+        start(store, around: Self.anchor)
+        let jan = YearMonth(year: 2027, month0: 0)
+        let docs = root.appendingPathComponent("docs")
+        try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
+        try Data([0xFF, 0xFE, 0x00]).write(to: docs.appendingPathComponent(jan.fileName))
+        let janRange = AgendaWindow.range(around: DateMath.date(from: "2027-01-15"))
+
+        store.loadMonths(covering: janRange)
+
+        #expect(store.error?.contains(jan.fileName) == true)
+        #expect(store.events.isEmpty)
+
+        // The file is repaired; a second call must read it rather than treat Jan as loaded/empty.
+        store.error = nil
+        try seedMonth(root, jan, title: "Jan item", day: "2027-01-15")
+        store.loadMonths(covering: janRange)
+
+        #expect(store.error == nil)
+        #expect(store.events.map(\.title) == ["Jan item"])
+    }
 }

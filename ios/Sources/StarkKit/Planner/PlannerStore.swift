@@ -40,13 +40,27 @@ public final class PlannerStore: ObservableObject {
             self.error = "Couldn't read recurring items: \(error.localizedDescription)"
         }
 
-        var month = YearMonth(date: windowStart)
-        let endMonth = YearMonth(date: windowEnd)
+        // Two dates rather than a ClosedRange: `start` has always tolerated an inverted window
+        // (loads nothing) and a `lower...upper` with upper < lower would trap.
+        loadMonths(from: windowStart, through: windowEnd)
+        rebuild()
+    }
+
+    /// Loads every month the range touches (start month through end month, inclusive). Months
+    /// already loaded are skipped by `loadMonth`'s guard, and a month that fails to read sets
+    /// `error` and stays unloaded (so a later call retries it). Call this before re-centring the
+    /// agenda's display window, otherwise items in months not yet loaded silently vanish.
+    public func loadMonths(covering range: ClosedRange<Date>) {
+        loadMonths(from: range.lowerBound, through: range.upperBound)
+    }
+
+    private func loadMonths(from first: Date, through last: Date) {
+        var month = YearMonth(date: first)
+        let endMonth = YearMonth(date: last)
         while month <= endMonth {
             loadMonth(month)
             month = YearMonth(year: month.year, month0: month.month0 + 1)
         }
-        rebuild()
     }
 
     /// Retries any writes that previously failed and were queued to disk. Safe to call
