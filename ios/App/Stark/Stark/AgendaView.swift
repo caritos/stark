@@ -9,36 +9,46 @@ struct ScrollRequest: Equatable {
     let token = UUID()
 }
 
-/// Day-grouped agenda. Items come from `buildAgendaItems` and are grouped by the start of
-/// their `displayDate`'s day (so overdue-pinned reminders sit under today). Today always has a
-/// section, even when empty.
+/// Day-grouped agenda. Items come from `buildAgendaItems` and are grouped by `groupAgendaByDay`,
+/// which gives **every calendar day** of the display window a section (header) whether or not it
+/// has items, so the month grid can scroll to any tapped day. An empty day shows just its header;
+/// an empty today also keeps a "No events" row.
+///
+/// The display window is `AgendaWindow.range(around: anchor)`. `anchor` is today until the user
+/// taps a grid day outside the window, when `ContentView` re-centres it on that day. Overdue
+/// logic stays anchored on the *real* today, so when the window has been re-centred away from
+/// today, today's section is not in the range and overdue-pinned reminders (whose `displayDate`
+/// is today) are simply not shown until the window returns to today. That is expected.
 struct AgendaView: View {
     @EnvironmentObject private var store: PlannerStore
+    let anchor: Date
     let scrollRequest: ScrollRequest?
     let onSelect: (AgendaItem) -> Void
 
-    /// False until the list has been scrolled to today once real data has arrived — the
-    /// display window includes the previous 14 days, and the store loads asynchronously after
-    /// the first render, so the initial scroll has to be repeated when the days first change.
+    /// False until the list has been scrolled to today once real data has arrived. The display
+    /// window includes the previous 14 days, and the store loads asynchronously after the first
+    /// render, so the initial scroll has to be repeated when the first items arrive. (Every day
+    /// has a section now, so the day list itself no longer changes when data loads.)
     @State private var hasSettled = false
 
     private static let calendar = Calendar(identifier: .gregorian)
 
-    private struct DaySection {
-        let day: Date
-        let items: [AgendaItem]
-    }
-
     private enum ListRow: Identifiable {
-        case header(day: Date)
+        /// `compact` is true for a day with nothing under it (other than today, which keeps its
+        /// "No events" row): List's minimum row height would otherwise pad the bare header.
+        case header(day: Date, compact: Bool)
         case empty(day: Date, divider: Bool)
         case item(AgendaItem, endsSection: Bool, divider: Bool)
+        /// Blank space after the last section, one viewport tall, so even the final days'
+        /// headers can be scrolled to the top of the list.
+        case tail
 
         var id: String {
             switch self {
-            case .header(let day): return AgendaView.headerID(day)
+            case .header(let day, _): return AgendaView.headerID(day)
             case .empty(let day, _): return "empty-\(Int(day.timeIntervalSince1970))"
             case .item(let item, _, _): return item.id
+            case .tail: return "tail"
             }
         }
     }
@@ -46,73 +56,95 @@ struct AgendaView: View {
     var body: some View {
         let now = Date()
         let todayStart = Self.calendar.startOfDay(for: now)
-        let sections = makeSections(now: now, todayStart: todayStart)
-        let rows = makeRows(sections)
-        let days = sections.map(\.day)
+        let sections = makeSections(now: now)
+        let rows = makeRows(sections, todayStart: todayStart)
+        let itemCount = sections.reduce(0) { $0 + $1.items.count }
 
-        ScrollViewReader { proxy in
-            List {
-                ForEach(rows) { row in
-                    switch row {
-                    case .header(let day):
-                        headerRow(day: day, todayStart: todayStart)
-                    case .empty(_, let divider):
-                        Text("No events")
-                            .font(.subheadline)
-                            .foregroundStyle(Colors.textSecondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, Spacing.md)
-                            .padding(.vertical, Spacing.xs)
-                            .sectionEnd(divider: divider)
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                List {
+                    ForEach(rows) { row in
+                        switch row {
+                        case .header(let day, let compact):
+                            headerRow(day: day, todayStart: todayStart, compact: compact)
+                        case .empty(_, let divider):
+                            Text("No events")
+                                .font(.subheadline)
+                                .foregroundStyle(Colors.textSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, Spacing.md)
+                                .padding(.vertical, Spacing.xs)
+                                .sectionEnd(divider: divider)
+                                .frame(minHeight: Self.rowMinHeight)
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Colors.background)
+                                .listRowInsets(EdgeInsets())
+                        case .item(let item, let endsSection, let divider):
+                            Button {
+                                onSelect(item)
+                            } label: {
+                                AgendaRowView(item: item)
+                                    .padding(.horizontal, Spacing.md)
+                                    .padding(.vertical, Spacing.xs + 2)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .modifier(SectionEnd(endsSection: endsSection, divider: divider))
+                            .frame(minHeight: Self.rowMinHeight)
                             .listRowSeparator(.hidden)
                             .listRowBackground(Colors.background)
                             .listRowInsets(EdgeInsets())
-                    case .item(let item, let endsSection, let divider):
-                        Button {
-                            onSelect(item)
-                        } label: {
-                            AgendaRowView(item: item)
-                                .padding(.horizontal, Spacing.md)
-                                .padding(.vertical, Spacing.xs + 2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
+                        case .tail:
+                            Color.clear
+                                .frame(height: geometry.size.height)
+                                .allowsHitTesting(false)
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Colors.background)
+                                .listRowInsets(EdgeInsets())
                         }
-                        .buttonStyle(.plain)
-                        .modifier(SectionEnd(endsSection: endsSection, divider: divider))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Colors.background)
-                        .listRowInsets(EdgeInsets())
                     }
                 }
-            }
-            .listStyle(.plain)
-            .listRowSeparatorTint(Colors.separator)
-            .scrollContentBackground(.hidden)
-            .background(Colors.background)
-            .onAppear {
-                scrollToToday(proxy, todayStart: todayStart)
-            }
-            .onChange(of: days) { _, _ in
-                guard !hasSettled else { return }
-                scrollToToday(proxy, todayStart: todayStart)
-                // A list with only today's (empty) section has nothing more to wait for
-                // yet; keep re-anchoring until the first real days arrive.
-                hasSettled = days.count > 1
-            }
-            .onChange(of: scrollRequest) { _, request in
-                guard let request else { return }
-                hasSettled = true
-                let target = Self.calendar.startOfDay(for: request.date)
-                // First section on/after the requested day, else the last section.
-                guard let section = sections.first(where: { $0.day >= target }) ?? sections.last else { return }
-                scroll(proxy, to: Self.headerID(section.day))
+                .listStyle(.plain)
+                // Lets a bare empty-day header be as short as its content; every other row
+                // restores the old minimum via `rowMinHeight`.
+                .environment(\.defaultMinListRowHeight, 0)
+                .listRowSeparatorTint(Colors.separator)
+                .scrollContentBackground(.hidden)
+                .background(Colors.background)
+                .onAppear {
+                    scrollToToday(proxy, todayStart: todayStart)
+                }
+                .onChange(of: itemCount) { _, _ in
+                    guard !hasSettled else { return }
+                    scrollToToday(proxy, todayStart: todayStart)
+                    // Until the first real items arrive there is nothing more to wait for
+                    // yet; keep re-anchoring on today.
+                    hasSettled = itemCount > 0
+                }
+                // Declared after the item-count handler on purpose: when both fire in one
+                // update, this (the later, deferred scroll) wins.
+                .onChange(of: scrollRequest) { _, request in
+                    guard let request else { return }
+                    hasSettled = true
+                    let target = Self.calendar.startOfDay(for: request.date)
+                    // The exact day's header; falls back to the first section after it
+                    // (else the last) if it is somehow missing from the window.
+                    guard let section = sections.first(where: { $0.day >= target }) ?? sections.last else { return }
+                    scroll(proxy, to: Self.headerID(section.day))
+                }
             }
         }
     }
 
     // MARK: Rows
 
-    private func headerRow(day: Date, todayStart: Date) -> some View {
+    /// The minimum height every row had while List's own default minimum row height applied
+    /// (measured on iOS 26). The list now sets that minimum to 0 so bare empty-day headers can
+    /// be compact, so every other row states the old minimum explicitly to keep its layout.
+    private static let rowMinHeight: CGFloat = 52
+
+    private func headerRow(day: Date, todayStart: Date, compact: Bool) -> some View {
         let isToday = day == todayStart
         let tomorrow = Self.calendar.date(byAdding: .day, value: 1, to: todayStart)
         let word: String
@@ -131,6 +163,7 @@ struct AgendaView: View {
             .padding(.top, Spacing.md)
             .padding(.bottom, Spacing.xs)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: compact ? nil : Self.rowMinHeight)
         .listRowSeparator(.hidden)
         .listRowBackground(Colors.background)
         .listRowInsets(EdgeInsets())
@@ -138,33 +171,33 @@ struct AgendaView: View {
 
     // MARK: Data
 
-    private func makeSections(now: Date, todayStart: Date) -> [DaySection] {
+    private func makeSections(now: Date) -> [AgendaDay] {
+        let range = AgendaWindow.range(around: anchor)
         let items = buildAgendaItems(
             events: store.events,
             reminders: store.reminders,
-            in: AgendaWindow.range(around: now),
+            in: range,
+            // The real today, not the anchor: overdue logic must not move with the window.
             today: now
         )
-        // `items` is already sorted (day, then overdue / normal / completed), so appending
-        // preserves the within-day order.
-        var grouped: [Date: [AgendaItem]] = [:]
-        for item in items {
-            grouped[Self.calendar.startOfDay(for: item.displayDate), default: []].append(item)
-        }
-        if grouped[todayStart] == nil { grouped[todayStart] = [] }
-        return grouped.keys.sorted().map { DaySection(day: $0, items: grouped[$0] ?? []) }
+        return groupAgendaByDay(items, in: range, calendar: Self.calendar)
     }
 
-    private func makeRows(_ sections: [DaySection]) -> [ListRow] {
+    private func makeRows(_ sections: [AgendaDay], todayStart: Date) -> [ListRow] {
         var rows: [ListRow] = []
         for (index, section) in sections.enumerated() {
-            // A 1pt rule closes every section but the last, like Fantastical's day dividers.
-            // It closes (rather than opens) each section so today's header, where the list
-            // rests, sits directly under the grid's own rule instead of doubling it.
+            // A 1pt rule closes every non-empty section but the last, like Fantastical's day
+            // dividers. It closes (rather than opens) each section so today's header, where the
+            // list rests, sits directly under the grid's own rule instead of doubling it.
             let divider = index < sections.count - 1
-            rows.append(.header(day: section.day))
+            let isBareDay = section.items.isEmpty && section.day != todayStart
+            rows.append(.header(day: section.day, compact: isBareDay))
             if section.items.isEmpty {
-                rows.append(.empty(day: section.day, divider: divider))
+                // Only today keeps a "No events" row; other empty days are just their header,
+                // with no rule, so a run of empty days stays compact.
+                if !isBareDay {
+                    rows.append(.empty(day: section.day, divider: divider))
+                }
             } else {
                 for (itemIndex, item) in section.items.enumerated() {
                     let isLast = itemIndex == section.items.count - 1
@@ -172,6 +205,7 @@ struct AgendaView: View {
                 }
             }
         }
+        rows.append(.tail)
         return rows
     }
 

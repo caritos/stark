@@ -16,6 +16,9 @@ struct ContentView: View {
     @State private var selectedItem: AgendaItem?
     @State private var selectedDate = Date()
     @State private var scrollRequest: ScrollRequest?
+    /// The date the agenda's display window (`AgendaWindow.range(around:)`) is centred on:
+    /// today, until a grid tap outside that window re-centres it.
+    @State private var agendaAnchor = Date()
 
     var body: some View {
         NavigationStack {
@@ -32,14 +35,11 @@ struct ContentView: View {
                             .background(Colors.accent)
                     }
                 }
-                MonthGridView(selectedDate: selectedDate) { date in
-                    selectedDate = date
-                    scrollRequest = ScrollRequest(date: date)
-                }
+                MonthGridView(selectedDate: selectedDate, onSelectDate: selectDate)
                 Rectangle()
                     .fill(Colors.separator)
                     .frame(height: 1)
-                AgendaView(scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
+                AgendaView(anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
             }
             .background(Colors.background)
             .navigationBarTitleDisplayMode(.inline)
@@ -65,5 +65,29 @@ struct ContentView: View {
         // The design is dark-only (Colors.* are dark-theme tokens); without this, system
         // sheets and Forms would render light with near-white text.
         .preferredColorScheme(.dark)
+    }
+
+    /// A day was tapped in the month grid: scroll the agenda to that day's header. A day outside
+    /// the agenda's current display window has no section yet, so first re-centre the window on
+    /// it, loading the months the new window covers *before* switching, or items in months not
+    /// yet read would silently vanish. A day already inside the window never re-centres.
+    ///
+    /// The re-centre and the scroll request are set in the same transaction, so `AgendaView`
+    /// sees the new window and the request together and its (deferred) scroll targets a header
+    /// that exists.
+    private func selectDate(_ date: Date) {
+        let calendar = Calendar(identifier: .gregorian)
+        let tapped = calendar.startOfDay(for: date)
+        let window = AgendaWindow.range(around: agendaAnchor)
+        // Day granularity: the window's bounds are noon timestamps, so comparing raw dates
+        // would spuriously re-centre on a tap of the window's first or last day.
+        let firstDay = calendar.startOfDay(for: window.lowerBound)
+        let lastDay = calendar.startOfDay(for: window.upperBound)
+        if tapped < firstDay || tapped > lastDay {
+            store.loadMonths(covering: AgendaWindow.range(around: date))
+            agendaAnchor = date
+        }
+        selectedDate = date
+        scrollRequest = ScrollRequest(date: date)
     }
 }
