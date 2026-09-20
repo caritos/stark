@@ -3,7 +3,9 @@ import SwiftUI
 import StarkKit
 
 /// Edit + detail sheet for one agenda row. Editable fields (title, date, repeat) are committed
-/// only by Save; the action buttons (Done / Undo / Skip / Delete) act immediately and dismiss.
+/// only by Save; the action buttons act immediately and dismiss. Reminders show Done / Undo /
+/// Skip This Occurrence / Delete; events show Attended / Didn't Attend / Clear / Remove This
+/// Occurrence / Delete.
 struct EditItemView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss

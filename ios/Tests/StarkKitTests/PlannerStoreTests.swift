@@ -960,7 +960,7 @@ struct PlannerStoreTests {
     @Test("setEventOutcome replaces the mark for that day and nil clears it")
     @MainActor
     func setEventOutcomeReplacesAndClears() throws {
-        let (store, file, _) = makeStore()
+        let (store, file, root) = makeStore()
         start(store, around: Self.anchor)
         store.addEvent(Event(id: "evt-1", title: "Dinner", start: DateMath.date(from: "2026-09-17")))
         let day = DateMath.date(from: "2026-09-17")
@@ -973,25 +973,33 @@ struct PlannerStoreTests {
         #expect(try #require(store.events.first).outcomes.isEmpty)
         let onDisk = try #require(try file.loadMonth(YearMonth(year: 2026, month0: 8)).events.first)
         #expect(onDisk.outcomes.isEmpty)
+        // Delete the month file so any rewrite by the second clear shows up as a reappearance.
+        try FileManager.default.removeItem(at: docsURL(root, sept.fileName))
 
         store.setEventOutcome(id: "evt-1", on: day, outcome: nil)
+
         #expect(try #require(store.events.first).outcomes.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
     }
 
     @Test("setEventOutcome is idempotent: the same state twice leaves one record")
     @MainActor
     func setEventOutcomeIsIdempotent() throws {
-        let (store, _, _) = makeStore()
+        let (store, _, root) = makeStore()
         start(store, around: Self.anchor)
         store.addEvent(Event(id: "evt-1", title: "Dinner", start: DateMath.date(from: "2026-09-17")))
         let day = DateMath.date(from: "2026-09-17")
 
         store.setEventOutcome(id: "evt-1", on: day, outcome: .attended)
         let once = try #require(store.events.first)
+        // Delete the month file so any rewrite by the second call shows up as a reappearance.
+        try FileManager.default.removeItem(at: docsURL(root, sept.fileName))
+
         store.setEventOutcome(id: "evt-1", on: day, outcome: .attended)
 
         #expect(try #require(store.events.first) == once)
         #expect(once.outcomes.count == 1)
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
     }
 
     @Test("setEventOutcome matches by calendar day, not by exact time")
@@ -1014,13 +1022,16 @@ struct PlannerStoreTests {
     @Test("setEventOutcome ignores an unknown id and leaves other events alone")
     @MainActor
     func setEventOutcomeUnknownId() throws {
-        let (store, _, _) = makeStore()
+        let (store, _, root) = makeStore()
         start(store, around: Self.anchor)
         store.addEvent(Event(id: "evt-1", title: "Dinner", start: DateMath.date(from: "2026-09-17")))
+        try FileManager.default.removeItem(at: docsURL(root, sept.fileName))
         let before = store.events
 
         store.setEventOutcome(id: "nope", on: DateMath.date(from: "2026-09-17"), outcome: .attended)
 
         #expect(store.events == before)
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
     }
 }

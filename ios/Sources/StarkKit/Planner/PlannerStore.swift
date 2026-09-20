@@ -331,6 +331,8 @@ public final class PlannerStore: ObservableObject {
         for month in loadedMonths {
             guard let index = monthEvents[month]?.firstIndex(where: { $0.id == id }),
                   let source = monthEvents[month]?[index] else { continue }
+            // An event id lives in exactly one month file, so stop at the first match (unlike
+            // updateEvent/deleteEvent, which also relocate/remove across files).
             guard let copy = updated(source) else { return }
             monthEvents[month]?[index] = copy
             persistMonth(month)

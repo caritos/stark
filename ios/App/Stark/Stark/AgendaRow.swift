@@ -3,8 +3,9 @@ import SwiftUI
 import StarkKit
 
 /// One agenda row, Fantastical-style structure in Braun styling: a fixed-width marker column
-/// (square checkbox for reminders, small filled square for events — a check or a cross once the
-/// event is marked attended or skipped) and a text column with a small time line, the title,
+/// (square checkbox for reminders; for events a small filled square, a filled square with a
+/// check when attended, and an outlined square with a cross when skipped) and a text column
+/// with a small time line, the title,
 /// and (events) the location. The date lives in the section header, so the row never shows one
 /// except for an overdue reminder's missed date.
 ///
@@ -106,7 +107,11 @@ struct AgendaRowView: View {
         parts.append(item.title)
         if let location { parts.append(location) }
         if looksDone { parts.append("completed") }
-        if item.outcome == .attended { parts.append("attended") } else if item.outcome == .skipped { parts.append("didn't attend") }
+        if item.outcome == .attended {
+            parts.append("attended")
+        } else if item.outcome == .skipped {
+            parts.append("didn't attend")
+        }
         return parts.joined(separator: ", ")
     }
 
