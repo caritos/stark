@@ -65,6 +65,20 @@ struct EditItemView: View {
                 .listRowBackground(Colors.background)
 
                 Section {
+                    if let actions = eventActions {
+                        if actions.showsAttended {
+                            Button("Attended") { markOutcome(.attended) }.foregroundStyle(Colors.accent)
+                        }
+                        if actions.showsDidntAttend {
+                            Button("Didn't Attend") { markOutcome(.skipped) }.foregroundStyle(Colors.accent)
+                        }
+                        if actions.showsClear {
+                            Button("Clear") { markOutcome(nil) }.foregroundStyle(Colors.accent)
+                        }
+                        if actions.showsRemoveOccurrence {
+                            Button("Remove This Occurrence") { skipOccurrence() }.foregroundStyle(Colors.accent)
+                        }
+                    }
                     if showsDone {
                         Button("Done") { markDone() }.foregroundStyle(Colors.accent)
                     }
@@ -136,8 +150,16 @@ struct EditItemView: View {
         return false
     }
 
+    /// Reminders only; a recurring event's equivalent is "Remove This Occurrence" in `eventActions`.
     private var showsSkip: Bool {
-        item.isRecurring && !item.isCompleted
+        if case .reminder = item.kind { return item.isRecurring && !item.isCompleted }
+        return false
+    }
+
+    /// Attended / Didn't Attend / Clear / Remove This Occurrence, for events only.
+    private var eventActions: EventOutcomeActions? {
+        guard case .event = item.kind else { return nil }
+        return EventOutcomeActions(outcome: item.outcome, isRecurring: item.isRecurring)
     }
 
     private var deleteMessage: String {
@@ -178,6 +200,12 @@ struct EditItemView: View {
     private func markUndone() {
         guard case .reminder(let reminder) = item.kind else { return }
         store.uncompleteReminder(id: reminder.id)
+        dismiss()
+    }
+
+    private func markOutcome(_ outcome: EventOutcome?) {
+        guard case .event(let event) = item.kind else { return }
+        store.setEventOutcome(id: event.id, on: item.occurrence, outcome: outcome)
         dismiss()
     }
 

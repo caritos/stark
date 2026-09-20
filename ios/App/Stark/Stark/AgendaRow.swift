@@ -3,9 +3,10 @@ import SwiftUI
 import StarkKit
 
 /// One agenda row, Fantastical-style structure in Braun styling: a fixed-width marker column
-/// (square checkbox for reminders, small filled square for events) and a text column with a
-/// small time line, the title, and (events) the location. The date lives in the section header,
-/// so the row never shows one except for an overdue reminder's missed date.
+/// (square checkbox for reminders, small filled square for events — a check or a cross once the
+/// event is marked attended or skipped) and a text column with a small time line, the title,
+/// and (events) the location. The date lives in the section header, so the row never shows one
+/// except for an overdue reminder's missed date.
 ///
 /// This view is **visuals only** — nothing in it is tappable. The taps live in
 /// `AgendaRowTargets`, laid over the whole row by `AgendaView` (see the note there).
@@ -19,6 +20,9 @@ struct AgendaRowView: View {
 
     /// Completed, or about to be: the filled check, struck-through secondary-colour title.
     private var looksDone: Bool { item.isCompleted || isPending }
+
+    /// An event occurrence the user marked "didn't attend": still shown, but dimmed and struck.
+    private var isSkipped: Bool { item.outcome == .skipped }
 
     var body: some View {
         let timeLine = self.timeLine
@@ -34,8 +38,8 @@ struct AgendaRowView: View {
                         .foregroundStyle(timeLine.isAccent ? Colors.accent : Colors.textSecondary)
                 }
                 Text(item.title)
-                    .strikethrough(looksDone)
-                    .foregroundStyle(looksDone ? Colors.textSecondary : Colors.text)
+                    .strikethrough(looksDone || isSkipped)
+                    .foregroundStyle(looksDone || isSkipped ? Colors.textSecondary : Colors.text)
                 if let location {
                     Text(location)
                         .font(.footnote)
@@ -53,18 +57,25 @@ struct AgendaRowView: View {
     private var marker: some View {
         switch item.kind {
         case .event:
-            Rectangle()
-                .fill(Colors.accent)
-                .frame(width: 8, height: 8)
-        case .reminder:
-            if looksDone {
+            switch item.outcome {
+            case nil:
                 Rectangle()
                     .fill(Colors.accent)
+                    .frame(width: 8, height: 8)
+            case .attended:
+                checkedMarker
+            case .skipped:
+                Rectangle()
+                    .strokeBorder(Colors.checkboxBorder, lineWidth: 1.5)
                     .overlay {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(Colors.background)
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Colors.textSecondary)
                     }
+            }
+        case .reminder:
+            if looksDone {
+                checkedMarker
             } else {
                 // An overdue reminder's outline is accent-coloured (the Expo app's
                 // `agendaIconOverdue`); a pending one is `looksDone` and never gets here.
@@ -72,6 +83,17 @@ struct AgendaRowView: View {
                     .strokeBorder(item.isOverdue ? Colors.accent : Colors.checkboxBorder, lineWidth: 1.5)
             }
         }
+    }
+
+    /// The filled accent square with a check: a completed reminder, or an attended event.
+    private var checkedMarker: some View {
+        Rectangle()
+            .fill(Colors.accent)
+            .overlay {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Colors.background)
+            }
     }
 
     // MARK: Accessibility
@@ -84,6 +106,7 @@ struct AgendaRowView: View {
         parts.append(item.title)
         if let location { parts.append(location) }
         if looksDone { parts.append("completed") }
+        if item.outcome == .attended { parts.append("attended") } else if item.outcome == .skipped { parts.append("didn't attend") }
         return parts.joined(separator: ", ")
     }
 
