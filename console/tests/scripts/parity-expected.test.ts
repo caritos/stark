@@ -100,6 +100,59 @@ test('a done typed event is expected as an event; a done plain reminder is not',
   expect(window).toEqual(['event|2026-09-23|10:00|Team offsite']);
 });
 
+// Fix round 1. convert.ts never exdates `last-done:` for an EVENT (native events have no completion
+// state), so an event whose last-done falls in the window still has that occurrence on the agenda.
+test('an event keeps the occurrence on its last-done date (daily, last-done today)', () => {
+  const { window } = runLines([
+    '2026-09-01 DailyLD start:2026-09-01T09:00 type:event frequency:daily last-done:2026-09-20',
+  ]);
+  expect(window).toContain('event|2026-09-20|09:00|DailyLD');
+  expect(window).toContain('event|2026-09-21|09:00|DailyLD');
+  expect(window.filter(k => k.includes('DailyLD'))).toHaveLength(15);
+});
+
+test('an event keeps the occurrence on its last-done date (weekly, last-done inside the window)', () => {
+  const { window } = runLines([
+    '2026-09-01 WeeklyLD start:2026-09-07T09:00 type:event frequency:weekly last-done:2026-09-21',
+  ]);
+  expect(window.filter(k => k.includes('WeeklyLD'))).toEqual([
+    'event|2026-09-21|09:00|WeeklyLD',
+    'event|2026-09-28|09:00|WeeklyLD',
+  ]);
+});
+
+// The converter re-bases a REMINDER series past `last-done:`, so nothing on or before it survives.
+test('a reminder series still drops occurrences up to its last-done date', () => {
+  const daily = runLines([
+    '2026-09-01 DailyRem start:2026-09-01T09:00 frequency:daily last-done:2026-09-20',
+  ]);
+  expect(daily.window).not.toContain('reminder|2026-09-20|09:00|DailyRem');
+  expect(daily.window).toContain('reminder|2026-09-21|09:00|DailyRem');
+  expect(daily.window.filter(k => k.includes('DailyRem'))).toHaveLength(14);
+
+  const weekly = runLines([
+    '2026-09-01 WeeklyRem start:2026-09-07T09:00 frequency:weekly last-done:2026-09-21',
+  ]);
+  expect(weekly.window.filter(k => k.includes('WeeklyRem'))).toEqual(['reminder|2026-09-28|09:00|WeeklyRem']);
+});
+
+// Fix round 1. An event is 'allday' when its start is date-only and keeps a real 00:00 when timed;
+// a reminder's date-only or 00:00 time is still null.
+test('an all-day event and a timed T00:00 event are different rows; a 00:00 reminder is untimed', () => {
+  const { window } = runLines([
+    '2026-09-01 AllDay start:2026-09-22 type:event',
+    '2026-09-01 Midnight start:2026-09-22T00:00 type:event',
+    '2026-09-01 Birthday start:1975-09-23 type:birthday frequency:yearly',
+    '2026-09-01 Untimed start:2026-09-22',
+    '2026-09-01 MidnightReminder start:2026-09-22T00:00',
+  ]);
+  expect(window).toContain('event|2026-09-22|allday|AllDay');
+  expect(window).toContain('event|2026-09-22|00:00|Midnight');
+  expect(window).toContain('event|2026-09-23|allday|Birthday');
+  expect(window).toContain('reminder|2026-09-22|-|Untimed');
+  expect(window).toContain('reminder|2026-09-22|-|MidnightReminder');
+});
+
 test('an open one-off reminder overdue by 1..90 days is listed; older ones are only counted', () => {
   const dir = mkdtempSync(join(tmpdir(), 'parity-expected-'));
   try {

@@ -33,11 +33,18 @@ private func multiset(_ keys: [String]) -> [String: Int] {
     Dictionary(keys.map { ($0, 1) }, uniquingKeysWith: +)
 }
 
+/// 'allday' for an all-day event, the real HH:mm (a timed 00:00 event included) for a timed event,
+/// and nil for an untimed reminder (a reminder's date-only or 00:00 time). Matches the JSON's
+/// `time: 'HH:MM' | 'allday' | null`.
 private func timeString(_ item: AgendaItem) -> String? {
-    if case .event(let event) = item.kind, event.isAllDay { return nil }
     let c = cal.dateComponents([.hour, .minute], from: item.occurrence)
-    if c.hour == 0 && c.minute == 0 { return nil }
-    return String(format: "%02d:%02d", c.hour!, c.minute!)
+    let hhmm = String(format: "%02d:%02d", c.hour!, c.minute!)
+    switch item.kind {
+    case .event(let event):
+        return event.isAllDay ? "allday" : hhmm
+    case .reminder:
+        return hhmm == "00:00" ? nil : hhmm
+    }
 }
 
 private func nativeKey(_ item: AgendaItem) -> String {
@@ -60,6 +67,22 @@ private func diff(expected: [String: Int], got: [String: Int]) -> (missing: [Str
 
 private func describe(_ lines: [String]) -> String {
     (lines.prefix(40) + (lines.count > 40 ? ["… and \(lines.count - 40) more"] : [])).joined(separator: "\n")
+}
+
+/// Always on (not gated by the parity suite's trait): a run with only one of the two variables set
+/// is a misconfiguration and must not read as a silent skip.
+@Suite("todo.txt migration parity configuration")
+struct ParityConfigurationTests {
+    @Test("STARK_PARITY_DIR and STARK_PARITY_EXPECTED are either both set or both unset")
+    func environmentIsConsistent() {
+        let hasDir = env["STARK_PARITY_DIR"] != nil
+        let hasExpected = env["STARK_PARITY_EXPECTED"] != nil
+        if hasDir && !hasExpected {
+            Issue.record("STARK_PARITY_DIR is set but STARK_PARITY_EXPECTED is missing: the parity suite would be skipped")
+        } else if hasExpected && !hasDir {
+            Issue.record("STARK_PARITY_EXPECTED is set but STARK_PARITY_DIR is missing: the parity suite would be skipped")
+        }
+    }
 }
 
 @Suite("todo.txt migration parity", .enabled(if: parityEnabled))

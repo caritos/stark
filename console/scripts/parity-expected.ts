@@ -6,6 +6,10 @@ import { generateTaskOccurrences } from '../../shared/commands/focus';
 import { cleanTitle, parseWall } from '../../shared/ics/fields';
 import { buildRRule } from '../../shared/ics/rrule';
 
+/**
+ * `time` is 'HH:MM' for a timed row (a real 00:00 included for an event), 'allday' for an event
+ * whose start is date-only, and null for an untimed reminder (date-only or 00:00).
+ */
 interface Row { kind: 'event' | 'reminder'; date: string; time: string | null; title: string }
 
 function arg(name: string): string {
@@ -64,8 +68,21 @@ function isSeries(ext: Record<string, string>): boolean {
     && buildRRule(ext).rrule !== null;
 }
 
-const rowOf = (kind: Row['kind'], date: string, time: string | null, title: string): Row =>
-  ({ kind, date, time: time === '00:00' ? null : time, title });
+const reminderRow = (date: string, time: string | null, title: string): Row =>
+  ({ kind: 'reminder', date, time: time === '00:00' ? null : time, title });
+// An event's midnight is real (a timed 00:00 event); only a date-only start is all-day.
+const eventRow = (date: string, time: string | null, title: string): Row =>
+  ({ kind: 'event', date, time: time === null ? 'allday' : time, title });
+
+/**
+ * A COPY of the task without `last-done:`. convert.ts never exdates last-done for an event
+ * (native events have no completion state), so an event's occurrences are expanded without it.
+ * A reminder keeps it: the converter re-bases a reminder series past last-done.
+ */
+function withoutLastDone(task: Task): Task {
+  const { ['last-done']: _dropped, ...extensions } = task.extensions;
+  return { ...task, extensions };
+}
 const keyOf = (r: Row) => `${r.kind}|${r.date}|${r.time ?? '-'}|${r.title}`;
 
 const window: Row[] = [];
@@ -86,8 +103,8 @@ for (const task of tasks) {
   if (typed && startWall !== null) {
     const end = parseWall(ext['end']);
     if (!series && end !== null && end.date > startWall.date) multiDayEvents++;
-    for (const date of occurrenceDates(task, startWall.date, series, today, windowEnd)) {
-      window.push(rowOf('event', date, startWall.time, title));
+    for (const date of occurrenceDates(withoutLastDone(task), startWall.date, series, today, windowEnd)) {
+      window.push(eventRow(date, startWall.time, title));
     }
     continue;
   }
@@ -100,12 +117,12 @@ for (const task of tasks) {
   if (dueWall === null) continue;
   if (series) {
     for (const date of occurrenceDates(task, dueWall.date, true, today, windowEnd)) {
-      window.push(rowOf('reminder', date, dueWall.time, title));
+      window.push(reminderRow(date, dueWall.time, title));
     }
   } else if (dueWall.date >= today && dueWall.date <= windowEnd) {
-    window.push(rowOf('reminder', dueWall.date, dueWall.time, title));
+    window.push(reminderRow(dueWall.date, dueWall.time, title));
   } else if (dueWall.date < today) {
-    if (dueWall.date >= oldest) overdueOneOffs.push(rowOf('reminder', dueWall.date, dueWall.time, title));
+    if (dueWall.date >= oldest) overdueOneOffs.push(reminderRow(dueWall.date, dueWall.time, title));
     else olderOverdue++;
   }
 }
