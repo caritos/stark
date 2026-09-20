@@ -303,6 +303,42 @@ public final class PlannerStore: ObservableObject {
         rebuild()
     }
 
+    /// Records that the user attended or skipped one occurrence of an event, or clears the record
+    /// (`outcome == nil`). The mark lives on the event itself (in `recurring.ics` for a series, in
+    /// its month file for a one-off), so no copy is created and nothing is exdated: the occurrence
+    /// stays in the agenda. Matched by calendar day. Idempotent: no-op (nothing written) for an
+    /// unknown id, when that day already has this outcome, and when clearing an unmarked day.
+    public func setEventOutcome(id: String, on date: Date, outcome: EventOutcome?) {
+        let calendar = Calendar(identifier: .gregorian)
+
+        func updated(_ event: Event) -> Event? {
+            let existing = event.outcomes.first { calendar.isDate($0.date, inSameDayAs: date) }
+            guard existing?.outcome != outcome else { return nil }
+            var copy = event
+            copy.outcomes.removeAll { calendar.isDate($0.date, inSameDayAs: date) }
+            if let outcome { copy.outcomes.append(EventOutcomeRecord(date: date, outcome: outcome)) }
+            copy.outcomes.sort { $0.date < $1.date }
+            return copy
+        }
+
+        if let index = recurringEvents.firstIndex(where: { $0.id == id }) {
+            guard let copy = updated(recurringEvents[index]) else { return }
+            recurringEvents[index] = copy
+            persistRecurring()
+            rebuild()
+            return
+        }
+        for month in loadedMonths {
+            guard let index = monthEvents[month]?.firstIndex(where: { $0.id == id }),
+                  let source = monthEvents[month]?[index] else { continue }
+            guard let copy = updated(source) else { return }
+            monthEvents[month]?[index] = copy
+            persistMonth(month)
+            rebuild()
+            return
+        }
+    }
+
     /// Reminder counterpart of `skipEvent(id:on:)`. Like `completeReminder`, skipping a missed
     /// weekly/monthly/yearly occurrence (day before `today`'s) also exdates every earlier
     /// un-exdated miss inside the overdue lookback; skipping today or later clears nothing extra.
