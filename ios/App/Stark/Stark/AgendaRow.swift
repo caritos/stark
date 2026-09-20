@@ -22,8 +22,9 @@ struct AgendaRowView: View {
     /// Completed, or about to be: the filled check, struck-through secondary-colour title.
     private var looksDone: Bool { item.isCompleted || isPending }
 
-    /// An event occurrence the user marked "didn't attend": still shown, but dimmed and struck.
-    private var isSkipped: Bool { item.outcome == .skipped }
+    /// An event occurrence the user marked attended or "didn't attend": still shown, but dimmed
+    /// and struck like a completed reminder. The marker (check vs cross) says which.
+    private var hasOutcome: Bool { item.outcome != nil }
 
     var body: some View {
         let timeLine = self.timeLine
@@ -39,8 +40,8 @@ struct AgendaRowView: View {
                         .foregroundStyle(timeLine.isAccent ? Colors.accent : Colors.textSecondary)
                 }
                 Text(item.title)
-                    .strikethrough(looksDone || isSkipped)
-                    .foregroundStyle(looksDone || isSkipped ? Colors.textSecondary : Colors.text)
+                    .strikethrough(looksDone || hasOutcome)
+                    .foregroundStyle(looksDone || hasOutcome ? Colors.textSecondary : Colors.text)
                 if let location {
                     Text(location)
                         .font(.footnote)

@@ -89,7 +89,7 @@ Event marker and title, using existing `Colors`/`Fonts`, no new colours, hard ed
 | State | Marker (16 pt box) | Title |
 | --- | --- | --- |
 | none | today's small filled accent square | normal |
-| attended | filled accent square with a background-colour ✓ (same as a completed reminder) | normal (the event happened) |
+| attended | filled accent square with a background-colour ✓ (same as a completed reminder) | `Colors.textSecondary`, strikethrough (same as a completed reminder; changed from "normal" after the user's on-device check — every resolved item is crossed out) |
 | skipped | outlined square (`Colors.checkboxBorder`) with a ✗ in `Colors.textSecondary` | `Colors.textSecondary`, strikethrough |
 
 VoiceOver summary appends "attended" or "didn't attend". Whole-row tap still opens the detail sheet
