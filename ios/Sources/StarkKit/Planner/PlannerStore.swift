@@ -257,6 +257,28 @@ public final class PlannerStore: ObservableObject {
         }
     }
 
+    /// Skips one occurrence of a recurring event by adding an exception date to its master.
+    /// Unlike `completeReminder`, no copy is created. No-op for non-recurring or unknown ids,
+    /// and when that calendar day is already an exception.
+    public func skipEvent(id: String, on date: Date) {
+        guard let index = recurringEvents.firstIndex(where: { $0.id == id }) else { return }
+        let calendar = Calendar(identifier: .gregorian)
+        guard !recurringEvents[index].exceptionDates.contains(where: { calendar.isDate($0, inSameDayAs: date) }) else { return }
+        recurringEvents[index].exceptionDates.append(date)
+        persistRecurring()
+        rebuild()
+    }
+
+    /// Reminder counterpart of `skipEvent(id:on:)`.
+    public func skipReminder(id: String, on date: Date) {
+        guard let index = recurringReminders.firstIndex(where: { $0.id == id }) else { return }
+        let calendar = Calendar(identifier: .gregorian)
+        guard !recurringReminders[index].exceptionDates.contains(where: { calendar.isDate($0, inSameDayAs: date) }) else { return }
+        recurringReminders[index].exceptionDates.append(date)
+        persistRecurring()
+        rebuild()
+    }
+
     private func rebuild() {
         events = recurringEvents + monthEvents.values.flatMap { $0 }
         reminders = recurringReminders + monthReminders.values.flatMap { $0 }

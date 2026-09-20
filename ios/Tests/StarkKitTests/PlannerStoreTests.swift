@@ -442,4 +442,98 @@ struct PlannerStoreTests {
         #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
         #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
     }
+
+    // MARK: - skipEvent / skipReminder
+
+    private var septRange: ClosedRange<Date> {
+        DateMath.date(from: "2026-09-01")...DateMath.date(from: "2026-09-30")
+    }
+
+    private func isoDays(_ dates: [Date]) -> [String] {
+        dates.map { DateMath.isoDate(from: $0) }
+    }
+
+    @Test("skipEvent removes exactly that occurrence, keeps its neighbors, and persists across reload")
+    @MainActor
+    func skipEventRemovesOneOccurrence() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addEvent(Event(id: "evt-rec", title: "Weekly", start: DateMath.date(from: "2026-09-03"), recurrence: RecurrenceRule(frequency: .weekly)))
+        let all = OccurrenceExpander.expand(event: try #require(store.events.first), in: septRange)
+        #expect(isoDays(all) == ["2026-09-03", "2026-09-10", "2026-09-17", "2026-09-24"])
+
+        store.skipEvent(id: "evt-rec", on: DateMath.date(from: "2026-09-17"))
+
+        let live = try #require(store.events.first { $0.id == "evt-rec" })
+        #expect(isoDays(OccurrenceExpander.expand(event: live, in: septRange)) == ["2026-09-03", "2026-09-10", "2026-09-24"])
+        let reloaded = PlannerStore(file: file)
+        start(reloaded, around: Self.anchor)
+        let persisted = try #require(reloaded.events.first { $0.id == "evt-rec" })
+        #expect(isoDays(OccurrenceExpander.expand(event: persisted, in: septRange)) == ["2026-09-03", "2026-09-10", "2026-09-24"])
+    }
+
+    @Test("skipReminder removes exactly that occurrence, persists, and creates no completed reminder")
+    @MainActor
+    func skipReminderRemovesOneOccurrence() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: DateMath.date(from: "2026-09-03"), recurrence: RecurrenceRule(frequency: .weekly)))
+
+        store.skipReminder(id: "rem-rec", on: DateMath.date(from: "2026-09-17"))
+
+        let live = try #require(store.reminders.first { $0.id == "rem-rec" })
+        #expect(isoDays(OccurrenceExpander.expand(reminder: live, in: septRange)) == ["2026-09-03", "2026-09-10", "2026-09-24"])
+        #expect(store.reminders.count == 1)
+        #expect(store.reminders.filter(\.isCompleted).isEmpty)
+
+        let reloaded = PlannerStore(file: file)
+        start(reloaded, around: Self.anchor)
+        let persisted = try #require(reloaded.reminders.first { $0.id == "rem-rec" })
+        #expect(isoDays(OccurrenceExpander.expand(reminder: persisted, in: septRange)) == ["2026-09-03", "2026-09-10", "2026-09-24"])
+        #expect(reloaded.reminders.count == 1)
+        #expect(try file.loadMonth(sept).reminders.isEmpty)
+    }
+
+    @Test("skipping the same calendar day twice adds only one exception")
+    @MainActor
+    func skipSameDayTwiceAddsOneException() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: Self.anchor)
+        store.addEvent(Event(id: "evt-rec", title: "Weekly", start: DateMath.date(from: "2026-09-03"), recurrence: RecurrenceRule(frequency: .weekly)))
+        store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: DateMath.date(from: "2026-09-03"), recurrence: RecurrenceRule(frequency: .weekly)))
+        let noon = DateMath.date(from: "2026-09-17")
+        let evening = noon.addingTimeInterval(4 * 3600)
+
+        store.skipEvent(id: "evt-rec", on: noon)
+        store.skipEvent(id: "evt-rec", on: evening)
+        store.skipReminder(id: "rem-rec", on: noon)
+        store.skipReminder(id: "rem-rec", on: evening)
+
+        #expect(store.events.first { $0.id == "evt-rec" }?.exceptionDates.count == 1)
+        #expect(store.reminders.first { $0.id == "rem-rec" }?.exceptionDates.count == 1)
+    }
+
+    @Test("skip on a non-recurring or unknown item is a no-op and writes nothing")
+    @MainActor
+    func skipOnNonRecurringOrUnknownIsNoOp() throws {
+        let (store, _, root) = makeStore()
+        start(store, around: Self.anchor)
+        store.addEvent(Event(id: "evt-1", title: "Standup", start: DateMath.date(from: "2026-09-17")))
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+        let events = store.events
+        let reminders = store.reminders
+        // Delete the files so any rewrite by a no-op call would show up as a reappearance.
+        try FileManager.default.removeItem(at: docsURL(root, sept.fileName))
+
+        store.skipEvent(id: "evt-1", on: DateMath.date(from: "2026-09-17"))
+        store.skipReminder(id: "rem-1", on: DateMath.date(from: "2026-09-17"))
+        store.skipEvent(id: "nope", on: DateMath.date(from: "2026-09-17"))
+        store.skipReminder(id: "nope", on: DateMath.date(from: "2026-09-17"))
+
+        #expect(store.events == events)
+        #expect(store.reminders == reminders)
+        #expect(store.error == nil)
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, sept.fileName).path))
+        #expect(!FileManager.default.fileExists(atPath: docsURL(root, "recurring.ics").path))
+    }
 }
