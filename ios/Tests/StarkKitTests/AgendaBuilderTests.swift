@@ -309,4 +309,18 @@ struct AgendaBuilderTests {
 
         #expect(build(reminders: [reminder])[0].outcome == nil)
     }
+
+    // MARK: - Priority
+
+    @Test("a reminder's agenda item reports its priority level; events and unprioritised reminders report none")
+    func agendaItemPriority() {
+        let high = Reminder(id: "r1", title: "A", dueDate: d("2026-09-25"), priority: 1)
+        let plain = Reminder(id: "r2", title: "B", dueDate: d("2026-09-26"))
+        let event = Event(id: "e1", title: "C", start: d("2026-09-27"))
+
+        let items = build(events: [event], reminders: [high, plain])
+
+        #expect(items.map(\.title) == ["A", "B", "C"])
+        #expect(items.map(\.priority) == [.high, .none, .none])
+    }
 }

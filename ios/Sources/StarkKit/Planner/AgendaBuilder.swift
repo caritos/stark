@@ -60,6 +60,13 @@ public struct AgendaItem: Identifiable, Equatable {
         let calendar = Calendar(identifier: .gregorian)
         return event.outcomes.first { calendar.isDate($0.date, inSameDayAs: occurrence) }?.outcome
     }
+
+    /// Reminders only: the priority level shown as `!` marks on the row. `.none` for events and
+    /// for reminders without a priority.
+    public var priority: ReminderPriority {
+        guard case .reminder(let reminder) = kind else { return .none }
+        return ReminderPriority(icalValue: reminder.priority)
+    }
 }
 
 /// Expands every event/reminder into concrete dated agenda rows and sorts them. The single

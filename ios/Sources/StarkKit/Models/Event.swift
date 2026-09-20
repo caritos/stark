@@ -64,4 +64,15 @@ public struct Event: Equatable, Codable, Identifiable, Sendable {
         }
         return copy
     }
+
+    /// A copy moved to `date` and switched to all-day or timed. An all-day item is stored at the
+    /// start of its day. Switching between all-day and timed drops `end` (a timed range makes no
+    /// sense as all-day and vice versa); an event that keeps its kind keeps its duration, as
+    /// `settingStart(_:)` does. Every other field is left untouched.
+    public func rescheduled(to date: Date, allDay: Bool) -> Event {
+        var copy = settingStart(FormFields.normalizedStart(date, allDay: allDay))
+        if allDay != isAllDay { copy.end = nil }
+        copy.isAllDay = allDay
+        return copy
+    }
 }
