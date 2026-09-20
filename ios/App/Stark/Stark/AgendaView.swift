@@ -22,6 +22,9 @@ struct ScrollRequest: Equatable {
 struct AgendaView: View {
     @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
+    /// The real today, owned by `ContentView` (which advances it when the calendar day changes) so
+    /// this view re-renders on the new day instead of reading `Date()` once and going stale.
+    let today: Date
     let anchor: Date
     let scrollRequest: ScrollRequest?
     let onSelect: (AgendaItem) -> Void
@@ -55,7 +58,7 @@ struct AgendaView: View {
     }
 
     var body: some View {
-        let now = Date()
+        let now = today
         let todayStart = Self.calendar.startOfDay(for: now)
         let sections = makeSections(now: now)
         let rows = makeRows(sections, todayStart: todayStart)

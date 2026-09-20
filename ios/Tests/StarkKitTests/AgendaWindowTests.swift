@@ -168,6 +168,127 @@ struct AgendaWindowTests {
         #expect(isoDay(range.upperBound, calendar: ny) == "2026-04-30")
     }
 
+    // MARK: - refreshedAnchor (following the calendar past midnight)
+
+    private func zone(_ identifier: String) -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: identifier)!
+        return calendar
+    }
+
+    @Test("same calendar day: the anchor is left exactly as it was")
+    func refreshSameDayUnchanged() {
+        let seen = dt("2026-09-20", hour: 9)
+        let now = dt("2026-09-20", hour: 23, minute: 59)
+
+        // Following today...
+        #expect(AgendaWindow.refreshedAnchor(current: seen, lastSeenToday: seen, now: now) == seen)
+        // ...or re-centred elsewhere.
+        let elsewhere = dt("2027-01-15", hour: 12)
+        #expect(AgendaWindow.refreshedAnchor(current: elsewhere, lastSeenToday: seen, now: now) == elsewhere)
+    }
+
+    @Test("new day while following today: the anchor moves to the new today")
+    func refreshNewDayFollowingMovesAnchor() {
+        let seen = dt("2026-09-20", hour: 9)
+        let now = dt("2026-09-21", hour: 0, minute: 1)
+
+        #expect(AgendaWindow.refreshedAnchor(current: seen, lastSeenToday: seen, now: now) == now)
+    }
+
+    @Test("following is judged by the anchor's day, not its time of day")
+    func refreshFollowingIgnoresTimeOfDay() {
+        let seen = dt("2026-09-20", hour: 9)
+        // A re-centre onto today stores a noon anchor.
+        let noonAnchor = dt("2026-09-20", hour: 12)
+        let now = dt("2026-09-21", hour: 8)
+
+        #expect(AgendaWindow.refreshedAnchor(current: noonAnchor, lastSeenToday: seen, now: now) == now)
+    }
+
+    @Test("new day but the user re-centred elsewhere: the anchor is left alone")
+    func refreshNewDayRecentredUnchanged() {
+        let seen = dt("2026-09-20", hour: 9)
+        let elsewhere = dt("2027-01-15", hour: 12)
+        let now = dt("2026-09-21", hour: 0, minute: 1)
+
+        #expect(AgendaWindow.refreshedAnchor(current: elsewhere, lastSeenToday: seen, now: now) == elsewhere)
+    }
+
+    @Test("an anchor on yesterday (not the last-seen today) is not following")
+    func refreshAnchorOnAnotherRecentDayUnchanged() {
+        let seen = dt("2026-09-20", hour: 9)
+        let yesterday = dt("2026-09-19", hour: 12)
+        let now = dt("2026-09-21", hour: 9)
+
+        #expect(AgendaWindow.refreshedAnchor(current: yesterday, lastSeenToday: seen, now: now) == yesterday)
+    }
+
+    @Test("several days later (app left in the background) still moves a following anchor to the new today")
+    func refreshAfterSeveralDays() {
+        let seen = dt("2026-09-20", hour: 9)
+        let now = dt("2026-09-25", hour: 7)
+
+        #expect(AgendaWindow.refreshedAnchor(current: seen, lastSeenToday: seen, now: now) == now)
+    }
+
+    @Test("the fall-back day (25 hours, New York) is one day: no move at 00:30, at the repeated 01:30, or at 23:30")
+    func refreshWithinFallBackDay() {
+        let ny = newYork()
+        let seen = dt("2026-11-01", hour: 0, minute: 30, calendar: ny)
+        // 01:30 happens twice; the second (EST) one is an hour after the first.
+        let secondOneThirty = dt("2026-11-01", hour: 1, minute: 30, calendar: ny).addingTimeInterval(3600)
+        let lateEvening = dt("2026-11-01", hour: 23, minute: 30, calendar: ny)
+
+        #expect(AgendaWindow.refreshedAnchor(current: seen, lastSeenToday: seen, now: secondOneThirty, calendar: ny) == seen)
+        #expect(AgendaWindow.refreshedAnchor(current: seen, lastSeenToday: seen, now: lateEvening, calendar: ny) == seen)
+    }
+
+    @Test("crossing midnight into and out of the fall-back day moves a following anchor")
+    func refreshAcrossFallBackMidnights() {
+        let ny = newYork()
+        let beforeMidnight = dt("2026-10-31", hour: 23, minute: 30, calendar: ny)
+        let afterMidnight = dt("2026-11-01", hour: 0, minute: 10, calendar: ny)
+        let nextDay = dt("2026-11-02", hour: 0, minute: 10, calendar: ny)
+
+        #expect(AgendaWindow.refreshedAnchor(current: beforeMidnight, lastSeenToday: beforeMidnight, now: afterMidnight, calendar: ny) == afterMidnight)
+        #expect(AgendaWindow.refreshedAnchor(current: afterMidnight, lastSeenToday: afterMidnight, now: nextDay, calendar: ny) == nextDay)
+    }
+
+    @Test("a spring-forward night (New York) still counts as exactly one day change")
+    func refreshAcrossSpringForward() {
+        let ny = newYork()
+        let saturdayNight = dt("2026-03-07", hour: 23, minute: 30, calendar: ny)
+        let sundayMorning = dt("2026-03-08", hour: 3, minute: 5, calendar: ny)
+
+        #expect(AgendaWindow.refreshedAnchor(current: saturdayNight, lastSeenToday: saturdayNight, now: sundayMorning, calendar: ny) == sundayMorning)
+    }
+
+    @Test("a timezone change that moves the local date forward counts as a new day for a following anchor")
+    func refreshAfterTimezoneChange() {
+        // 14:00 in Los Angeles is 23:00 in Paris the same evening; an hour later, in Paris it is
+        // already the next calendar day.
+        let seenInLA = dt("2026-09-20", hour: 14, calendar: zone("America/Los_Angeles"))
+        let now = dt("2026-09-20", hour: 15, calendar: zone("America/Los_Angeles"))
+        let paris = zone("Europe/Paris")
+        #expect(paris.isDate(seenInLA, inSameDayAs: now) == false)
+
+        #expect(AgendaWindow.refreshedAnchor(current: seenInLA, lastSeenToday: seenInLA, now: now, calendar: paris) == now)
+        // In Los Angeles the same two instants are one day: nothing moves.
+        #expect(AgendaWindow.refreshedAnchor(current: seenInLA, lastSeenToday: seenInLA, now: now, calendar: zone("America/Los_Angeles")) == seenInLA)
+    }
+
+    @Test("the refreshed anchor's window covers the new today")
+    func refreshedWindowContainsNewToday() {
+        let seen = dt("2026-09-20", hour: 9)
+        let now = dt("2026-09-21", hour: 0, minute: 1)
+
+        let anchor = AgendaWindow.refreshedAnchor(current: seen, lastSeenToday: seen, now: now)
+
+        #expect(AgendaWindow.range(around: anchor).contains(now))
+        #expect(AgendaWindow.loadRange(around: anchor).contains(now))
+    }
+
     @Test("the load range across a DST change is a superset of the display range and covers the same months")
     func loadRangeAcrossDST() {
         let ny = newYork()

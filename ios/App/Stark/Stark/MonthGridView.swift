@@ -7,6 +7,8 @@ import StarkKit
 struct MonthGridView: View {
     @EnvironmentObject private var store: PlannerStore
     @State private var visibleMonth = YearMonth(date: Date())
+    /// Passed in (not read from `Date()` here) so the highlight moves when the day changes.
+    let today: Date
     let selectedDate: Date
     let onSelectDate: (Date) -> Void
 
@@ -23,7 +25,7 @@ struct MonthGridView: View {
         // DateMath.weekday: 0 = Sunday ... 6 = Saturday, i.e. the count of leading blanks
         // for a Sunday-first grid.
         let leadingBlanks = DateMath.weekday(year: visibleMonth.year, month0: visibleMonth.month0, day: 1)
-        let todayIso = DateMath.isoDate(from: Date())
+        let todayIso = DateMath.isoDate(from: today)
         let selectedIso = DateMath.isoDate(from: selectedDate)
 
         VStack(spacing: 0) {
@@ -57,6 +59,12 @@ struct MonthGridView: View {
         .padding(.bottom, Spacing.sm)
         .background(Colors.background)
         .task { store.loadMonth(visibleMonth) }
+        // The day rolled over: if the grid was showing the old today's month, show the new one's.
+        .onChange(of: today) { oldToday, newToday in
+            guard visibleMonth == YearMonth(date: oldToday) else { return }
+            visibleMonth = YearMonth(date: newToday)
+            store.loadMonth(visibleMonth)
+        }
     }
 
     private enum Cell: Hashable {

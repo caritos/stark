@@ -15,11 +15,23 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var selectedItem: AgendaItem?
-    @State private var selectedDate = Date()
+    @State private var selectedDate: Date
     @State private var scrollRequest: ScrollRequest?
     /// The date the agenda's display window (`AgendaWindow.range(around:)`) is centred on:
     /// today, until a grid tap outside that window re-centres it.
-    @State private var agendaAnchor = Date()
+    @State private var agendaAnchor: Date
+    /// The "today" the screen was last drawn for. It is state, and handed to the grid and the
+    /// agenda, so that when the calendar day changes (see `followCalendarDay`) they re-render
+    /// and highlight the new today rather than reading `Date()` once and going stale.
+    @State private var today: Date
+
+    init() {
+        // One instant for all three, so a launch right at midnight can't split them across days.
+        let now = Date()
+        _selectedDate = State(initialValue: now)
+        _agendaAnchor = State(initialValue: now)
+        _today = State(initialValue: now)
+    }
 
     var body: some View {
         NavigationStack {
@@ -36,11 +48,11 @@ struct ContentView: View {
                             .background(Colors.accent)
                     }
                 }
-                MonthGridView(selectedDate: selectedDate, onSelectDate: selectDate)
+                MonthGridView(today: today, selectedDate: selectedDate, onSelectDate: selectDate)
                 Rectangle()
                     .fill(Colors.separator)
                     .frame(height: 1)
-                AgendaView(anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
+                AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
             }
             .background(Colors.background)
             .navigationBarTitleDisplayMode(.inline)
@@ -59,17 +71,40 @@ struct ContentView: View {
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
                     store.retryPendingWrites()
+                    followCalendarDay()
                 } else {
                     // The undo window's timer doesn't survive the app being suspended or
                     // killed, so commit any still-pending completions on the way out.
                     pending.flush()
                 }
             }
+            // Midnight, or the clock / timezone changed, while the app is in the foreground.
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+                followCalendarDay()
+            }
         }
         .tint(Colors.accent)
         // The design is dark-only (Colors.* are dark-theme tokens); without this, system
         // sheets and Forms would render light with near-white text.
         .preferredColorScheme(.dark)
+    }
+
+    /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone
+    /// changed). On a new day, `today` always advances; the window only follows if it was still
+    /// centred on the old today (`AgendaWindow.refreshedAnchor` decides) — a window the user
+    /// deliberately re-centred elsewhere is left alone. Following loads the months the new window
+    /// needs *before* switching to it, then selects and scrolls to the new today.
+    private func followCalendarDay() {
+        let now = Date()
+        guard !Calendar(identifier: .gregorian).isDate(now, inSameDayAs: today) else { return }
+        let newAnchor = AgendaWindow.refreshedAnchor(current: agendaAnchor, lastSeenToday: today, now: now)
+        let wasFollowing = newAnchor != agendaAnchor
+        today = now
+        guard wasFollowing else { return }
+        store.loadMonths(covering: AgendaWindow.loadRange(around: newAnchor))
+        agendaAnchor = newAnchor
+        selectedDate = newAnchor
+        scrollRequest = ScrollRequest(date: newAnchor)
     }
 
     /// A day was tapped in the month grid: scroll the agenda to that day's header. A day outside

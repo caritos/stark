@@ -37,6 +37,28 @@ public enum AgendaWindow {
         wholeDays(from: -overdueLookbackDays, through: daysAfter, around: date, calendar: calendar)
     }
 
+    /// Where the agenda's anchor should be after the calendar may have moved on (app foregrounded,
+    /// midnight passed, or the clock/timezone changed). `lastSeenToday` is the "today" the UI last
+    /// acted on; `current` is the anchor the display window is centred on.
+    ///
+    /// - Same calendar day as `lastSeenToday`: nothing happened; `current` is returned unchanged.
+    /// - A new day, and the anchor was following today (its day is `lastSeenToday`'s day): the
+    ///   anchor follows to `now`.
+    /// - A new day, but the user had deliberately re-centred elsewhere: `current` is left alone.
+    ///
+    /// Days are compared with `calendar` (never 24-hour arithmetic), so DST days and timezone
+    /// changes decide by the local calendar date.
+    public static func refreshedAnchor(
+        current: Date,
+        lastSeenToday: Date,
+        now: Date,
+        calendar: Calendar = Calendar(identifier: .gregorian)
+    ) -> Date {
+        guard !calendar.isDate(now, inSameDayAs: lastSeenToday) else { return current }
+        guard calendar.isDate(current, inSameDayAs: lastSeenToday) else { return current }
+        return now
+    }
+
     /// Start of the day `first` days from `date`'s day, through the last second of the day
     /// `last` days from it.
     private static func wholeDays(from first: Int, through last: Int, around date: Date, calendar: Calendar) -> ClosedRange<Date> {
