@@ -89,4 +89,32 @@ describe('buildRRule: UNTIL', () => {
   test('a malformed recur-until is ignored and reported', () => {
     expect(r({ frequency: 'weekly', 'recur-until': 'soon' })).toEqual({ rrule: 'FREQ=WEEKLY', unsupported: null, ignored: ['recur-until:soon'] });
   });
+  test('an impossible calendar date in recur-until is ignored and reported', () => {
+    expect(r({ frequency: 'weekly', 'recur-until': '2026-13-45' })).toEqual({ rrule: 'FREQ=WEEKLY', unsupported: null, ignored: ['recur-until:2026-13-45'] });
+    expect(r({ frequency: 'weekly', 'recur-until': '2026-02-30' })).toEqual({ rrule: 'FREQ=WEEKLY', unsupported: null, ignored: ['recur-until:2026-02-30'] });
+  });
+  test('a valid leap day in recur-until produces UNTIL', () => {
+    expect(r({ frequency: 'weekly', 'recur-until': '2028-02-29' }).rrule).toBe('FREQ=WEEKLY;UNTIL=20280229');
+  });
+});
+
+describe('buildRRule: prototype-inherited keys', () => {
+  test('prototype-inherited day-code keys are unsupported', () => {
+    expect(r({ frequency: 'weekly', 'frequency-day': 'constructor' })).toEqual({
+      rrule: null, unsupported: 'frequency-day:constructor', ignored: [],
+    });
+  });
+  test('prototype-inherited position keys are unsupported', () => {
+    expect(r({ frequency: 'monthly', 'frequency-month-day': 'first-constructor' })).toEqual({
+      rrule: null, unsupported: 'frequency-month-day:first-constructor', ignored: [],
+    });
+    expect(r({ frequency: 'monthly', 'frequency-month-day': '__proto__-day' })).toEqual({
+      rrule: null, unsupported: 'frequency-month-day:__proto__-day', ignored: [],
+    });
+  });
+  test('prototype-inherited month names are unsupported', () => {
+    expect(r({ frequency: 'yearly', 'frequency-month': 'toString' })).toEqual({
+      rrule: null, unsupported: 'frequency-month:toString', ignored: [],
+    });
+  });
 });

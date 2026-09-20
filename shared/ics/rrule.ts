@@ -16,6 +16,22 @@ const MONTHS: Record<string, number> = {
 };
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// Helper to safely lookup map keys, rejecting inherited properties
+function safeMapLookup(map: Record<string, any>, key: string): any {
+  return Object.hasOwn(map, key) ? map[key] : undefined;
+}
+
+// Validate that a date string represents a valid calendar date
+function isValidDate(dateStr: string): boolean {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
 function encodeMonthDay(value: string): string[] | null {
   if (/^\d+$/.test(value)) {
     const n = Number(value);
@@ -23,10 +39,10 @@ function encodeMonthDay(value: string): string[] | null {
   }
   const dash = value.indexOf('-');
   if (dash < 0) return null;
-  const position = POSITIONS[value.slice(0, dash)];
+  const position = safeMapLookup(POSITIONS, value.slice(0, dash));
   const dayType = value.slice(dash + 1);
   if (position === undefined) return null;
-  const weekday = WEEKDAY_NAMES[dayType];
+  const weekday = safeMapLookup(WEEKDAY_NAMES, dayType);
   if (weekday) return [`BYDAY=${position}${weekday}`];
   if (dayType === 'day') return [`BYMONTHDAY=${position}`];
   if (dayType === 'weekday') return ['BYDAY=MO,TU,WE,TH,FR', `BYSETPOS=${position}`];
@@ -57,7 +73,7 @@ export function buildRRule(ext: Record<string, string>): RRuleResult {
     } else {
       const codes: string[] = [];
       for (const d of days.split(',')) {
-        const code = DAY_CODES[d];
+        const code = safeMapLookup(DAY_CODES, d);
         if (!code) return unsupported(`frequency-day:${days}`);
         codes.push(code);
       }
@@ -83,7 +99,7 @@ export function buildRRule(ext: Record<string, string>): RRuleResult {
     } else {
       const numbers: number[] = [];
       for (const m of months.split(',')) {
-        const n = MONTHS[m];
+        const n = safeMapLookup(MONTHS, m);
         if (n === undefined) return unsupported(`frequency-month:${months}`);
         numbers.push(n);
       }
@@ -93,7 +109,7 @@ export function buildRRule(ext: Record<string, string>): RRuleResult {
 
   const until = ext['recur-until'];
   if (until !== undefined) {
-    if (DATE_RE.test(until)) parts.push(`UNTIL=${until.replace(/-/g, '')}`);
+    if (DATE_RE.test(until) && isValidDate(until)) parts.push(`UNTIL=${until.replace(/-/g, '')}`);
     else result.ignored.push(`recur-until:${until}`);
   }
 
