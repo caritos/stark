@@ -12,9 +12,9 @@ struct EditItemView: View {
         Form {
             Text(item.title).foregroundStyle(Colors.text)
 
-            if case .reminder(let reminder, let occurrence) = item, !reminder.isCompleted {
+            if case .reminder(let reminder) = item.kind, !reminder.isCompleted {
                 Button("Done") {
-                    store.completeReminder(id: reminder.id, on: occurrence)
+                    store.completeReminder(id: reminder.id, on: item.occurrence)
                     dismiss()
                 }
             }
@@ -23,24 +23,17 @@ struct EditItemView: View {
         }
         .confirmationDialog(deleteMessage, isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
-                switch item {
-                case .event(let event, _): store.deleteEvent(id: event.id)
-                case .reminder(let reminder, _): store.deleteReminder(id: reminder.id)
+                switch item.kind {
+                case .event(let event): store.deleteEvent(id: event.id)
+                case .reminder(let reminder): store.deleteReminder(id: reminder.id)
                 }
                 dismiss()
             }
         }
     }
 
-    private var isRecurring: Bool {
-        switch item {
-        case .event(let e, _): return e.recurrence != nil
-        case .reminder(let r, _): return r.recurrence != nil
-        }
-    }
-
     private var deleteMessage: String {
-        isRecurring
+        item.isRecurring
             ? "This deletes all future occurrences."
             : "This cannot be undone."
     }

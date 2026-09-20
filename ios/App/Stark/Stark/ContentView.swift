@@ -39,7 +39,8 @@ struct ContentView: View {
             .sheet(isPresented: $showAdd) { AddItemView() }
             .sheet(item: $selectedItem) { item in EditItemView(item: item) }
             .task {
-                let range = AgendaWindow.range(around: Date())
+                // Load the wider window (includes the overdue lookback), not the display window.
+                let range = AgendaWindow.loadRange(around: Date())
                 store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
             }
             .onChange(of: scenePhase) { _, newPhase in

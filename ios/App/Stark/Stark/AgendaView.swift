@@ -7,19 +7,19 @@ struct AgendaView: View {
     let onSelect: (AgendaItem) -> Void
 
     var body: some View {
-        let items = buildAgendaItems(events: store.events, reminders: store.reminders, in: AgendaWindow.range(around: Date()))
+        let now = Date()
+        let items = buildAgendaItems(
+            events: store.events,
+            reminders: store.reminders,
+            in: AgendaWindow.range(around: now),
+            today: now
+        )
 
         List(items) { item in
             Button {
                 onSelect(item)
             } label: {
-                HStack {
-                    Text(item.title)
-                        .foregroundStyle(Colors.text)
-                    Spacer()
-                    Text(item.occurrence.formatted(date: .abbreviated, time: .omitted))
-                        .foregroundStyle(Colors.textSecondary)
-                }
+                AgendaRowView(item: item)
             }
             .listRowBackground(Colors.background)
         }
