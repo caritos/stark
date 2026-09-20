@@ -11,6 +11,7 @@ import StarkKit
 /// One screen: month grid on top, day-grouped agenda filling the rest.
 struct ContentView: View {
     @EnvironmentObject private var store: PlannerStore
+    @EnvironmentObject private var pending: PendingCompletions
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var selectedItem: AgendaItem?
@@ -58,6 +59,10 @@ struct ContentView: View {
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
                     store.retryPendingWrites()
+                } else {
+                    // The undo window's timer doesn't survive the app being suspended or
+                    // killed, so commit any still-pending completions on the way out.
+                    pending.flush()
                 }
             }
         }

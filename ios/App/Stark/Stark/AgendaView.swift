@@ -21,6 +21,7 @@ struct ScrollRequest: Equatable {
 /// is today) are simply not shown until the window returns to today. That is expected.
 struct AgendaView: View {
     @EnvironmentObject private var store: PlannerStore
+    @EnvironmentObject private var pending: PendingCompletions
     let anchor: Date
     let scrollRequest: ScrollRequest?
     let onSelect: (AgendaItem) -> Void
@@ -80,21 +81,7 @@ struct AgendaView: View {
                                 .listRowBackground(Colors.background)
                                 .listRowInsets(EdgeInsets())
                         case .item(let item, let endsSection, let divider):
-                            Button {
-                                onSelect(item)
-                            } label: {
-                                AgendaRowView(item: item)
-                                    .padding(.horizontal, Spacing.md)
-                                    .padding(.vertical, Spacing.xs + 2)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .modifier(SectionEnd(endsSection: endsSection, divider: divider))
-                            .frame(minHeight: Self.rowMinHeight)
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Colors.background)
-                            .listRowInsets(EdgeInsets())
+                            itemRow(item, endsSection: endsSection, divider: divider)
                         case .tail:
                             Color.clear
                                 .frame(height: geometry.size.height)
@@ -115,6 +102,8 @@ struct AgendaView: View {
                 .onAppear {
                     scrollToToday(proxy, todayStart: todayStart)
                 }
+                // Never drop a still-pending completion when the agenda goes away.
+                .onDisappear { pending.flush() }
                 .onChange(of: itemCount) { _, _ in
                     guard !hasSettled else { return }
                     scrollToToday(proxy, todayStart: todayStart)
@@ -167,6 +156,51 @@ struct AgendaView: View {
         .listRowSeparator(.hidden)
         .listRowBackground(Colors.background)
         .listRowInsets(EdgeInsets())
+    }
+
+    /// One agenda item: the row's visuals with its tap targets laid over them.
+    private func itemRow(_ item: AgendaItem, endsSection: Bool, divider: Bool) -> some View {
+        let isPending = pending.isPending(item.id)
+        let rowView = AgendaRowView(item: item, isPending: isPending)
+        let isReminder: Bool = {
+            if case .reminder = item.kind { return true }
+            return false
+        }()
+        // The visuals, exactly as before (not tappable, hidden from VoiceOver)...
+        return rowView
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.xs + 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityHidden(true)
+            .modifier(SectionEnd(endsSection: endsSection, divider: divider))
+            .frame(minHeight: Self.rowMinHeight)
+            // ...with the taps laid over the finished row rectangle, so they cover all of it
+            // (padding, section gap and min height included). The checkbox and the "open
+            // details" area are non-overlapping sibling `.plain` buttons; see `AgendaRowTargets`
+            // for why that keeps the two taps from ever fighting.
+            .overlay {
+                AgendaRowTargets(
+                    looksDone: item.isCompleted || isPending,
+                    summary: rowView.accessibilitySummary,
+                    onSelect: { onSelect(item) },
+                    onToggleComplete: isReminder ? { toggleComplete(item) } : nil
+                )
+            }
+            .listRowSeparator(.hidden)
+            .listRowBackground(Colors.background)
+            .listRowInsets(EdgeInsets())
+    }
+
+    /// The checkbox was tapped. A completed reminder reopens immediately (no grace window); an
+    /// incomplete one starts a pending completion, or cancels it if one is already pending.
+    /// `item.id` (reminder id + occurrence) is the stable pending key, never a list position.
+    private func toggleComplete(_ item: AgendaItem) {
+        guard case .reminder(let reminder) = item.kind else { return }
+        if reminder.isCompleted {
+            store.uncompleteReminder(id: reminder.id)
+        } else {
+            pending.toggle(key: item.id, reminderID: reminder.id, occurrence: item.occurrence)
+        }
     }
 
     // MARK: Data

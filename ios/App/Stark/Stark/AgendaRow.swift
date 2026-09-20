@@ -6,10 +6,19 @@ import StarkKit
 /// (square checkbox for reminders, small filled square for events) and a text column with a
 /// small time line, the title, and (events) the location. The date lives in the section header,
 /// so the row never shows one except for an overdue reminder's missed date.
+///
+/// This view is **visuals only** — nothing in it is tappable. The taps live in
+/// `AgendaRowTargets`, laid over the whole row by `AgendaView` (see the note there).
 struct AgendaRowView: View {
     let item: AgendaItem
+    /// A completion the user has started but that hasn't been committed yet (the 2.5s undo
+    /// window, see `PendingCompletions`). It looks exactly like a completed reminder.
+    var isPending = false
 
     private static let markerSize: CGFloat = 16
+
+    /// Completed, or about to be: the filled check, struck-through secondary-colour title.
+    private var looksDone: Bool { item.isCompleted || isPending }
 
     var body: some View {
         let timeLine = self.timeLine
@@ -25,8 +34,8 @@ struct AgendaRowView: View {
                         .foregroundStyle(timeLine.isAccent ? Colors.accent : Colors.textSecondary)
                 }
                 Text(item.title)
-                    .strikethrough(item.isCompleted)
-                    .foregroundStyle(item.isCompleted ? Colors.textSecondary : Colors.text)
+                    .strikethrough(looksDone)
+                    .foregroundStyle(looksDone ? Colors.textSecondary : Colors.text)
                 if let location {
                     Text(location)
                         .font(.footnote)
@@ -48,7 +57,7 @@ struct AgendaRowView: View {
                 .fill(Colors.accent)
                 .frame(width: 8, height: 8)
         case .reminder:
-            if item.isCompleted {
+            if looksDone {
                 Rectangle()
                     .fill(Colors.accent)
                     .overlay {
@@ -57,10 +66,25 @@ struct AgendaRowView: View {
                             .foregroundStyle(Colors.background)
                     }
             } else {
+                // An overdue reminder's outline is accent-coloured (the Expo app's
+                // `agendaIconOverdue`); a pending one is `looksDone` and never gets here.
                 Rectangle()
-                    .strokeBorder(Colors.checkboxBorder, lineWidth: 1.5)
+                    .strokeBorder(item.isOverdue ? Colors.accent : Colors.checkboxBorder, lineWidth: 1.5)
             }
         }
+    }
+
+    // MARK: Accessibility
+
+    /// What VoiceOver reads for the row's "open details" button: the same information the
+    /// (hidden) visuals show.
+    var accessibilitySummary: String {
+        var parts: [String] = []
+        if let timeLine { parts.append(timeLine.text) }
+        parts.append(item.title)
+        if let location { parts.append(location) }
+        if looksDone { parts.append("completed") }
+        return parts.joined(separator: ", ")
     }
 
     // MARK: Text
@@ -84,6 +108,60 @@ struct AgendaRowView: View {
             }
             guard !AgendaFormat.isMidnight(item.occurrence) else { return nil }
             return (AgendaFormat.time(item.occurrence), false)
+        }
+    }
+}
+
+/// The row's tap targets, laid over the row's visuals with `.overlay` (see `AgendaView`).
+///
+/// **Why it is built this way.** The row used to be one `Button` wrapping everything, so the
+/// checkbox was just a picture inside the "open details" button: tapping it opened the sheet.
+/// The two taps must never compete, so this makes it impossible for them to:
+///
+/// 1. **No nesting.** A `Button` inside another `Button`'s label does not work in SwiftUI (the
+///    outer one swallows the tap). The two buttons here are siblings in an `HStack`, and neither
+///    contains the other or any other interactive view.
+/// 2. **No overlap.** The `HStack` partitions the row rectangle exactly: the checkbox button
+///    gets a fixed 44pt-wide strip from the row's leading edge, the details button gets all the
+///    rest, and both stretch the full row height. Every point of the row belongs to exactly one
+///    button, so no hit-test priority rule ever has to pick a winner. (Reminder rows only; an
+///    event's marker is decorative, so an event row is a single details button.)
+/// 3. **Explicit `.buttonStyle(.plain)` on each.** In a `List` row the default (`.automatic`)
+///    button style makes the whole row one tap target that fires every `Button` inside it;
+///    `.plain` (like `.borderless`) makes each `Button` its own independent target.
+/// 4. **Real hit areas.** The labels are `Color.clear` with `.contentShape(Rectangle())`, since
+///    a transparent view isn't hit-testable by default and a `.plain` button only responds
+///    where its label's content shape is.
+///
+/// The visuals underneath stay exactly as they were (they aren't tappable at all — the overlay
+/// sits on top), and are hidden from VoiceOver so it sees only these two labelled buttons.
+struct AgendaRowTargets: View {
+    /// Whether the checkbox currently *shows* done (completed, or a pending completion).
+    let looksDone: Bool
+    let summary: String
+    let onSelect: () -> Void
+    /// Nil for events, which have no checkbox.
+    let onToggleComplete: (() -> Void)?
+
+    /// Apple's minimum touch target.
+    static let checkboxWidth: CGFloat = 44
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if let onToggleComplete {
+                Button(action: onToggleComplete) {
+                    Color.clear.contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(width: Self.checkboxWidth)
+                .accessibilityLabel(looksDone ? "Mark incomplete" : "Mark complete")
+            }
+            Button(action: onSelect) {
+                Color.clear.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(summary)
+            .accessibilityHint("Opens details")
         }
     }
 }
