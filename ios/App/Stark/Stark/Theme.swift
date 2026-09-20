@@ -28,6 +28,34 @@ enum Fonts {
     }
 }
 
+/// A toolbar button without iOS 26's rounded glass capsule (the design has no rounded
+/// corners). Where the API doesn't exist (iOS 17-25) the plain toolbar button is already flat.
+struct FlatToolbarButton: ToolbarContent {
+    let title: String
+    var systemImage: String? = nil
+    let placement: ToolbarItemPlacement
+    var isDisabled = false
+    let action: () -> Void
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: placement) { button }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: placement) { button }
+        }
+    }
+
+    @ViewBuilder
+    private var button: some View {
+        if let systemImage {
+            Button(title, systemImage: systemImage, action: action).disabled(isDisabled)
+        } else {
+            Button(title, action: action).disabled(isDisabled)
+        }
+    }
+}
+
 private extension Color {
     init(hex: UInt32) {
         self.init(

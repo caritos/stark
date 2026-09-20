@@ -46,7 +46,7 @@ struct ContentView: View {
             .toolbarBackground(Colors.background, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
-                AddToolbarItem { showAdd = true }
+                FlatToolbarButton(title: "Add", systemImage: "plus", placement: .primaryAction) { showAdd = true }
             }
             .sheet(isPresented: $showAdd) { AddItemView() }
             .sheet(item: $selectedItem) { item in EditItemView(item: item) }
@@ -65,24 +65,5 @@ struct ContentView: View {
         // The design is dark-only (Colors.* are dark-theme tokens); without this, system
         // sheets and Forms would render light with near-white text.
         .preferredColorScheme(.dark)
-    }
-}
-
-/// The "Add" toolbar button. On iOS 26 toolbar items get a rounded glass capsule; the design
-/// has no rounded corners, so the shared background is hidden where the API exists.
-private struct AddToolbarItem: ToolbarContent {
-    let action: () -> Void
-
-    var body: some ToolbarContent {
-        if #available(iOS 26.0, *) {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Add", systemImage: "plus", action: action)
-            }
-            .sharedBackgroundVisibility(.hidden)
-        } else {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Add", systemImage: "plus", action: action)
-            }
-        }
     }
 }
