@@ -2,12 +2,16 @@
 import SwiftUI
 import StarkKit
 
-/// Fixed-height, Sunday-first month grid. Today is a filled accent square, the selected day
-/// (when it isn't today) an outlined one.
+/// Fixed-height, Sunday-first month grid, always 6 rows x 7 columns. The cells before day 1 and
+/// after the month's last day show the neighbouring months' real dates, dimmed
+/// (`Colors.textSecondary`), with their density markers; tapping one selects it and scrolls the
+/// agenda, but the grid stays on the visible month (only the chevrons page). Today is a filled
+/// accent square (on whichever cell it falls, in the month or not), the selected day (when it
+/// isn't today) an outlined one.
 ///
 /// Under each day number sits a row of density markers (flat 4pt squares, no circles): up to
 /// `maxMarkers` accent ones for tasks, then up to `maxMarkers` `Colors.eventDot` ones for events.
-/// The counts come from `dayDensity`, i.e. from the same `buildAgendaItems` the agenda uses, so
+/// The counts come from `gridDensity`, i.e. from the same `buildAgendaItems` the agenda uses, so
 /// the grid can't disagree with the list. The marker row keeps its height on an empty day, and
 /// sits below the number's square so an accent marker stays visible on today's filled cell.
 struct MonthGridView: View {
@@ -38,10 +42,6 @@ struct MonthGridView: View {
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
     var body: some View {
-        let daysInMonth = DateMath.daysInMonth(year: visibleMonth.year, month0: visibleMonth.month0)
-        // DateMath.weekday: 0 = Sunday ... 6 = Saturday, i.e. the count of leading blanks
-        // for a Sunday-first grid.
-        let leadingBlanks = DateMath.weekday(year: visibleMonth.year, month0: visibleMonth.month0, day: 1)
         let todayIso = DateMath.isoDate(from: today)
         let selectedIso = DateMath.isoDate(from: selectedDate)
         // Only a snapshot computed for the month on screen is used, so paging never flashes the
@@ -61,22 +61,15 @@ struct MonthGridView: View {
             }
 
             LazyVGrid(columns: columns, spacing: 0) {
-                // One ForEach over distinctly-identified cells: two ForEaches keyed by bare Int
-                // (blanks 0..<n, days 1...m) collide on id 1 and silently drop the 1st.
-                ForEach(cells(leadingBlanks: leadingBlanks, daysInMonth: daysInMonth), id: \.self) { cell in
-                    switch cell {
-                    case .blank:
-                        Color.clear.frame(height: Self.rowHeight)
-                    case .day(let day):
-                        let iso = DateMath.isoDate(year: visibleMonth.year, month0: visibleMonth.month0, day: day)
-                        dayCell(
-                            day: day,
-                            iso: iso,
-                            isToday: iso == todayIso,
-                            isSelected: iso == selectedIso,
-                            counts: visibleDensity[day] ?? .none
-                        )
-                    }
+                // 42 cells, each a real date (`GridDay` is Identifiable by its ISO date, so the
+                // ids are unique even across the month boundaries).
+                ForEach(MonthGrid.days(for: visibleMonth)) { day in
+                    dayCell(
+                        day: day,
+                        isToday: day.iso == todayIso,
+                        isSelected: day.iso == selectedIso,
+                        counts: visibleDensity[day.iso] ?? .none
+                    )
                 }
             }
             .frame(height: Self.rowHeight * CGFloat(Self.maxRows), alignment: .top)
@@ -84,7 +77,7 @@ struct MonthGridView: View {
         .padding(.horizontal, Spacing.sm)
         .padding(.bottom, Spacing.sm)
         .background(Colors.background)
-        .task { store.loadMonth(visibleMonth) }
+        .task { store.loadMonths(covering: MonthGrid.range(for: visibleMonth)) }
         // Recompute when (and only when) the month, today, or the store's items change. Equal
         // arrays share a buffer, so the comparison SwiftUI makes on every `body` is cheap until
         // the store really republishes. The work runs off the main actor, and a stale result
@@ -97,7 +90,7 @@ struct MonthGridView: View {
             let month = inputs.month
             let (year, month0) = (month.year, month.month0)
             let days = await Task.detached(priority: .userInitiated) {
-                dayDensity(events: events, reminders: reminders, month: YearMonth(year: year, month0: month0), today: today)
+                gridDensity(events: events, reminders: reminders, month: YearMonth(year: year, month0: month0), today: today)
             }.value
             guard !Task.isCancelled else { return }
             density = DensitySnapshot(month: month, days: days)
@@ -106,7 +99,7 @@ struct MonthGridView: View {
         .onChange(of: today) { oldToday, newToday in
             guard visibleMonth == YearMonth(date: oldToday) else { return }
             visibleMonth = YearMonth(date: newToday)
-            store.loadMonth(visibleMonth)
+            store.loadMonths(covering: MonthGrid.range(for: visibleMonth))
         }
     }
 
@@ -121,20 +114,12 @@ struct MonthGridView: View {
 
     private struct DensitySnapshot {
         let month: YearMonth
-        let days: [Int: DayDensity]
+        /// Keyed by ISO date (`yyyy-MM-dd`), covering every cell of the month's grid.
+        let days: [String: DayDensity]
     }
 
     private var densityInputs: DensityInputs {
         DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders)
-    }
-
-    private enum Cell: Hashable {
-        case blank(Int)
-        case day(Int)
-    }
-
-    private func cells(leadingBlanks: Int, daysInMonth: Int) -> [Cell] {
-        (0..<leadingBlanks).map(Cell.blank) + (1...daysInMonth).map(Cell.day)
     }
 
     private var header: some View {
@@ -163,14 +148,16 @@ struct MonthGridView: View {
         .accessibilityLabel(label)
     }
 
-    private func dayCell(day: Int, iso: String, isToday: Bool, isSelected: Bool, counts: DayDensity) -> some View {
+    private func dayCell(day: GridDay, isToday: Bool, isSelected: Bool, counts: DayDensity) -> some View {
         Button {
-            onSelectDate(DateMath.date(from: iso))
+            // A neighbouring month's cell selects that date and scrolls the agenda; the grid
+            // stays on the visible month (only the chevrons page).
+            onSelectDate(day.date)
         } label: {
             VStack(spacing: Self.markerGap) {
-                Text("\(day)")
+                Text("\(day.day)")
                     .font(Fonts.mono(15))
-                    .foregroundStyle(isToday ? Colors.background : Colors.text)
+                    .foregroundStyle(isToday ? Colors.background : (day.isInMonth ? Colors.text : Colors.textSecondary))
                     .frame(width: Self.cellSize, height: Self.cellSize)
                     .background {
                         if isToday {
@@ -187,7 +174,11 @@ struct MonthGridView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(counts.accessibilityLabel(day: day, isToday: isToday))
+        // In-month cells read "15" (unchanged); a neighbouring month's cell names its month.
+        .accessibilityLabel(counts.accessibilityLabel(
+            title: day.isInMonth ? "\(day.day)" : AgendaFormat.monthDay(day.date),
+            isToday: isToday
+        ))
     }
 
     /// Up to `maxMarkers` task squares then up to `maxMarkers` event squares. The row is always
@@ -211,6 +202,6 @@ struct MonthGridView: View {
 
     private func changeMonth(by offset: Int) {
         visibleMonth = YearMonth(year: visibleMonth.year, month0: visibleMonth.month0 + offset)
-        store.loadMonth(visibleMonth)
+        store.loadMonths(covering: MonthGrid.range(for: visibleMonth))
     }
 }
