@@ -3,7 +3,8 @@ import Testing
 import Foundation
 @testable import StarkKit
 
-@Suite("AgendaDensity")
+// Serialized so the three migrated-dataset timing tests never compete for the CPU with each other.
+@Suite("AgendaDensity", .serialized)
 struct AgendaDensityTests {
     private let cal = Calendar(identifier: .gregorian)
 
@@ -397,6 +398,27 @@ struct AgendaDensityTests {
             #expect(elapsed < .seconds(2), "\(month) took \(elapsed)")
             #expect(!result.isEmpty)
             #expect(result.keys.allSatisfy { $0.count == 10 })
+        }
+    }
+
+    @Test("the year view's yearDensity over the migrated dataset (a whole year) computes well under 2s")
+    func largeDatasetYearDensityTiming() {
+        let (events, reminders) = migratedDataset()
+        #expect(events.filter { $0.recurrence != nil }.count == 371)
+
+        let clock = ContinuousClock()
+        // Today's year (overdue lookback in play) and the year before it. Years further in the
+        // future are slower (recurring reminders walk from their anchors to the end of the range:
+        // measured 2.3 s for 2027 and 3.2 s for 2030 on this dataset), which is why the year view
+        // must not compute this on the main thread.
+        for year in [2026, 2025] {
+            var result: [String: DayDensity] = [:]
+            let elapsed = clock.measure {
+                result = yearDensity(events: events, reminders: reminders, year: year, today: today, calendar: cal)
+            }
+            #expect(elapsed < .seconds(2), "\(year) took \(elapsed)")
+            #expect(!result.isEmpty)
+            #expect(result.keys.allSatisfy { $0.count == 10 && $0.hasPrefix("\(year)-") })
         }
     }
 }

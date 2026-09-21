@@ -15,6 +15,16 @@ public struct DayDensity: Equatable, Sendable {
     /// A day with nothing on it. `dayDensity` never stores these; the view falls back to it.
     public static let none = DayDensity(tasks: 0, events: 0)
 
+    /// The tint strength for the year view: the total count bucketed 0, 1, 2-3, 4 or more.
+    public var level: Int {
+        switch tasks + events {
+        case 0: return 0
+        case 1: return 1
+        case 2...3: return 2
+        default: return 3
+        }
+    }
+
     /// What VoiceOver reads for a month-grid day cell: the day number, "today" when it is, then
     /// the task and event counts (omitted when zero), e.g. "20, today, 3 tasks, 1 event".
     public func accessibilityLabel(day: Int, isToday: Bool) -> String {
@@ -98,12 +108,22 @@ public func gridDensity(
     today: Date = Date(),
     calendar: Calendar = Calendar(identifier: .gregorian)
 ) -> [String: DayDensity] {
-    let range = MonthGrid.range(for: month, calendar: calendar)
+    densityCounts(events: events, reminders: reminders, range: MonthGrid.range(for: month, calendar: calendar), today: today, calendar: calendar)
+}
 
+/// The counting rule shared by the grid and the year: per-day task/event counts for every row
+/// `buildAgendaItems` produces inside `range`, keyed by ISO date, only days with something.
+private func densityCounts(
+    events: [Event],
+    reminders: [Reminder],
+    range: ClosedRange<Date>,
+    today: Date,
+    calendar: Calendar
+) -> [String: DayDensity] {
     var result: [String: DayDensity] = [:]
     for item in buildAgendaItems(events: events, reminders: reminders, in: range, today: today) {
         // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
-        // the range; they belong to a cell that is not on this grid.
+        // the range; they belong to a cell that is not in this range.
         guard range.contains(item.displayDate) else { continue }
         let c = calendar.dateComponents([.year, .month, .day], from: item.displayDate)
         guard let year = c.year, let monthNumber = c.month, let day = c.day else { continue }
@@ -114,4 +134,30 @@ public func gridDensity(
         }
     }
     return result
+}
+
+/// Everything the year view shows: from the start of Jan 1 to the last second of Dec 31, stepped
+/// with `calendar` (never by 86 400 seconds), so DST days are right. Like `MonthGrid.range`, the
+/// injected `calendar` must share the current time zone.
+public enum YearGrid {
+    public static func range(year: Int, calendar: Calendar = Calendar(identifier: .gregorian)) -> ClosedRange<Date> {
+        let first = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) ?? Date()
+        let start = calendar.startOfDay(for: first)
+        let nextYear = calendar.date(byAdding: .year, value: 1, to: start) ?? start.addingTimeInterval(365 * 86_400)
+        return start...nextYear.addingTimeInterval(-1)
+    }
+}
+
+/// Per-day task/event counts for a whole calendar year, keyed by ISO date (`yyyy-MM-dd`), only
+/// days of that year with something on them. Same rules as `gridDensity` (built on
+/// `buildAgendaItems`; an overdue reminder counts on today's day, and only when today is inside
+/// the year). The same time-zone contract applies.
+public func yearDensity(
+    events: [Event],
+    reminders: [Reminder],
+    year: Int,
+    today: Date = Date(),
+    calendar: Calendar = Calendar(identifier: .gregorian)
+) -> [String: DayDensity] {
+    densityCounts(events: events, reminders: reminders, range: YearGrid.range(year: year, calendar: calendar), today: today, calendar: calendar)
 }
