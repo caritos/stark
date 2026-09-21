@@ -80,6 +80,11 @@ struct YearView: View {
         // Recompute when (and only when) the year, today, or the store's items change; off the
         // main actor, and a stale result (the id changed while it ran) is dropped.
         .task(id: densityInputs) {
+            // Debounce: the detached computation below cannot be cancelled, so tapping ‹/› quickly
+            // would otherwise run one full-year `yearDensity` per tap. `.task(id:)` cancels this
+            // task on every new id, so a rapid burst wakes up only once, for the last year.
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
             let inputs = densityInputs
             let events = inputs.events
             let reminders = inputs.reminders
@@ -119,6 +124,7 @@ struct YearView: View {
                 .tracking(2)
                 .foregroundStyle(Colors.text)
                 .padding(.leading, Spacing.sm)
+                .accessibilityAddTraits(.isHeader)
             Spacer()
             chevron("‹", label: "Previous year") { year -= 1 }
             chevron("›", label: "Next year") { year += 1 }
@@ -189,6 +195,9 @@ struct YearView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(counts.accessibilityLabel(title: AgendaFormat.monthDay(day.date), isToday: isToday))
+        // A neighbouring-month day duplicates a label that exists in its own month's block; it
+        // stays tappable for touch but VoiceOver skips it.
+        .accessibilityHidden(!day.isInMonth)
     }
 
     /// The accent opacity for a `DayDensity.level`, nil for an empty day.

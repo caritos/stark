@@ -118,7 +118,15 @@ struct YearDensityTests {
             Event(id: "weekly-event", title: "Weekly", start: d("2026-08-03"), recurrence: RecurrenceRule(frequency: .weekly)),
             Event(id: "one-off-2028", title: "One-off", start: d("2028-03-14")),
             Event(id: "one-off-2025", title: "Past one-off", start: d("2025-06-10")),
+            // Every other week: the week-start difference from the anchor must keep its parity.
+            Event(id: "biweekly-event", title: "Biweekly", start: d("2026-08-05"), recurrence: RecurrenceRule(frequency: .weekly, interval: 2)),
         ]
+    }
+
+    /// A local wall-clock moment that is deliberately not noon (the `DateMath` default).
+    private func at(_ iso: String, hour: Int, minute: Int) -> Date {
+        let c = cal.dateComponents([.year, .month, .day], from: d(iso))
+        return cal.date(from: DateComponents(year: c.year, month: c.month, day: c.day, hour: hour, minute: minute))!
     }
 
     private var mixedReminders: [Reminder] {
@@ -138,6 +146,19 @@ struct YearDensityTests {
             Reminder(id: "done-2025", title: "Done earlier", dueDate: d("2025-06-01"), isCompleted: true),
             // A recurring reminder that only starts in the target year.
             Reminder(id: "starts-2028", title: "Starts later", dueDate: d("2028-02-01"), recurrence: RecurrenceRule(frequency: .weekly)),
+            // interval > 1: the day/month differences from the anchor must keep their parity when
+            // the expander fast-forwards.
+            Reminder(id: "every-2-days", title: "Every 2 days", dueDate: d("2026-08-02"), recurrence: RecurrenceRule(frequency: .daily, interval: 2)),
+            Reminder(id: "every-2-months", title: "Every 2 months", dueDate: d("2026-03-15"), recurrence: RecurrenceRule(frequency: .monthly, interval: 2)),
+            // count: never fast-forwards; one series is over long before the tested years, the
+            // other starts just before 2028 and is still running (10 Mondays: Dec 20 ... Feb 21).
+            Reminder(id: "count-ended", title: "Count ended", dueDate: d("2026-06-01"), recurrence: RecurrenceRule(frequency: .weekly, count: 10)),
+            Reminder(id: "count-running", title: "Count running", dueDate: d("2027-12-20"), recurrence: RecurrenceRule(frequency: .weekly, count: 10)),
+            // until: ends on one of its own occurrence days (Mon 2028-06-12), which must be kept.
+            Reminder(id: "until-2028", title: "Until", dueDate: d("2027-11-01"), recurrence: RecurrenceRule(frequency: .weekly, until: d("2028-06-12"))),
+            // A non-noon anchor: a Saturday 09:30 weekly, which lands on Sat 2028-01-01 at 09:30, the
+            // very first moment of the tested year's first day.
+            Reminder(id: "saturday-0930", title: "Saturday 9:30", dueDate: at("2026-07-04", hour: 9, minute: 30), recurrence: RecurrenceRule(frequency: .weekly)),
         ]
     }
 

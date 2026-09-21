@@ -87,6 +87,14 @@ public struct AgendaItem: Identifiable, Equatable {
 /// Sorted by day of `displayDate`; within a day: overdue (by `occurrence`), then normal
 /// incomplete/event items (by `displayDate`), then completed items (by `displayDate`); ties
 /// break on `id`, making the order total and deterministic.
+///
+/// Important: `today` is used for nothing but the overdue cut-off and the start of the overdue
+/// lookback scan. `densityCounts` (in `AgendaDensity.swift`) relies on this to skip the lookback
+/// for ranges wholly in the future, by passing `today: range.lowerBound` and
+/// `overdueLookbackDays: 0`. Anyone making `buildAgendaItems` consult `today` for anything else
+/// must revisit that shortcut (its equivalence tests are in `YearDensityTests`). The shortcut also
+/// requires `range.lowerBound` to be a start of day (true for `MonthGrid.range` and
+/// `YearGrid.range`).
 public func buildAgendaItems(
     events: [Event],
     reminders: [Reminder],
