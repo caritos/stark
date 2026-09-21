@@ -89,6 +89,96 @@ struct YearDensityTests {
         }
     }
 
+    // MARK: - Equivalence with the slow, obviously-correct count
+
+    /// The count computed the slow way: `buildAgendaItems` over exactly `range` with the real
+    /// `today` and the default lookback, keep only rows displayed inside `range`, count per ISO day.
+    /// This is what `gridDensity`/`yearDensity` must equal whatever shortcuts they take.
+    private func slowCounts(
+        events: [Event],
+        reminders: [Reminder],
+        range: ClosedRange<Date>,
+        today: Date
+    ) -> [String: DayDensity] {
+        var result: [String: DayDensity] = [:]
+        for item in buildAgendaItems(events: events, reminders: reminders, in: range, today: today) {
+            guard range.contains(item.displayDate) else { continue }
+            let c = cal.dateComponents([.year, .month, .day], from: item.displayDate)
+            let iso = DateMath.isoDate(year: c.year!, month0: c.month! - 1, day: c.day!)
+            switch item.kind {
+            case .event: result[iso, default: .none].events += 1
+            case .reminder: result[iso, default: .none].tasks += 1
+            }
+        }
+        return result
+    }
+
+    private var mixedEvents: [Event] {
+        [
+            Event(id: "weekly-event", title: "Weekly", start: d("2026-08-03"), recurrence: RecurrenceRule(frequency: .weekly)),
+            Event(id: "one-off-2028", title: "One-off", start: d("2028-03-14")),
+            Event(id: "one-off-2025", title: "Past one-off", start: d("2025-06-10")),
+        ]
+    }
+
+    private var mixedReminders: [Reminder] {
+        [
+            // Started before today and still running: its missed daily occurrences are dropped.
+            Reminder(id: "daily", title: "Daily", dueDate: d("2026-08-01"), recurrence: RecurrenceRule(frequency: .daily)),
+            // Weekly and monthly: each keeps only its latest miss, pinned to today.
+            Reminder(id: "weekly", title: "Weekly", dueDate: d("2026-08-03"), recurrence: RecurrenceRule(frequency: .weekly), exceptionDates: [d("2026-08-10")]),
+            Reminder(id: "monthly", title: "Monthly", dueDate: d("2026-01-31"), recurrence: RecurrenceRule(frequency: .monthly)),
+            // One-offs: two in the future, one missed (overdue) and one long missed.
+            Reminder(id: "future-2028", title: "Future", dueDate: d("2028-03-10")),
+            Reminder(id: "future-2026", title: "Soon", dueDate: d("2026-11-02")),
+            Reminder(id: "missed", title: "Missed", dueDate: d("2026-09-01")),
+            Reminder(id: "long-missed", title: "Long missed", dueDate: d("2025-03-03")),
+            // Completed reminders appear on their due date and are never overdue.
+            Reminder(id: "done-2028", title: "Done later", dueDate: d("2028-05-05"), isCompleted: true),
+            Reminder(id: "done-2025", title: "Done earlier", dueDate: d("2025-06-01"), isCompleted: true),
+            // A recurring reminder that only starts in the target year.
+            Reminder(id: "starts-2028", title: "Starts later", dueDate: d("2028-02-01"), recurrence: RecurrenceRule(frequency: .weekly)),
+        ]
+    }
+
+    @Test("yearDensity equals the slow count for a future year, the current year, a past year and the boundary days",
+          arguments: [
+            (2028, "2026-09-20"),  // a future year
+            (2027, "2026-09-20"),  // the next year
+            (2026, "2026-09-20"),  // today inside the year
+            (2025, "2026-09-20"),  // a past year
+            (2028, "2027-12-31"),  // today is the day before the year starts
+            (2028, "2028-01-01"),  // today is the first day of the year
+            (2028, "2028-12-31"),  // today is the last day of the year
+            (2028, "2029-01-01"),  // the year is wholly in the past by one day
+          ])
+    func yearDensityMatchesSlowCount(year: Int, todayISO: String) {
+        let now = d(todayISO)
+        let expected = slowCounts(events: mixedEvents, reminders: mixedReminders, range: YearGrid.range(year: year), today: now)
+
+        let actual = yearDensity(events: mixedEvents, reminders: mixedReminders, year: year, today: now, calendar: cal)
+
+        #expect(!expected.isEmpty, "the dataset should put something in \(year)")
+        #expect(actual == expected, "year \(year), today \(todayISO)")
+    }
+
+    @Test("gridDensity equals the slow count for a future month grid, the current one and a past one",
+          arguments: [
+            (YearMonth(year: 2028, month0: 2), "2026-09-20"),  // a future month (neighbours in Feb and Apr)
+            (YearMonth(year: 2026, month0: 10), "2026-09-20"), // next month, whose grid still shows Sep days
+            (YearMonth(year: 2026, month0: 8), "2026-09-20"),  // today's month
+            (YearMonth(year: 2025, month0: 5), "2026-09-20"),  // a past month
+            (YearMonth(year: 2028, month0: 2), "2028-02-28"),  // today is inside the grid's leading days
+          ])
+    func gridDensityMatchesSlowCount(month: YearMonth, todayISO: String) {
+        let now = d(todayISO)
+        let expected = slowCounts(events: mixedEvents, reminders: mixedReminders, range: MonthGrid.range(for: month, calendar: cal), today: now)
+
+        let actual = gridDensity(events: mixedEvents, reminders: mixedReminders, month: month, today: now, calendar: cal)
+
+        #expect(actual == expected, "month \(month), today \(todayISO)")
+    }
+
     @Test("level buckets the total count: 0, 1, 2-3, 4 or more")
     func level() {
         #expect(DayDensity.none.level == 0)

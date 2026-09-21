@@ -135,22 +135,33 @@ public func buildAgendaItems(
         }
     }
 
-    return items.sorted { lhs, rhs in
-        let lhsDay = calendar.startOfDay(for: lhs.displayDate)
-        let rhsDay = calendar.startOfDay(for: rhs.displayDate)
-        if lhsDay != rhsDay { return lhsDay < rhsDay }
-
-        let lhsGroup = sortGroup(lhs)
-        let rhsGroup = sortGroup(rhs)
-        if lhsGroup != rhsGroup { return lhsGroup < rhsGroup }
-
-        // Overdue rows all share a displayDate, so their real order is the missed occurrence.
-        let lhsKey = lhs.isOverdue ? lhs.occurrence : lhs.displayDate
-        let rhsKey = rhs.isOverdue ? rhs.occurrence : rhs.displayDate
-        if lhsKey != rhsKey { return lhsKey < rhsKey }
-
-        return lhs.id < rhs.id
+    // Decorate, sort, undecorate: each item's sort key (day, group, key, id) is computed once, not
+    // on every comparison (`startOfDay` and `id` are far too costly to repeat n log n times).
+    let decorated = items.map { item in
+        SortKey(
+            dayStart: calendar.startOfDay(for: item.displayDate),
+            group: sortGroup(item),
+            // Overdue rows all share a displayDate, so their real order is the missed occurrence.
+            key: item.isOverdue ? item.occurrence : item.displayDate,
+            id: item.id,
+            item: item
+        )
     }
+    return decorated.sorted { lhs, rhs in
+        if lhs.dayStart != rhs.dayStart { return lhs.dayStart < rhs.dayStart }
+        if lhs.group != rhs.group { return lhs.group < rhs.group }
+        if lhs.key != rhs.key { return lhs.key < rhs.key }
+        return lhs.id < rhs.id
+    }.map(\.item)
+}
+
+/// An agenda item with its sort key precomputed (see `buildAgendaItems`).
+private struct SortKey {
+    let dayStart: Date
+    let group: Int
+    let key: Date
+    let id: String
+    let item: AgendaItem
 }
 
 /// 0 = overdue, 1 = normal incomplete/event, 2 = completed.

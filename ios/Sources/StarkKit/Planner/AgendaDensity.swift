@@ -113,6 +113,17 @@ public func gridDensity(
 
 /// The counting rule shared by the grid and the year: per-day task/event counts for every row
 /// `buildAgendaItems` produces inside `range`, keyed by ISO date, only days with something.
+///
+/// **A range wholly after today does not expand the gap.** `buildAgendaItems` scans reminders from
+/// `min(range start, today - lookback)`, so for a far-future range it walks every recurring
+/// reminder across the whole gap between today and the range and then throws that away. When
+/// today's day is before the range nothing in the range can be overdue (overdue means an
+/// occurrence before today, and every row inside the range is on or after its first day), and
+/// every occurrence between today and the range start is dropped by the `range.contains` guard
+/// below. So the rows inside the range are exactly the ones `buildAgendaItems` gives for
+/// `today: range.lowerBound` with no lookback, whose scan range is just `range`. Any other case
+/// (today inside the range, or the range wholly in the past, where incomplete reminders are
+/// overdue and pinned to today, off this range's days) keeps the real `today` and lookback.
 private func densityCounts(
     events: [Event],
     reminders: [Reminder],
@@ -121,7 +132,11 @@ private func densityCounts(
     calendar: Calendar
 ) -> [String: DayDensity] {
     var result: [String: DayDensity] = [:]
-    for item in buildAgendaItems(events: events, reminders: reminders, in: range, today: today) {
+    let rangeIsWhollyInTheFuture = calendar.startOfDay(for: today) < range.lowerBound
+    let items = rangeIsWhollyInTheFuture
+        ? buildAgendaItems(events: events, reminders: reminders, in: range, today: range.lowerBound, overdueLookbackDays: 0)
+        : buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
+    for item in items {
         // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
         // the range; they belong to a cell that is not in this range.
         guard range.contains(item.displayDate) else { continue }

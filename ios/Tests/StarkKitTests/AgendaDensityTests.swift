@@ -407,11 +407,9 @@ struct AgendaDensityTests {
         #expect(events.filter { $0.recurrence != nil }.count == 371)
 
         let clock = ContinuousClock()
-        // Today's year (overdue lookback in play) and the year before it. Years further in the
-        // future are slower (recurring reminders walk from their anchors to the end of the range:
-        // measured 2.3 s for 2027 and 3.2 s for 2030 on this dataset), which is why the year view
-        // must not compute this on the main thread.
-        for year in [2026, 2025] {
+        // Today's year (overdue lookback in play), the year before it, and years in the future
+        // (recurring reminders would otherwise be expanded across the whole gap from today).
+        for year in [2026, 2025, 2027, 2028, 2030] {
             var result: [String: DayDensity] = [:]
             let elapsed = clock.measure {
                 result = yearDensity(events: events, reminders: reminders, year: year, today: today, calendar: cal)
