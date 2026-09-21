@@ -139,4 +139,36 @@ struct ICSParserTests {
         #expect(parsed.events.count == 1)
         #expect(parsed.events[0].outcomes.map(\.outcome) == [.skipped])
     }
+
+    // MARK: - Event URL
+
+    @Test("reads an event URL, with or without a VALUE=URI parameter, keeping colons inside the value")
+    func readsEventURL() {
+        func parse(_ line: String) -> Event? {
+            let text = [
+                "BEGIN:VCALENDAR", "VERSION:2.0",
+                "BEGIN:VEVENT", "UID:e", "SUMMARY:Call", "DTSTART:20260920T120000", line, "END:VEVENT",
+                "END:VCALENDAR", "",
+            ].joined(separator: "\r\n")
+            return ICSParser.parse(text).events.first
+        }
+
+        #expect(parse("URL:https://example.com/x:y?z=1")?.url == "https://example.com/x:y?z=1")
+        #expect(parse("URL;VALUE=URI:https://example.com/x:y")?.url == "https://example.com/x:y")
+        #expect(parse("SUMMARY2:nothing")?.url == nil)
+    }
+
+    @Test("an event URL survives serialize -> parse -> serialize byte for byte")
+    func urlRoundTrip() {
+        let event = Event(
+            id: "e", title: "Call", start: DateMath.date(from: "2026-09-20"), location: "Room",
+            recurrence: RecurrenceRule(frequency: .weekly), url: "https://example.com/a?b=1,2;c"
+        )
+        let text = ICSSerializer.serialize(events: [event], reminders: [])
+
+        let parsed = ICSParser.parse(text)
+
+        #expect(parsed.events.first?.url == "https://example.com/a?b=1,2;c")
+        #expect(ICSSerializer.serialize(events: parsed.events, reminders: parsed.reminders) == text)
+    }
 }

@@ -29,6 +29,7 @@ public struct Event: Equatable, Codable, Identifiable, Sendable {
     public var recurrence: RecurrenceRule?
     public var exceptionDates: [Date]
     public var outcomes: [EventOutcomeRecord]
+    public var url: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -40,7 +41,8 @@ public struct Event: Equatable, Codable, Identifiable, Sendable {
         location: String? = nil,
         recurrence: RecurrenceRule? = nil,
         exceptionDates: [Date] = [],
-        outcomes: [EventOutcomeRecord] = []
+        outcomes: [EventOutcomeRecord] = [],
+        url: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -52,6 +54,7 @@ public struct Event: Equatable, Codable, Identifiable, Sendable {
         self.recurrence = recurrence
         self.exceptionDates = exceptionDates
         self.outcomes = outcomes
+        self.url = url
     }
 
     /// A copy starting at `newStart`, with `end` (if any) shifted by the same delta so the

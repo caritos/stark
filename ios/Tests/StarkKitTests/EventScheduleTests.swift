@@ -85,4 +85,12 @@ struct EventScheduleTests {
         #expect(result.exceptionDates == event.exceptionDates)
         #expect(result.outcomes == event.outcomes)
     }
+
+    @Test("scheduling keeps the URL")
+    func keepsURL() {
+        let event = Event(id: "e", title: "Call", start: at("2026-09-20", 9), url: "https://example.com")
+
+        #expect(event.scheduled(start: at("2026-09-20", 10), end: at("2026-09-20", 11), allDay: false).url == "https://example.com")
+        #expect(event.scheduled(start: at("2026-09-20", 10), end: nil, allDay: true).url == "https://example.com")
+    }
 }

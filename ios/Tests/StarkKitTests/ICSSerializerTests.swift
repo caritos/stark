@@ -109,4 +109,43 @@ struct ICSSerializerTests {
         let text = ICSSerializer.serialize(event: Event(id: "evt-3", title: "Plain", start: DateMath.date(from: "2026-09-20")))
         #expect(!text.contains("X-STARK"))
     }
+
+    // MARK: - Event URL
+
+    @Test("serializes an event URL after LOCATION and before RRULE, unescaped")
+    func serializesEventURL() {
+        let event = Event(
+            id: "evt-1",
+            title: "Call",
+            start: DateMath.date(from: "2026-09-20"),
+            location: "Room",
+            recurrence: RecurrenceRule(frequency: .weekly),
+            url: "https://example.com/a?b=1,2;c"
+        )
+
+        let text = ICSSerializer.serialize(event: event)
+
+        #expect(text.contains("\r\nURL:https://example.com/a?b=1,2;c\r\n"))
+        let location = text.range(of: "LOCATION:")?.lowerBound
+        let url = text.range(of: "URL:")?.lowerBound
+        let rrule = text.range(of: "RRULE:")?.lowerBound
+        #expect(location != nil && url != nil && rrule != nil)
+        #expect(location! < url! && url! < rrule!)
+    }
+
+    @Test("a URL can never inject a property line: CR and LF are stripped")
+    func urlCannotInjectLines() {
+        let event = Event(id: "evt-1", title: "Call", start: DateMath.date(from: "2026-09-20"), url: "https://a.com\r\nX-EVIL:1")
+
+        let text = ICSSerializer.serialize(event: event)
+
+        #expect(!text.contains("\r\nX-EVIL"))
+        #expect(text.contains("URL:https://a.comX-EVIL:1"))
+    }
+
+    @Test("an event without a URL writes no URL line")
+    func noURLNoLine() {
+        let text = ICSSerializer.serialize(event: Event(id: "evt-1", title: "Plain", start: DateMath.date(from: "2026-09-20")))
+        #expect(!text.contains("URL:"))
+    }
 }

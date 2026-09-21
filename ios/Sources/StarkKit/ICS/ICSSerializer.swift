@@ -9,6 +9,11 @@ public enum ICSSerializer {
         }
         if let notes = event.notes { lines.append("DESCRIPTION:\(escape(notes))") }
         if let location = event.location { lines.append("LOCATION:\(escape(location))") }
+        // A URI value: no TEXT escaping (a comma or semicolon is part of the URL). CR/LF are
+        // stripped so a pasted value can never start a new property line.
+        if let url = event.url {
+            lines.append("URL:\(url.filter { !$0.isNewline })")
+        }
         if let recurrence = event.recurrence { lines.append("RRULE:\(RRuleCodec.encode(recurrence))") }
         for exdate in event.exceptionDates {
             lines.append("EXDATE\(dateParam(event.isAllDay)):\(ICSDateFormat.format(exdate, allDay: event.isAllDay))")

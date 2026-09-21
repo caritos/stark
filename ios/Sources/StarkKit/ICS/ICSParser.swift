@@ -99,7 +99,8 @@ public enum ICSParser {
             location: props["LOCATION"].map(unescape),
             recurrence: props["RRULE"].flatMap(RRuleCodec.decode),
             exceptionDates: exceptionDates(block),
-            outcomes: outcomes(block)
+            outcomes: outcomes(block),
+            url: props["URL"]
         )
     }
 
