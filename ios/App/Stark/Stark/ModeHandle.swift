@@ -9,11 +9,10 @@ import StarkKit
 /// follow the finger). It is a separate strip, not an overlay, so it never covers the grid above
 /// or the agenda below.
 ///
-/// `available` is the set of modes the screen can currently show; a drag whose result is not in
-/// it is ignored.
+/// In year mode, where the bar sits at the bottom of the year grid, tapping it also returns to
+/// month; in the other modes a tap does nothing.
 struct ModeHandle: View {
     @Binding var mode: CalendarMode
-    let available: [CalendarMode]
 
     private static let stripHeight: CGFloat = 20
     private static let barSize = CGSize(width: 40, height: 4)
@@ -25,6 +24,9 @@ struct ModeHandle: View {
             .frame(maxWidth: .infinity, minHeight: Self.stripHeight, maxHeight: Self.stripHeight)
             // The whole strip is draggable, not just the 4 pt bar.
             .contentShape(Rectangle())
+            .onTapGesture {
+                if mode == .year { move(to: .month) }
+            }
             .gesture(
                 DragGesture(minimumDistance: 8)
                     .onEnded { value in
@@ -47,7 +49,7 @@ struct ModeHandle: View {
     }
 
     private func move(to target: CalendarMode?) {
-        guard let target, target != mode, available.contains(target) else { return }
+        guard let target, target != mode else { return }
         withAnimation(.easeInOut(duration: 0.2)) { mode = target }
     }
 }

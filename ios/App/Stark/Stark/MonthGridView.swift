@@ -32,7 +32,8 @@ struct MonthGridView: View {
     @State private var density: DensitySnapshot?
     /// Passed in (not read from `Date()` here) so the highlight moves when the day changes.
     let today: Date
-    /// `.week` shows one row, anything else the full month grid (only those two are passed today).
+    /// `.week` shows one row, anything else the full month grid (`.year` is passed too, while the
+    /// screen is showing the year view and this grid is hidden underneath).
     let mode: CalendarMode
     let selectedDate: Date
     let onSelectDate: (Date) -> Void

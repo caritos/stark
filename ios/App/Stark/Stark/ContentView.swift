@@ -9,7 +9,10 @@ import SwiftUI
 import StarkKit
 
 /// One screen: the calendar grid on top (one week row when collapsed, the month grid otherwise),
-/// a drag bar that switches between them, and the day-grouped agenda filling the rest.
+/// a drag bar that switches between the week, month and year modes, and the day-grouped agenda
+/// filling the rest. In year mode the year view (twelve mini-months, with its own drag bar) covers
+/// the grid and the agenda; the agenda stays in the hierarchy underneath, hidden, so it keeps its
+/// scroll position and pending completions and can scroll to a day picked in the year.
 struct ContentView: View {
     @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
@@ -51,12 +54,30 @@ struct ContentView: View {
                             .background(Colors.accent)
                     }
                 }
-                MonthGridView(today: today, mode: mode, selectedDate: selectedDate, onSelectDate: selectDate)
-                ModeHandle(mode: $mode, available: [.week, .month])
-                Rectangle()
-                    .fill(Colors.separator)
-                    .frame(height: 1)
-                AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
+                ZStack {
+                    VStack(spacing: 0) {
+                        MonthGridView(today: today, mode: mode, selectedDate: selectedDate, onSelectDate: selectDate)
+                        ModeHandle(mode: $mode)
+                        Rectangle()
+                            .fill(Colors.separator)
+                            .frame(height: 1)
+                        AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
+                    }
+                    // Hidden (not removed) in year mode: tearing the agenda down would lose its
+                    // scroll position and, on coming back, scroll to today instead of the day
+                    // picked in the year. Not tappable or readable by VoiceOver while hidden.
+                    .opacity(mode == .year ? 0 : 1)
+                    .allowsHitTesting(mode != .year)
+                    .accessibilityHidden(mode == .year)
+
+                    if mode == .year {
+                        YearView(today: today, selectedDate: selectedDate, mode: $mode) { date in
+                            selectDate(date)
+                            withAnimation(.easeInOut(duration: 0.2)) { mode = .month }
+                        }
+                        .transition(.opacity)
+                    }
+                }
             }
             .background(Colors.background)
             .navigationBarTitleDisplayMode(.inline)
