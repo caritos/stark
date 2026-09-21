@@ -44,6 +44,28 @@ public enum MonthGrid {
         }
     }
 
+    /// The seven cells of the Sunday-first week containing `date`. `isInMonth` is relative to
+    /// `date`'s own month, so the days of a neighbouring month in the same row are flagged.
+    public static func weekRow(containing date: Date) -> [GridDay] {
+        let iso = DateMath.isoDate(from: date)
+        let c = DateMath.components(iso)
+        let weekday = DateMath.weekday(year: c.year, month0: c.month0, day: c.day)
+        return (0..<7).map { index in
+            let day = DateMath.components(DateMath.addDays(iso, index - weekday))
+            return GridDay(
+                year: day.year,
+                month0: day.month0,
+                day: day.day,
+                isInMonth: day.year == c.year && day.month0 == c.month0
+            )
+        }
+    }
+
+    /// The day `weeks` whole weeks from `date` (negative goes back), as local noon.
+    public static func weekStepped(_ date: Date, by weeks: Int) -> Date {
+        DateMath.date(from: DateMath.addDays(DateMath.isoDate(from: date), weeks * 7))
+    }
+
     /// Everything the grid shows: from the start of the first cell's day to the last second of the
     /// last cell's day. Stepped with `calendar`, never by 86 400 seconds, so DST days are right.
     ///
