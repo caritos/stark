@@ -18,7 +18,13 @@ public struct DayDensity: Equatable, Sendable {
     /// What VoiceOver reads for a month-grid day cell: the day number, "today" when it is, then
     /// the task and event counts (omitted when zero), e.g. "20, today, 3 tasks, 1 event".
     public func accessibilityLabel(day: Int, isToday: Bool) -> String {
-        var parts = ["\(day)"]
+        accessibilityLabel(title: "\(day)", isToday: isToday)
+    }
+
+    /// The same label with `title` (for example "Oct 1" for a neighbouring-month cell) in place
+    /// of the bare day number, e.g. "Oct 1, today, 3 tasks, 1 event".
+    public func accessibilityLabel(title: String, isToday: Bool) -> String {
+        var parts = [title]
         if isToday { parts.append("today") }
         if tasks > 0 { parts.append("\(tasks) \(tasks == 1 ? "task" : "tasks")") }
         if events > 0 { parts.append("\(events) \(events == 1 ? "event" : "events")") }
@@ -69,6 +75,37 @@ public func dayDensity(
         switch item.kind {
         case .event: result[day, default: .none].events += 1
         case .reminder: result[day, default: .none].tasks += 1
+        }
+    }
+    return result
+}
+
+/// Per-day task/event counts for every cell of `month`'s grid — the month itself plus the
+/// neighbouring months' leading/trailing days — keyed by ISO date (`yyyy-MM-dd`).
+///
+/// Same rules as `dayDensity` (it is built on `buildAgendaItems` over the whole grid range so the
+/// grid can never disagree with the agenda): an overdue reminder counts on **today's** cell, and
+/// only when today falls inside the grid range. Only days with something on them are stored.
+public func gridDensity(
+    events: [Event],
+    reminders: [Reminder],
+    month: YearMonth,
+    today: Date = Date(),
+    calendar: Calendar = Calendar(identifier: .gregorian)
+) -> [String: DayDensity] {
+    let range = MonthGrid.range(for: month, calendar: calendar)
+
+    var result: [String: DayDensity] = [:]
+    for item in buildAgendaItems(events: events, reminders: reminders, in: range, today: today) {
+        // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
+        // the range; they belong to a cell that is not on this grid.
+        guard range.contains(item.displayDate) else { continue }
+        let c = calendar.dateComponents([.year, .month, .day], from: item.displayDate)
+        guard let year = c.year, let month = c.month, let day = c.day else { continue }
+        let iso = DateMath.isoDate(year: year, month0: month - 1, day: day)
+        switch item.kind {
+        case .event: result[iso, default: .none].events += 1
+        case .reminder: result[iso, default: .none].tasks += 1
         }
     }
     return result

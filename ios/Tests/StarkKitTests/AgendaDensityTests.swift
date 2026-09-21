@@ -309,6 +309,16 @@ struct AgendaDensityTests {
         #expect(DayDensity.none.accessibilityLabel(day: 20, isToday: true) == "20, today")
     }
 
+    @Test("accessibilityLabel(title:) uses the title in place of the day number; the day form is unchanged")
+    func accessibilityLabelWithTitle() {
+        let counts = DayDensity(tasks: 1, events: 2)
+
+        #expect(counts.accessibilityLabel(title: "Oct 1", isToday: false) == "Oct 1, 1 task, 2 events")
+        #expect(counts.accessibilityLabel(title: "Oct 1", isToday: true) == "Oct 1, today, 1 task, 2 events")
+        #expect(counts.accessibilityLabel(day: 20, isToday: true) == "20, today, 1 task, 2 events")
+        #expect(DayDensity.none.accessibilityLabel(title: "Oct 1", isToday: false) == "Oct 1")
+    }
+
     // MARK: - Performance
 
     /// The migrated data: ~3,300 events (371 recurring) and ~5,000 reminders. Deterministic
