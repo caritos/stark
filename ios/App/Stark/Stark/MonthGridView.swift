@@ -14,6 +14,14 @@ import StarkKit
 /// The counts come from `gridDensity`, i.e. from the same `buildAgendaItems` the agenda uses, so
 /// the grid can't disagree with the list. The marker row keeps its height on an empty day, and
 /// sits below the number's square so an accent marker stays visible on today's filled cell.
+///
+/// In `.week` mode (the collapsed state) the grid is one row: the Sunday-first week of
+/// `selectedDate`, drawn with the same cells. The title is the selected day's month and the
+/// chevrons step the selection by a week (through `onSelectDate`, so the agenda follows) instead
+/// of paging months. `visibleMonth` follows the selected day's month while in week mode and when
+/// returning to month, so the density snapshot and the store's loaded months always cover the
+/// week on screen (the week lies inside its month's 6-row grid). In `.month` mode selecting a day
+/// never changes `visibleMonth`.
 struct MonthGridView: View {
     @EnvironmentObject private var store: PlannerStore
     @State private var visibleMonth = YearMonth(date: Date())
@@ -24,6 +32,8 @@ struct MonthGridView: View {
     @State private var density: DensitySnapshot?
     /// Passed in (not read from `Date()` here) so the highlight moves when the day changes.
     let today: Date
+    /// `.week` shows one row, anything else the full month grid (only those two are passed today).
+    let mode: CalendarMode
     let selectedDate: Date
     let onSelectDate: (Date) -> Void
 
@@ -47,6 +57,8 @@ struct MonthGridView: View {
         // Only a snapshot computed for the month on screen is used, so paging never flashes the
         // previous month's markers on the new month's days while the new ones are computed.
         let visibleDensity = density?.month == visibleMonth ? density?.days ?? [:] : [:]
+        let isWeek = mode == .week
+        let cells = isWeek ? MonthGrid.weekRow(containing: selectedDate) : MonthGrid.days(for: visibleMonth)
 
         VStack(spacing: 0) {
             header
@@ -61,9 +73,9 @@ struct MonthGridView: View {
             }
 
             LazyVGrid(columns: columns, spacing: 0) {
-                // 42 cells, each a real date (`GridDay` is Identifiable by its ISO date, so the
-                // ids are unique even across the month boundaries).
-                ForEach(MonthGrid.days(for: visibleMonth)) { day in
+                // 42 cells (7 in week mode), each a real date (`GridDay` is Identifiable by its
+                // ISO date, so the ids are unique even across the month boundaries).
+                ForEach(cells) { day in
                     dayCell(
                         day: day,
                         isToday: day.iso == todayIso,
@@ -72,7 +84,11 @@ struct MonthGridView: View {
                     )
                 }
             }
-            .frame(height: Self.rowHeight * CGFloat(Self.maxRows), alignment: .top)
+            // Fixed height either way, so the agenda below never jiggles; the change between one
+            // row and six animates with the mode switch, and cells leaving mid-animation are
+            // clipped rather than drawn over the drag bar.
+            .frame(height: Self.rowHeight * CGFloat(isWeek ? 1 : Self.maxRows), alignment: .top)
+            .clipped()
         }
         .padding(.horizontal, Spacing.sm)
         .padding(.bottom, Spacing.sm)
@@ -96,11 +112,25 @@ struct MonthGridView: View {
             density = DensitySnapshot(month: month, days: days)
         }
         // The day rolled over: if the grid was showing the old today's month, show the new one's.
+        // (Not in week mode: there `visibleMonth` follows the selected day, not today.)
         .onChange(of: today) { oldToday, newToday in
-            guard visibleMonth == YearMonth(date: oldToday) else { return }
+            guard mode != .week, visibleMonth == YearMonth(date: oldToday) else { return }
             visibleMonth = YearMonth(date: newToday)
             loadVisibleMonths()
         }
+        // Entering week mode, or coming back to month, lands on the selected day's month.
+        .onChange(of: mode) { _, _ in syncVisibleMonthToSelection() }
+        // In week mode the week row follows the selection, possibly into another month (the
+        // chevrons, a day tap, the midnight follow). In month mode a selection never pages.
+        .onChange(of: selectedDate) { _, _ in
+            guard mode == .week else { return }
+            syncVisibleMonthToSelection()
+        }
+    }
+
+    private func syncVisibleMonthToSelection() {
+        visibleMonth = YearMonth(date: selectedDate)
+        loadVisibleMonths()
     }
 
     /// The store must have loaded every month the visible grid touches (its neighbouring days
@@ -136,8 +166,13 @@ struct MonthGridView: View {
                 .foregroundStyle(Colors.text)
                 .padding(.leading, Spacing.sm)
             Spacer()
-            chevron("‹", label: "Previous month") { changeMonth(by: -1) }
-            chevron("›", label: "Next month") { changeMonth(by: 1) }
+            if mode == .week {
+                chevron("‹", label: "Previous week") { onSelectDate(MonthGrid.weekStepped(selectedDate, by: -1)) }
+                chevron("›", label: "Next week") { onSelectDate(MonthGrid.weekStepped(selectedDate, by: 1)) }
+            } else {
+                chevron("‹", label: "Previous month") { changeMonth(by: -1) }
+                chevron("›", label: "Next month") { changeMonth(by: 1) }
+            }
         }
         .frame(height: 44)
     }
@@ -202,6 +237,9 @@ struct MonthGridView: View {
     }
 
     private var monthTitle: String {
+        // Week mode names the selected day's month (read from the selection itself, so it is
+        // right on the very frame the selection changes, before `visibleMonth` has caught up).
+        if mode == .week { return AgendaFormat.monthYear(selectedDate).uppercased() }
         let first = DateMath.date(from: DateMath.isoDate(year: visibleMonth.year, month0: visibleMonth.month0, day: 1))
         return AgendaFormat.monthYear(first).uppercased()
     }

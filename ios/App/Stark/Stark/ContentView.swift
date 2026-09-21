@@ -8,7 +8,8 @@
 import SwiftUI
 import StarkKit
 
-/// One screen: month grid on top, day-grouped agenda filling the rest.
+/// One screen: the calendar grid on top (one week row when collapsed, the month grid otherwise),
+/// a drag bar that switches between them, and the day-grouped agenda filling the rest.
 struct ContentView: View {
     @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
@@ -24,6 +25,8 @@ struct ContentView: View {
     /// agenda, so that when the calendar day changes (see `followCalendarDay`) they re-render
     /// and highlight the new today rather than reading `Date()` once and going stale.
     @State private var today: Date
+    /// How much calendar the grid shows. Always starts as the month grid; not persisted.
+    @State private var mode: CalendarMode = .month
 
     init() {
         // One instant for all three, so a launch right at midnight can't split them across days.
@@ -48,7 +51,8 @@ struct ContentView: View {
                             .background(Colors.accent)
                     }
                 }
-                MonthGridView(today: today, selectedDate: selectedDate, onSelectDate: selectDate)
+                MonthGridView(today: today, mode: mode, selectedDate: selectedDate, onSelectDate: selectDate)
+                ModeHandle(mode: $mode, available: [.week, .month])
                 Rectangle()
                     .fill(Colors.separator)
                     .frame(height: 1)
