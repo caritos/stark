@@ -374,4 +374,29 @@ struct AgendaDensityTests {
             #expect(result.keys.allSatisfy { (1...31).contains($0) })
         }
     }
+
+    @Test("the month grid's gridDensity over the migrated dataset (whole 42-cell range) computes well under 2s")
+    func largeDatasetGridDensityTiming() {
+        let (events, reminders) = migratedDataset()
+        #expect(events.filter { $0.recurrence != nil }.count == 371)
+
+        let clock = ContinuousClock()
+        // Same spread of months as `largeDatasetTiming`: today's month (overdue lookback in
+        // play), a nearby future month, a month far in the future, and a month in the past.
+        let months = [
+            YearMonth(year: 2026, month0: 8),
+            YearMonth(year: 2026, month0: 9),
+            YearMonth(year: 2028, month0: 5),
+            YearMonth(year: 2025, month0: 2),
+        ]
+        for month in months {
+            var result: [String: DayDensity] = [:]
+            let elapsed = clock.measure {
+                result = gridDensity(events: events, reminders: reminders, month: month, today: today, calendar: cal)
+            }
+            #expect(elapsed < .seconds(2), "\(month) took \(elapsed)")
+            #expect(!result.isEmpty)
+            #expect(result.keys.allSatisfy { $0.count == 10 })
+        }
+    }
 }

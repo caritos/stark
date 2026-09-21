@@ -86,6 +86,11 @@ public func dayDensity(
 /// Same rules as `dayDensity` (it is built on `buildAgendaItems` over the whole grid range so the
 /// grid can never disagree with the agenda): an overdue reminder counts on **today's** cell, and
 /// only when today falls inside the grid range. Only days with something on them are stored.
+///
+/// The grid's cell dates come from `DateMath`, which is hard-wired to `TimeZone.current`, and
+/// `buildAgendaItems` and `OccurrenceExpander` also expand in the process's current time zone, so
+/// the injected `calendar` must share the current time zone (the default does); a calendar in a
+/// different zone would shift the range by a day.
 public func gridDensity(
     events: [Event],
     reminders: [Reminder],
@@ -101,8 +106,8 @@ public func gridDensity(
         // the range; they belong to a cell that is not on this grid.
         guard range.contains(item.displayDate) else { continue }
         let c = calendar.dateComponents([.year, .month, .day], from: item.displayDate)
-        guard let year = c.year, let month = c.month, let day = c.day else { continue }
-        let iso = DateMath.isoDate(year: year, month0: month - 1, day: day)
+        guard let year = c.year, let monthNumber = c.month, let day = c.day else { continue }
+        let iso = DateMath.isoDate(year: year, month0: monthNumber - 1, day: day)
         switch item.kind {
         case .event: result[iso, default: .none].events += 1
         case .reminder: result[iso, default: .none].tasks += 1

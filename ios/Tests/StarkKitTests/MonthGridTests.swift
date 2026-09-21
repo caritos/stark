@@ -7,8 +7,6 @@ import Foundation
 struct MonthGridTests {
     private let cal = Calendar(identifier: .gregorian)
 
-    private func isos(_ days: [GridDay]) -> [String] { days.map(\.iso) }
-
     @Test("September 2026 (starts on a Tuesday): Aug 30-31 lead, Oct 1-10 trail, 42 cells")
     func september2026() {
         let days = MonthGrid.days(for: YearMonth(year: 2026, month0: 8))
@@ -73,6 +71,17 @@ struct MonthGridTests {
 
         #expect(day.id == "2026-09-01")
         #expect(day.date == DateMath.date(from: "2026-09-01"))
+    }
+
+    @Test("cells built from the same year/month/day/isInMonth are equal and hash alike; iso is derived from them")
+    func equalityWithStoredIso() {
+        let a = GridDay(year: 2026, month0: 8, day: 1, isInMonth: true)
+        let b = GridDay(year: 2026, month0: 8, day: 1, isInMonth: true)
+
+        #expect(a == b)
+        #expect(Set([a, b]).count == 1)
+        #expect(a.iso == "2026-09-01")
+        #expect(a != GridDay(year: 2026, month0: 8, day: 1, isInMonth: false))
     }
 
     @Test("the range runs from the start of the first cell's day to the last second of the last cell's day")

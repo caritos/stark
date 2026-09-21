@@ -44,6 +44,18 @@ struct GridDensityTests {
         #expect(result["2026-09-01"] == nil)
     }
 
+    @Test("an overdue reminder counts on today's cell even when today is a neighbouring-month cell")
+    func overdueCountsOnTodayInNeighbourCell() {
+        // October 2026's grid runs Sep 27 - Nov 7, so 2026-09-30 is a September cell on it.
+        let october = YearMonth(year: 2026, month0: 9)
+        let reminders = [Reminder(id: "r1", title: "Missed", dueDate: d("2026-09-01"))]
+
+        let result = gridDensity(events: [], reminders: reminders, month: october, today: d("2026-09-30"))
+
+        #expect(result["2026-09-30"] == DayDensity(tasks: 1, events: 0))
+        #expect(result["2026-09-01"] == nil)
+    }
+
     @Test("an overdue reminder is not counted when today is outside the grid range")
     func overdueIgnoredWhenTodayOutside() {
         let reminders = [Reminder(id: "r1", title: "Missed", dueDate: d("2026-09-01"))]

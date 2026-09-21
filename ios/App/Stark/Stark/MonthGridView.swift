@@ -35,9 +35,9 @@ struct MonthGridView: View {
     private static let markerGap: CGFloat = 2
     /// Markers drawn per kind. The counts themselves are uncapped (VoiceOver reads the truth).
     private static let maxMarkers = 3
-    /// A month spans at most 6 week-rows; always reserving all 6 keeps the grid (and so the
-    /// agenda below it) from resizing as the user pages between months.
-    private static let maxRows = 6
+    /// The grid is always 6 full rows (42 cells), which keeps the grid and the agenda below it
+    /// from resizing as the user pages between months.
+    private static let maxRows = MonthGrid.dayCount / 7
     private static let weekdayLabels = ["S", "M", "T", "W", "T", "F", "S"]
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
@@ -77,7 +77,7 @@ struct MonthGridView: View {
         .padding(.horizontal, Spacing.sm)
         .padding(.bottom, Spacing.sm)
         .background(Colors.background)
-        .task { store.loadMonths(covering: MonthGrid.range(for: visibleMonth)) }
+        .task { loadVisibleMonths() }
         // Recompute when (and only when) the month, today, or the store's items change. Equal
         // arrays share a buffer, so the comparison SwiftUI makes on every `body` is cheap until
         // the store really republishes. The work runs off the main actor, and a stale result
@@ -99,8 +99,14 @@ struct MonthGridView: View {
         .onChange(of: today) { oldToday, newToday in
             guard visibleMonth == YearMonth(date: oldToday) else { return }
             visibleMonth = YearMonth(date: newToday)
-            store.loadMonths(covering: MonthGrid.range(for: visibleMonth))
+            loadVisibleMonths()
         }
+    }
+
+    /// The store must have loaded every month the visible grid touches (its neighbouring days
+    /// can be in the previous or next month's file).
+    private func loadVisibleMonths() {
+        store.loadMonths(covering: MonthGrid.range(for: visibleMonth))
     }
 
     /// Everything the density depends on. It is the `.task(id:)`, so the density is recomputed
@@ -202,6 +208,6 @@ struct MonthGridView: View {
 
     private func changeMonth(by offset: Int) {
         visibleMonth = YearMonth(year: visibleMonth.year, month0: visibleMonth.month0 + offset)
-        store.loadMonths(covering: MonthGrid.range(for: visibleMonth))
+        loadVisibleMonths()
     }
 }

@@ -8,16 +8,17 @@ public struct GridDay: Hashable, Sendable, Identifiable {
     public let month0: Int
     public let day: Int
     public let isInMonth: Bool
+    /// `yyyy-MM-dd`. Computed once at init (the view reads it several times per cell per render).
+    public let iso: String
 
     public init(year: Int, month0: Int, day: Int, isInMonth: Bool) {
         self.year = year
         self.month0 = month0
         self.day = day
         self.isInMonth = isInMonth
+        self.iso = DateMath.isoDate(year: year, month0: month0, day: day)
     }
 
-    /// `yyyy-MM-dd`.
-    public var iso: String { DateMath.isoDate(year: year, month0: month0, day: day) }
     public var id: String { iso }
     /// Local noon of this day (`DateMath.date(from:)`), the app's usual "a day" timestamp.
     public var date: Date { DateMath.date(from: iso) }
@@ -45,6 +46,11 @@ public enum MonthGrid {
 
     /// Everything the grid shows: from the start of the first cell's day to the last second of the
     /// last cell's day. Stepped with `calendar`, never by 86 400 seconds, so DST days are right.
+    ///
+    /// The cell dates come from `DateMath`, which is hard-wired to `TimeZone.current`, and
+    /// `buildAgendaItems` and `OccurrenceExpander` also use the current time zone, so `calendar`
+    /// must share the current time zone (the default does); a calendar in a different zone would
+    /// shift the range by a day.
     public static func range(
         for month: YearMonth,
         calendar: Calendar = Calendar(identifier: .gregorian)
