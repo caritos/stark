@@ -32,7 +32,7 @@ struct StarkApp: App {
                 #endif
         }
         #if targetEnvironment(macCatalyst)
-        .windowResizability(.contentSize)
+        .windowResizability(.contentMinSize)
         #endif
     }
 
