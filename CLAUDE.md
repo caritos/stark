@@ -107,7 +107,7 @@ mobile/                       ← Expo Router iOS app
 │   ├── _layout.tsx           ← root Stack layout, fonts, TaskProvider, BottomActionBar
 │   ├── index.tsx             ← redirects to /calendar
 │   ├── calendar.tsx          ← Calendar screen (default): agenda list + built-in mini month-grid
-│   ├── year.tsx              ← Year view (dot-density heatmap by month); tap a date jumps into Calendar
+│   ├── year.tsx              ← Year view (two-months-per-row grid, per-day background heatmap); tap a date jumps into Calendar
 │   ├── search.tsx            ← Search screen
 │   ├── settings.tsx          ← File path settings
 │   └── task/[line].tsx       ← Task detail formSheet: Done, Edit, Priority, Skip, Delete; shows DUE date
@@ -172,6 +172,8 @@ mobile/                       ← Expo Router iOS app
 **Calendar navigation pattern**: tapping a date in Calendar's built-in mini-grid scrolls the agenda list to that date within the same screen (`scrollToDate`); tapping a date in Year view jumps into Calendar at that date via `requestDateJump` + `router.push('/calendar')`. The ViewSwitcher (bottom-left ≡) and BottomActionBar label together support: Day (labels the Calendar screen), Year, Search, Settings.
 
 **Mini month-grid density dots** (`app/calendar.tsx`): each day cell shows up to 3 dots per category — `Colors.accent` for days with tasks (`incomplete`/`completed` kind items), `Colors.eventDot` for days with events (`event` kind) — instead of a single uniform has-any-item dot, so glancing at the grid conveys how busy a day is (issue #81). Counts come from a `dateCounts: Map<string, { taskCount, eventCount }>` built in the same pass as `byDate` in the `sections` useMemo — no second iteration over `tasks`. A day with 0 of both still renders the invisible `dotPlaceholder` so every cell keeps identical row height regardless of dot count.
+
+**Year view layout** (`app/year.tsx`, issue #102): months render two-per-row (`monthRow`/`monthBlock`, `flex: 1` each) instead of one full-width month per row, so the year reads as a compact overview and each month's name (`monthTitle`, full uppercase name from `MONTH_NAMES` — never abbreviated) sits directly above its own grid rather than scrolling off ambiguously. Busy days get a background heatmap fill (`heatFill`) — the same single accent hue at three increasing hex-alpha-suffix opacities (`Colors.accent + '22'/'55'/'88'`, matching `calendar.tsx`'s `Colors.accent + '11'` convention) — instead of the old fixed-size/fixed-opacity dot, which made every busy day look visually identical regardless of how busy it was. `scrollRef`'s scroll-to-today logic now keys off the *row* containing today's month (`todayRowIndex = Math.floor(todayMonthIndex / 2)`) rather than the month itself, since two months now share one `onLayout`-measured row.
 
 **Temporal navigation consistency**: both remaining calendar views (Calendar, Year) have `‹`/`›` arrow buttons in the header and horizontal swipe gestures. Swipe uses `activeOffsetX([-20, 20]).failOffsetY([-10, 10])` so vertical scrolling still works in views that scroll. Year view scopes the swipe gesture to the header bar only to avoid conflicting with the month-list ScrollView body.
 

@@ -13,11 +13,14 @@ const MONTH_NAMES = [
 ];
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-function busyDot(count: number): { size: number; opacity: number } | null {
-  if (count === 0) return null;
-  if (count <= 2) return { size: 4, opacity: 0.45 };
-  if (count <= 5) return { size: 6, opacity: 0.7 };
-  return { size: 8, opacity: 1.0 };
+// Heatmap fill for a busy day cell: same accent hue at increasing opacity (hex alpha suffix,
+// matching calendar.tsx's `Colors.accent + '11'` convention) so busier days read as "more
+// intense", not just "has a dot" — a flat single-opacity dot made every busy day look the same.
+function heatFill(count: number): string | undefined {
+  if (count === 0) return undefined;
+  if (count <= 2) return Colors.accent + '22';
+  if (count <= 5) return Colors.accent + '55';
+  return Colors.accent + '88';
 }
 
 function pad(n: number): string {
@@ -33,8 +36,8 @@ export default function YearScreen() {
   const [year, setYear] = useState(todayYear);
 
   const scrollRef = useRef<ScrollView>(null);
-  const monthOffsets = useRef<number[]>([]);
   const todayMonthIndex = parseInt(todayStr.slice(5, 7), 10) - 1;
+  const todayRowIndex = Math.floor(todayMonthIndex / 2);
 
   const busyCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -73,75 +76,71 @@ export default function YearScreen() {
       </GestureDetector>
 
       <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
-        {MONTH_NAMES.map((monthName, monthIndex) => {
-          const firstDay = new Date(year, monthIndex, 1).getDay();
-          const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-          const cells: (number | null)[] = [
-            ...Array(firstDay).fill(null),
-            ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-          ];
-          while (cells.length % 7 !== 0) cells.push(null);
+        {MONTH_NAMES.reduce<number[][]>((rows, _, i) => {
+          if (i % 2 === 0) rows.push([i]); else rows[rows.length - 1].push(i);
+          return rows;
+        }, []).map((rowMonths, rowIndex) => (
+          <View
+            key={rowIndex}
+            style={styles.monthRow}
+            onLayout={(e) => {
+              if (rowIndex === todayRowIndex && year === todayYear) {
+                scrollRef.current?.scrollTo({ y: e.nativeEvent.layout.y, animated: false });
+              }
+            }}
+          >
+            {rowMonths.map((monthIndex) => {
+              const monthName = MONTH_NAMES[monthIndex];
+              const firstDay = new Date(year, monthIndex, 1).getDay();
+              const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+              const cells: (number | null)[] = [
+                ...Array(firstDay).fill(null),
+                ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+              ];
+              while (cells.length % 7 !== 0) cells.push(null);
 
-          return (
-            <View
-              key={monthIndex}
-              onLayout={(e) => {
-                monthOffsets.current[monthIndex] = e.nativeEvent.layout.y;
-                if (monthIndex === todayMonthIndex && year === todayYear) {
-                  scrollRef.current?.scrollTo({ y: e.nativeEvent.layout.y, animated: false });
-                }
-              }}
-            >
-              <View style={styles.monthBlock}>
-                <Text style={styles.monthTitle}>{monthName.toUpperCase()}</Text>
-                <View style={styles.weekRow}>
-                  {DAY_LABELS.map((d, i) => (
-                    <Text key={i} style={styles.dayHdr}>{d}</Text>
-                  ))}
-                </View>
-                <View style={styles.grid}>
-                  {cells.map((day, i) => {
-                    if (day === null) {
-                      return <View key={`empty-${i}`} style={styles.dayCell} />;
-                    }
-                    const dateStr = `${year}-${pad(monthIndex + 1)}-${pad(day)}`;
-                    const isToday = dateStr === todayStr;
-                    const isPast = dateStr < todayStr;
-                    const count = busyCounts.get(dateStr) ?? 0;
-                    const dot = busyDot(count);
+              return (
+                <View key={monthIndex} style={styles.monthBlock}>
+                  <Text style={styles.monthTitle}>{monthName.toUpperCase()}</Text>
+                  <View style={styles.weekRow}>
+                    {DAY_LABELS.map((d, i) => (
+                      <Text key={i} style={styles.dayHdr}>{d}</Text>
+                    ))}
+                  </View>
+                  <View style={styles.grid}>
+                    {cells.map((day, i) => {
+                      if (day === null) {
+                        return <View key={`empty-${i}`} style={styles.dayCell} />;
+                      }
+                      const dateStr = `${year}-${pad(monthIndex + 1)}-${pad(day)}`;
+                      const isToday = dateStr === todayStr;
+                      const isPast = dateStr < todayStr;
+                      const count = busyCounts.get(dateStr) ?? 0;
 
-                    return (
-                      <TouchableOpacity
-                        key={dateStr}
-                        style={styles.dayCell}
-                        onPress={() => { requestDateJump(dateStr); router.push('/calendar'); }}
-                      >
-                        <View style={[styles.dayNum, isToday && styles.dayNumToday]}>
-                          <Text style={[
-                            styles.dayNumText,
-                            isPast && !isToday && styles.dayNumPast,
-                            isToday && styles.dayNumTodayText,
-                          ]}>
-                            {day}
-                          </Text>
-                        </View>
-                        {dot ? (
-                          <View style={[
-                            styles.dot,
-                            { width: dot.size, height: dot.size, borderRadius: dot.size / 2, opacity: dot.opacity },
-                          ]} />
-                        ) : (
-                          <View style={styles.dotPlaceholder} />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
+                      return (
+                        <TouchableOpacity
+                          key={dateStr}
+                          style={[styles.dayCell, { backgroundColor: isToday ? undefined : heatFill(count) }]}
+                          onPress={() => { requestDateJump(dateStr); router.push('/calendar'); }}
+                        >
+                          <View style={[styles.dayNum, isToday && styles.dayNumToday]}>
+                            <Text style={[
+                              styles.dayNumText,
+                              isPast && !isToday && styles.dayNumPast,
+                              isToday && styles.dayNumTodayText,
+                            ]}>
+                              {day}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
-              <View style={styles.monthSep} />
-            </View>
-          );
-        })}
+              );
+            })}
+          </View>
+        ))}
       </ScrollView>
     </View>
   );
@@ -163,18 +162,16 @@ const styles = StyleSheet.create({
   arrow: { padding: Spacing.sm },
   arrowText: { fontSize: 22, color: Colors.textSecondary },
   scroll: { paddingBottom: 120 },
-  monthBlock: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 8 },
-  monthTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 2, color: Colors.accent, marginBottom: 8 },
-  weekRow: { flexDirection: 'row', marginBottom: 4 },
-  dayHdr: { flex: 1, textAlign: 'center', fontSize: 9, color: Colors.checkboxBorder, letterSpacing: 0.5 },
+  monthRow: { flexDirection: 'row' },
+  monthBlock: { flex: 1, paddingHorizontal: 6, paddingTop: 14, paddingBottom: 8 },
+  monthTitle: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: Colors.accent, marginBottom: 6 },
+  weekRow: { flexDirection: 'row', marginBottom: 2 },
+  dayHdr: { flex: 1, textAlign: 'center', fontSize: 8, color: Colors.checkboxBorder, letterSpacing: 0.5 },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  dayCell: { width: `${100 / 7}%` as any, alignItems: 'center', paddingVertical: 3 },
-  dayNum: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
+  dayCell: { width: `${100 / 7}%` as any, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 },
+  dayNum: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   dayNumToday: { backgroundColor: Colors.accent },
-  dayNumText: { fontSize: 12, color: Colors.text },
+  dayNumText: { fontSize: 11, color: Colors.text },
   dayNumPast: { color: Colors.textDim },
   dayNumTodayText: { color: Colors.textOnAccent, fontWeight: '700' },
-  dot: { backgroundColor: Colors.accent, marginTop: 2 },
-  dotPlaceholder: { height: 8, marginTop: 2 },
-  monthSep: { height: 1, backgroundColor: Colors.divider, marginHorizontal: 12 },
 });
