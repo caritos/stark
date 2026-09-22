@@ -69,7 +69,9 @@ struct YearView: View {
                 .padding(.vertical, Spacing.sm)
             }
 
+            #if !targetEnvironment(macCatalyst)
             ModeHandle(mode: $mode)
+            #endif
         }
         .background(Colors.background)
         // Every month of the year the screen shows must be in the store. Runs on appear and

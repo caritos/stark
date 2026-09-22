@@ -40,78 +40,99 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                if let error = store.error {
-                    Button {
-                        store.error = nil
-                    } label: {
-                        Text(error)
-                            .font(.footnote)
-                            .foregroundStyle(Colors.text)
-                            .padding(Spacing.sm)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Colors.accent)
-                    }
-                }
-                ZStack {
-                    VStack(spacing: 0) {
-                        MonthGridView(today: today, mode: mode, selectedDate: selectedDate, onSelectDate: selectDate)
-                        ModeHandle(mode: $mode)
-                        Rectangle()
-                            .fill(Colors.separator)
-                            .frame(height: 1)
-                        AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
-                    }
-                    // Hidden (not removed) in year mode: tearing the agenda down would lose its
-                    // scroll position and, on coming back, scroll to today instead of the day
-                    // picked in the year. Not tappable or readable by VoiceOver while hidden.
-                    .opacity(mode == .year ? 0 : 1)
-                    .allowsHitTesting(mode != .year)
-                    .accessibilityHidden(mode == .year)
-
-                    if mode == .year {
-                        YearView(today: today, selectedDate: selectedDate, mode: $mode) { date in
-                            selectDate(date)
-                            withAnimation(.easeInOut(duration: 0.2)) { mode = .month }
-                        }
-                        .transition(.opacity)
-                    }
-                }
+        Group {
+            #if targetEnvironment(macCatalyst)
+            NavigationSplitView {
+                CalendarSidebar(mode: $mode)
+            } detail: {
+                screenContent
             }
-            .background(Colors.background)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Colors.background, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                FlatToolbarButton(title: "Add", systemImage: "plus", placement: .primaryAction) { showAdd = true }
+            #else
+            NavigationStack {
+                screenContent
             }
-            .sheet(isPresented: $showAdd) { AddItemView() }
-            .sheet(item: $selectedItem) { item in EditItemView(item: item) }
-            .task {
-                // Load the wider window (includes the overdue lookback), not the display window.
-                let range = AgendaWindow.loadRange(around: Date())
-                store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active {
-                    store.retryPendingWrites()
-                    followCalendarDay()
-                } else {
-                    // The undo window's timer doesn't survive the app being suspended or
-                    // killed, so commit any still-pending completions on the way out.
-                    pending.flush()
-                }
-            }
-            // Midnight, or the clock / timezone changed, while the app is in the foreground.
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
-                followCalendarDay()
-            }
+            #endif
         }
         .tint(Colors.accent)
         // The design is dark-only (Colors.* are dark-theme tokens); without this, system
         // sheets and Forms would render light with near-white text.
         .preferredColorScheme(.dark)
+    }
+
+    /// The grid, drag bar (iPhone only — Mac drives `mode` from `CalendarSidebar` instead),
+    /// separator and agenda, or the year overlay in year mode; plus every modifier that used to
+    /// hang off the old single `NavigationStack` body (background, toolbar, sheets, load-on-
+    /// appear, foreground/day-rollover handling). Identical between platforms except the missing
+    /// `ModeHandle` row on Mac.
+    private var screenContent: some View {
+        VStack(spacing: 0) {
+            if let error = store.error {
+                Button {
+                    store.error = nil
+                } label: {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(Colors.text)
+                        .padding(Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Colors.accent)
+                }
+            }
+            ZStack {
+                VStack(spacing: 0) {
+                    MonthGridView(today: today, mode: mode, selectedDate: selectedDate, onSelectDate: selectDate)
+                    #if !targetEnvironment(macCatalyst)
+                    ModeHandle(mode: $mode)
+                    #endif
+                    Rectangle()
+                        .fill(Colors.separator)
+                        .frame(height: 1)
+                    AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
+                }
+                // Hidden (not removed) in year mode: tearing the agenda down would lose its
+                // scroll position and, on coming back, scroll to today instead of the day
+                // picked in the year. Not tappable or readable by VoiceOver while hidden.
+                .opacity(mode == .year ? 0 : 1)
+                .allowsHitTesting(mode != .year)
+                .accessibilityHidden(mode == .year)
+
+                if mode == .year {
+                    YearView(today: today, selectedDate: selectedDate, mode: $mode) { date in
+                        selectDate(date)
+                        withAnimation(.easeInOut(duration: 0.2)) { mode = .month }
+                    }
+                    .transition(.opacity)
+                }
+            }
+        }
+        .background(Colors.background)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Colors.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            FlatToolbarButton(title: "Add", systemImage: "plus", placement: .primaryAction) { showAdd = true }
+        }
+        .sheet(isPresented: $showAdd) { AddItemView() }
+        .sheet(item: $selectedItem) { item in EditItemView(item: item) }
+        .task {
+            // Load the wider window (includes the overdue lookback), not the display window.
+            let range = AgendaWindow.loadRange(around: Date())
+            store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                store.retryPendingWrites()
+                followCalendarDay()
+            } else {
+                // The undo window's timer doesn't survive the app being suspended or
+                // killed, so commit any still-pending completions on the way out.
+                pending.flush()
+            }
+        }
+        // Midnight, or the clock / timezone changed, while the app is in the foreground.
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+            followCalendarDay()
+        }
     }
 
     /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone
