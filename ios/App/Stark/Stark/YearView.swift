@@ -6,10 +6,13 @@ import StarkKit
 /// mini-months, and the drag bar underneath (dragging it up, or tapping it, returns to month).
 ///
 /// Each mini-month is a Sunday-first 6 x 7 block of real dates (`MonthGrid.days`), neighbouring
-/// months' days dimmed and never tinted. A day with items is tinted `Colors.accent` at one of
-/// three strengths by `DayDensity.level` (1 / 2-3 / 4+ items); today is the filled accent square
-/// (on whichever cell it falls, in the month or not). Every day is a real `Button` selecting that
-/// date; `ContentView` then returns to month mode and scrolls the agenda.
+/// months' days dimmed and never tinted. A day with items is tinted at one of three strengths by
+/// `DayDensity.level` (1 / 2-3 / 4+ items), in `Colors.eventDot` (purple) if the day has any
+/// events or `Colors.accent` (orange) if it has tasks only — purple wins on a day with both
+/// (issue #102: a single accent color made the grid uninformative about what kind of day it was,
+/// not just how busy). Today is the filled accent square regardless (on whichever cell it falls,
+/// in the month or not). Every day is a real `Button` selecting that date; `ContentView` then
+/// returns to month mode and scrolls the agenda.
 ///
 /// The counts come from `yearDensity` (the same `buildAgendaItems` as the month grid) computed
 /// off the main actor, never in `body`, and all twelve months of the shown year are loaded into
@@ -189,7 +192,7 @@ struct YearView: View {
                     if isToday {
                         Rectangle().fill(Colors.accent)
                     } else if day.isInMonth, let opacity = Self.tintOpacity(level: counts.level) {
-                        Rectangle().fill(Colors.accent.opacity(opacity))
+                        Rectangle().fill(Self.tintColor(counts).opacity(opacity))
                     }
                 }
                 .contentShape(Rectangle())
@@ -201,7 +204,7 @@ struct YearView: View {
         .accessibilityHidden(!day.isInMonth)
     }
 
-    /// The accent opacity for a `DayDensity.level`, nil for an empty day.
+    /// The tint opacity for a `DayDensity.level`, nil for an empty day.
     private static func tintOpacity(level: Int) -> Double? {
         switch level {
         case 1: return tintLow
@@ -209,5 +212,12 @@ struct YearView: View {
         case 3...: return tintHigh
         default: return nil
         }
+    }
+
+    /// Purple (`Colors.eventDot`) for a day with at least one event, orange (`Colors.accent`) for
+    /// a day with tasks only — events win on a day with both. Matches `MonthGridView`'s existing
+    /// task/event marker distinction (issue #102).
+    private static func tintColor(_ counts: DayDensity) -> Color {
+        counts.events > 0 ? Colors.eventDot : Colors.accent
     }
 }
