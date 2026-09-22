@@ -37,25 +37,7 @@ struct CustomRepeatView: View {
                 }
             }
 
-            Section {
-                HStack {
-                    Picker("Interval", selection: $interval) {
-                        ForEach(1..<100, id: \.self) { Text("\($0)").tag($0) }
-                    }
-                    .pickerStyle(.wheel)
-                    .labelsHidden()
-
-                    Picker("Unit", selection: $unit) {
-                        Text("day").tag(RecurrenceRule.Frequency.daily)
-                        Text("week").tag(RecurrenceRule.Frequency.weekly)
-                        Text("month").tag(RecurrenceRule.Frequency.monthly)
-                        Text("year").tag(RecurrenceRule.Frequency.yearly)
-                    }
-                    .pickerStyle(.wheel)
-                    .labelsHidden()
-                }
-                .frame(height: 216)
-            }
+            intervalUnitSection
 
             if unit == .weekly {
                 Section("On Days") {
@@ -164,6 +146,47 @@ struct CustomRepeatView: View {
 
     private var summary: String {
         buildRule().summary
+    }
+
+    @ViewBuilder
+    private var intervalUnitSection: some View {
+#if targetEnvironment(macCatalyst)
+        Section {
+            HStack {
+                Stepper(value: $interval, in: 1...99) {
+                    Text("Every \(interval)").foregroundStyle(Colors.text)
+                }
+                Picker("Unit", selection: $unit) {
+                    Text("day").tag(RecurrenceRule.Frequency.daily)
+                    Text("week").tag(RecurrenceRule.Frequency.weekly)
+                    Text("month").tag(RecurrenceRule.Frequency.monthly)
+                    Text("year").tag(RecurrenceRule.Frequency.yearly)
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+            }
+        }
+#else
+        Section {
+            HStack {
+                Picker("Interval", selection: $interval) {
+                    ForEach(1..<100, id: \.self) { Text("\($0)").tag($0) }
+                }
+                .pickerStyle(.wheel)
+                .labelsHidden()
+
+                Picker("Unit", selection: $unit) {
+                    Text("day").tag(RecurrenceRule.Frequency.daily)
+                    Text("week").tag(RecurrenceRule.Frequency.weekly)
+                    Text("month").tag(RecurrenceRule.Frequency.monthly)
+                    Text("year").tag(RecurrenceRule.Frequency.yearly)
+                }
+                .pickerStyle(.wheel)
+                .labelsHidden()
+            }
+            .frame(height: 216)
+        }
+#endif
     }
 
     private var onDaysSummary: String {
