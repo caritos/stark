@@ -11,14 +11,10 @@ struct CustomRepeatView: View {
     @State private var byMonth: Set<Month>
     @State private var byMonthDay: [Int]?
     @State private var byPositionalDay: [PositionalDay]?
-    @State private var endMode: EndMode
-    @State private var untilDate: Date
-    @State private var occurrenceCount: Int
 
-    enum EndMode: String, CaseIterable, Identifiable {
-        case never = "Never", onDate = "On Date", afterCount = "After"
-        var id: String { rawValue }
-    }
+    // The end of the series is not edited here: the add/edit screens keep it as `RepeatEnd`
+    // (the "Repeat End" row) and apply it on save, so `recurrence` arrives without an end and
+    // this view never writes one.
 
     init(recurrence: Binding<RecurrenceRule?>) {
         _recurrence = recurrence
@@ -29,15 +25,6 @@ struct CustomRepeatView: View {
         _byMonth = State(initialValue: Set(existing?.byMonth ?? []))
         _byMonthDay = State(initialValue: existing?.byMonthDay)
         _byPositionalDay = State(initialValue: existing?.byPositionalDay)
-        _untilDate = State(initialValue: existing?.until ?? Date())
-        _occurrenceCount = State(initialValue: existing?.count ?? 1)
-        if existing?.until != nil {
-            _endMode = State(initialValue: .onDate)
-        } else if existing?.count != nil {
-            _endMode = State(initialValue: .afterCount)
-        } else {
-            _endMode = State(initialValue: .never)
-        }
     }
 
     var body: some View {
@@ -141,19 +128,6 @@ struct CustomRepeatView: View {
                     }
                 }
             }
-
-            Section("Ends") {
-                Picker("Ends", selection: $endMode) {
-                    ForEach(EndMode.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-
-                if endMode == .onDate {
-                    DatePicker("Date", selection: $untilDate, displayedComponents: .date)
-                } else if endMode == .afterCount {
-                    Stepper("After \(occurrenceCount) times", value: $occurrenceCount, in: 1...999)
-                }
-            }
         }
         .navigationTitle("Custom")
         .onChange(of: interval) { _, _ in commit() }
@@ -162,9 +136,6 @@ struct CustomRepeatView: View {
         .onChange(of: byMonth) { _, _ in commit() }
         .onChange(of: byMonthDay) { _, _ in commit() }
         .onChange(of: byPositionalDay) { _, _ in commit() }
-        .onChange(of: endMode) { _, _ in commit() }
-        .onChange(of: untilDate) { _, _ in commit() }
-        .onChange(of: occurrenceCount) { _, _ in commit() }
         .onAppear { commit() }
     }
 
@@ -183,9 +154,7 @@ struct CustomRepeatView: View {
             byDay: unit == .weekly && !byDay.isEmpty ? Array(byDay).sorted { $0.rawValue < $1.rawValue } : nil,
             byMonthDay: (unit == .monthly || unit == .yearly) ? byMonthDay : nil,
             byPositionalDay: (unit == .monthly || unit == .yearly) ? byPositionalDay : nil,
-            byMonth: unit == .yearly && !byMonth.isEmpty ? Array(byMonth).sorted { $0.rawValue < $1.rawValue } : nil,
-            count: endMode == .afterCount ? occurrenceCount : nil,
-            until: endMode == .onDate ? untilDate : nil
+            byMonth: unit == .yearly && !byMonth.isEmpty ? Array(byMonth).sorted { $0.rawValue < $1.rawValue } : nil
         )
     }
 

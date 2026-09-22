@@ -3,12 +3,14 @@ import SwiftUI
 import StarkKit
 
 /// Edit + detail sheet for one agenda row. Editable fields (title, date, all-day, end for timed
-/// events, repeat, notes, location for events, priority for reminders) are committed only by Save; the action buttons act immediately and dismiss. Reminders show Done / Undo /
-/// Skip This Occurrence / Delete; events show Attended / Didn't Attend / Clear / Remove This
-/// Occurrence / Delete.
+/// events, repeat, repeat end, notes, location and URL for events, priority for reminders) are
+/// committed only by Save; the action buttons act immediately and dismiss. Reminders show Done /
+/// Undo / Skip This Occurrence / Delete; events show Attended / Didn't Attend / Clear / Remove
+/// This Occurrence / Open Link (for an http/https URL, does not dismiss) / Delete.
 struct EditItemView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     let item: AgendaItem
 
     @State private var title: String
@@ -16,9 +18,14 @@ struct EditItemView: View {
     /// Events only. An event with no end starts with Ends equal to Starts, which stores as no end.
     @State private var endDate: Date
     @State private var allDay: Bool
+    /// The item's rule without its end (`withoutEnd`); the end is `repeatEnd`, applied on save,
+    /// because the repeat presets replace the whole rule and their checkmark compares whole rules.
     @State private var recurrence: RecurrenceRule?
+    @State private var repeatEnd: RepeatEnd
     @State private var notes: String
     @State private var location: String
+    /// Events only; reminders have no URL.
+    @State private var url: String
     @State private var priority: ReminderPriority
     @State private var showDeleteConfirm = false
 
@@ -34,6 +41,7 @@ struct EditItemView: View {
         let startRecurrence: RecurrenceRule?
         let startNotes: String
         let startLocation: String
+        let startURL: String
         let startPriority: ReminderPriority
         switch item.kind {
         case .event(let event):
@@ -45,6 +53,7 @@ struct EditItemView: View {
             startRecurrence = event.recurrence
             startNotes = event.notes ?? ""
             startLocation = event.location ?? ""
+            startURL = event.url ?? ""
             startPriority = .none
         case .reminder(let reminder):
             // For a recurring reminder `dueDate` is the series' anchor, not the tapped
@@ -55,15 +64,18 @@ struct EditItemView: View {
             startRecurrence = reminder.recurrence
             startNotes = reminder.notes ?? ""
             startLocation = ""
+            startURL = ""
             startPriority = ReminderPriority(icalValue: reminder.priority)
         }
         _title = State(initialValue: item.title)
         _date = State(initialValue: startDate)
         _endDate = State(initialValue: startEnd)
         _allDay = State(initialValue: startAllDay)
-        _recurrence = State(initialValue: startRecurrence)
+        _recurrence = State(initialValue: startRecurrence?.withoutEnd)
+        _repeatEnd = State(initialValue: RepeatEnd(rule: startRecurrence))
         _notes = State(initialValue: startNotes)
         _location = State(initialValue: startLocation)
+        _url = State(initialValue: startURL)
         _priority = State(initialValue: startPriority)
         initialDate = startDate
         initialAllDay = startAllDay
@@ -81,6 +93,8 @@ struct EditItemView: View {
                         .onChange(of: date) { oldValue, newValue in
                             // Moving the start moves the end with it, so the duration is kept.
                             endDate = EventSchedule.shiftedEnd(endDate, oldStart: oldValue, newStart: newValue)
+                            // A repeat end never precedes the start's day.
+                            repeatEnd = repeatEnd.clamped(toStartOn: newValue)
                         }
                     if isEvent && !allDay {
                         DatePicker("Ends", selection: $endDate, in: date...,
@@ -98,8 +112,24 @@ struct EditItemView: View {
                         }
                     }
 
+                    if recurrence != nil {
+                        NavigationLink {
+                            RepeatEndPickerView(end: $repeatEnd, startDate: date)
+                        } label: {
+                            HStack {
+                                Text("Repeat End")
+                                Spacer()
+                                Text(repeatEnd.summary).foregroundStyle(Colors.textSecondary)
+                            }
+                        }
+                    }
+
                     if isEvent {
                         TextField("Location", text: $location)
+                        TextField("URL", text: $url)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
                     }
                     if !isEvent {
                         // A segmented picker drops its label on iOS, so it is shown by the row.
@@ -137,6 +167,10 @@ struct EditItemView: View {
                             Button("Remove This Occurrence") { skipOccurrence() }.foregroundStyle(Colors.accent)
                         }
                     }
+                    if let link = openableLink {
+                        // Opens the link and leaves the sheet up: nothing is dismissed or saved.
+                        Button("Open Link") { openURL(link) }.foregroundStyle(Colors.accent)
+                    }
                     if showsDone {
                         Button("Done") { markDone() }.foregroundStyle(Colors.accent)
                     }
@@ -155,6 +189,10 @@ struct EditItemView: View {
             .scrollContentBackground(.hidden)
             .background(Colors.background)
             .listRowSeparatorTint(Colors.separator)
+            .onChange(of: recurrence) { _, newValue in
+                // Repeat = Never resets the end.
+                if newValue == nil { repeatEnd = .never }
+            }
             .navigationTitle(isEvent ? "Event" : "Reminder")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Colors.background, for: .navigationBar)
@@ -185,6 +223,16 @@ struct EditItemView: View {
 
     private var recurrenceSummary: String {
         recurrence?.summary ?? "Never"
+    }
+
+    /// Events only: the typed URL when it is a well-formed http or https link, else nil.
+    private var openableLink: URL? {
+        guard isEvent,
+              let link = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let scheme = link.scheme?.lowercased(),
+              scheme == "http" || scheme == "https"
+        else { return nil }
+        return link
     }
 
     /// Reminder, not completed.
@@ -226,9 +274,10 @@ struct EditItemView: View {
             // stores the start of the day and drops `end` when switching between all-day and timed.
             var updated = event.scheduled(start: date, end: EventSchedule.storedEnd(endDate, start: date), allDay: allDay)
             updated.title = trimmedTitle
-            updated.recurrence = recurrence
+            updated.recurrence = repeatEnd.applied(to: recurrence)
             updated.notes = FormFields.trimmedOrNil(notes)
             updated.location = FormFields.trimmedOrNil(location)
+            updated.url = FormFields.trimmedOrNil(url)
             store.updateEvent(updated)
         case .reminder(let reminder):
             var updated = reminder
@@ -237,7 +286,7 @@ struct EditItemView: View {
             if reminder.dueDate != nil || date != initialDate || allDay != initialAllDay {
                 updated.dueDate = FormFields.normalizedStart(date, allDay: allDay)
             }
-            updated.recurrence = recurrence
+            updated.recurrence = repeatEnd.applied(to: recurrence)
             updated.notes = FormFields.trimmedOrNil(notes)
             updated.priority = ReminderPriority.updated(original: reminder.priority, chosen: priority)
             store.updateReminder(updated)

@@ -11,9 +11,13 @@ struct AddItemView: View {
     @State private var date: Date
     @State private var endDate: Date
     @State private var allDay = false
+    /// Kept without its end (`withoutEnd`); the end is `repeatEnd`, applied on add, because the
+    /// repeat presets replace the whole rule.
     @State private var recurrence: RecurrenceRule?
+    @State private var repeatEnd: RepeatEnd = .never
     @State private var notes = ""
     @State private var location = ""
+    @State private var url = ""
     @State private var priority: ReminderPriority = .none
 
     enum Kind: String, CaseIterable { case event = "Event", reminder = "Reminder" }
@@ -38,6 +42,8 @@ struct AddItemView: View {
                     .onChange(of: date) { oldValue, newValue in
                         // Moving the start moves the end with it, so the duration is kept.
                         endDate = EventSchedule.shiftedEnd(endDate, oldStart: oldValue, newStart: newValue)
+                        // A repeat end never precedes the start's day.
+                        repeatEnd = repeatEnd.clamped(toStartOn: newValue)
                     }
                 if kind == .event && !allDay {
                     DatePicker("Ends", selection: $endDate, in: date...,
@@ -55,8 +61,24 @@ struct AddItemView: View {
                     }
                 }
 
+                if recurrence != nil {
+                    NavigationLink {
+                        RepeatEndPickerView(end: $repeatEnd, startDate: date)
+                    } label: {
+                        HStack {
+                            Text("Repeat End")
+                            Spacer()
+                            Text(repeatEnd.summary).foregroundStyle(Colors.textSecondary)
+                        }
+                    }
+                }
+
                 if kind == .event {
                     TextField("Location", text: $location)
+                    TextField("URL", text: $url)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                 }
                 if kind == .reminder {
                     // A segmented picker drops its label on iOS, so it is shown by the row.
@@ -70,6 +92,10 @@ struct AddItemView: View {
                 }
                 TextField("Notes", text: $notes, axis: .vertical)
                     .lineLimit(1...6)
+            }
+            .onChange(of: recurrence) { _, newValue in
+                // Repeat = Never resets the end.
+                if newValue == nil { repeatEnd = .never }
             }
             .navigationTitle("Add \(kind.rawValue)")
             .toolbar {
@@ -99,7 +125,8 @@ struct AddItemView: View {
                 end: allDay ? nil : EventSchedule.storedEnd(endDate, start: date),
                 isAllDay: allDay,
                 location: FormFields.trimmedOrNil(location),
-                recurrence: recurrence
+                recurrence: repeatEnd.applied(to: recurrence),
+                url: FormFields.trimmedOrNil(url)
             ))
         case .reminder:
             store.addReminder(Reminder(
@@ -107,7 +134,7 @@ struct AddItemView: View {
                 notes: FormFields.trimmedOrNil(notes),
                 dueDate: start,
                 priority: priority.icalValue,
-                recurrence: recurrence
+                recurrence: repeatEnd.applied(to: recurrence)
             ))
         }
         dismiss()
