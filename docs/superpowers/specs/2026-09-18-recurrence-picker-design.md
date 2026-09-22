@@ -208,6 +208,8 @@ AddItemView
           (→ until / count, mutually exclusive)
 ```
 
+**Superseded (#97):** the Ends section moved to the Repeat End row on the add/edit screens (`RepeatEndPickerView`); Custom no longer writes `count`/`until`.
+
 **New view files** (`ios/App/Stark/Stark/`):
 - `RepeatPickerView.swift` — the preset list
 - `CustomRepeatView.swift` — the wheel + contextual sections + Ends

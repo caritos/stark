@@ -24,6 +24,36 @@ struct RepeatEndTests {
         #expect(RepeatEnd(rule: RecurrenceRule(frequency: .weekly, count: -3)) == .never)
     }
 
+    @Test("a foreign rule carrying both count and until reads as the date, and applying drops the count")
+    func foreignBothEnds() throws {
+        // An RRULE may not carry both COUNT and UNTIL, so when a foreign file has both the date wins.
+        let rule = RecurrenceRule(frequency: .weekly, count: 3, until: midnight("2026-12-31"))
+        #expect(RepeatEnd(rule: rule) == .onDate(midnight("2026-12-31")))
+        let applied = try #require(RepeatEnd(rule: rule).applied(to: rule.withoutEnd))
+        #expect(applied.until == midnight("2026-12-31"))
+        #expect(applied.count == nil)
+    }
+
+    @Test("a foreign until with a time of day snaps to the start of its day, and the serialized rule is unchanged")
+    func foreignUntilWithTime() throws {
+        let lateUntil = try #require(cal.date(from: DateComponents(year: 2026, month: 12, day: 31, hour: 23, minute: 59, second: 59)))
+        let original = RecurrenceRule(frequency: .weekly, until: lateUntil)
+        let applied = try #require(RepeatEnd(rule: original).applied(to: original.withoutEnd))
+        #expect(applied.until == midnight("2026-12-31"))
+        // The codec writes UNTIL date-only, so snapping does not change what is saved.
+        #expect(RRuleCodec.encode(applied) == RRuleCodec.encode(original))
+    }
+
+    @Test("a foreign count of 0 reads as never and applying writes no end")
+    func foreignZeroCount() throws {
+        // Documents that a nonsense foreign count becomes unbounded on save.
+        let rule = RecurrenceRule(frequency: .weekly, count: 0)
+        #expect(RepeatEnd(rule: rule) == .never)
+        let applied = try #require(RepeatEnd(rule: rule).applied(to: rule.withoutEnd))
+        #expect(applied.count == nil)
+        #expect(applied.until == nil)
+    }
+
     @Test("applying replaces any earlier end and keeps every other part of the rule")
     func applying() throws {
         let base = RecurrenceRule(frequency: .weekly, interval: 2, byDay: [.monday])

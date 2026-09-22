@@ -230,7 +230,8 @@ struct EditItemView: View {
         guard isEvent,
               let link = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)),
               let scheme = link.scheme?.lowercased(),
-              scheme == "http" || scheme == "https"
+              scheme == "http" || scheme == "https",
+              let host = link.host(percentEncoded: false), !host.isEmpty
         else { return nil }
         return link
     }

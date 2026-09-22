@@ -155,6 +155,7 @@ struct ICSParserTests {
 
         #expect(parse("URL:https://example.com/x:y?z=1")?.url == "https://example.com/x:y?z=1")
         #expect(parse("URL;VALUE=URI:https://example.com/x:y")?.url == "https://example.com/x:y")
+        #expect(parse("SUMMARY2:nothing") != nil)
         #expect(parse("SUMMARY2:nothing")?.url == nil)
     }
 

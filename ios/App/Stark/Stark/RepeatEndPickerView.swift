@@ -62,7 +62,7 @@ struct RepeatEndPickerView: View {
                 if !isOnDate { end = .onDate(startDay) }
             }
             if isOnDate {
-                DatePicker("Ends", selection: endDate, in: startDay...,
+                DatePicker("End Date", selection: endDate, in: startDay...,
                            displayedComponents: .date)
                     .foregroundStyle(Colors.text)
             }
