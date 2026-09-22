@@ -27,7 +27,13 @@ struct StarkApp: App {
             ContentView()
                 .environmentObject(store)
                 .environmentObject(pending)
+                #if targetEnvironment(macCatalyst)
+                .frame(minWidth: 480, minHeight: 520)
+                #endif
         }
+        #if targetEnvironment(macCatalyst)
+        .windowResizability(.contentSize)
+        #endif
     }
 
     private static func makeStore() -> PlannerStore {
