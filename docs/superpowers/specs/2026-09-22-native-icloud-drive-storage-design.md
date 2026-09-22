@@ -2,6 +2,15 @@
 
 Date: 2026-09-22
 
+> **Superseded (2026-09-22, same day):** the user opted to build a Mac
+> Catalyst companion app instead, which makes a private iCloud ubiquity
+> container viable (a same-bundle-ID Mac app removes the sync
+> deprioritization problem documented in the global CLAUDE.md) and gives
+> real native editing on both platforms instead of raw-`.ics`-file editing.
+> This folder-picker/bookmark design is kept for context but is not being
+> built. See the Mac Catalyst target spec and the shared ubiquity-container
+> storage spec that replace it.
+
 ## Background
 
 The native Swift app (`ios/`) currently stores its data in its own app-sandboxed
