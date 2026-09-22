@@ -30,7 +30,6 @@ struct YearView: View {
     private static let tintMedium = 0.30
     private static let tintHigh = 0.50
     private static let weekdayLabels = ["S", "M", "T", "W", "T", "F", "S"]
-    private static let monthNames = Calendar(identifier: .gregorian).standaloneMonthSymbols
     private let monthColumns = Array(repeating: GridItem(.flexible(), spacing: Spacing.md, alignment: .top), count: 2)
     private let dayColumns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
@@ -151,7 +150,7 @@ struct YearView: View {
         let cells = MonthGrid.days(for: YearMonth(year: year, month0: month0))
             .map { YearCell(month0: month0, day: $0) }
         return VStack(spacing: 0) {
-            Text(Self.monthNames[month0].uppercased())
+            Text(AgendaFormat.monthName(DateMath.date(from: DateMath.isoDate(year: year, month0: month0, day: 1))).uppercased())
                 .font(Fonts.mono(11, weight: .semibold))
                 .tracking(2)
                 .foregroundStyle(Colors.text)

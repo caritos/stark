@@ -231,6 +231,7 @@ enum AgendaFormat {
     private static let weekdayFormatter = formatter("EEEE")
     private static let shortDateFormatter = formatter("M/d/yy")
     private static let monthYearFormatter = formatter("LLLL yyyy")
+    private static let monthNameFormatter = formatter("LLLL")
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.calendar = calendar
@@ -246,6 +247,13 @@ enum AgendaFormat {
     static func shortDate(_ date: Date) -> String { shortDateFormatter.string(from: date) }
     /// e.g. "September 2026".
     static func monthYear(_ date: Date) -> String { monthYearFormatter.string(from: date) }
+    /// e.g. "September". Unlike `Calendar.standaloneMonthSymbols`, this is correctly localized —
+    /// a bare `Calendar(identifier:)`'s `.locale` defaults to an empty "fixed" locale with no
+    /// symbol data, so `standaloneMonthSymbols` falls back to locale-invariant identifiers
+    /// ("M01".."M12") — but `DateFormatter`'s default locale is `Locale.current`-derived, so
+    /// routing through the same formatter machinery as `monthYear` sidesteps the bug entirely
+    /// (issue #102).
+    static func monthName(_ date: Date) -> String { monthNameFormatter.string(from: date) }
 
     static func isMidnight(_ date: Date) -> Bool { calendar.startOfDay(for: date) == date }
 
