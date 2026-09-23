@@ -81,7 +81,7 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                FlatToolbarButton(title: "Close", placement: .cancellationAction) { dismiss() }
+                SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
             }
             .sheet(isPresented: $showFAQ) { FAQView() }
         }

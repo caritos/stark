@@ -66,6 +66,51 @@ struct FlatToolbarButton: ToolbarContent {
     }
 }
 
+/// A square, flat, glyph-only toolbar button (no glass capsule, no rounded corners), in the same
+/// visual family as the floating Add/Search/Settings buttons. `isProminent` fills it with the
+/// accent (the committing action); otherwise it is a neutral dark square (dismiss). A disabled
+/// prominent button drops to the neutral fill with a dimmed glyph. `label` is the VoiceOver name,
+/// since there is no visible text.
+struct SquareToolbarButton: ToolbarContent {
+    let systemImage: String
+    let label: String
+    let placement: ToolbarItemPlacement
+    var isProminent = false
+    var isDisabled = false
+    let action: () -> Void
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: placement) { button }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: placement) { button }
+        }
+    }
+
+    private var button: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(glyphColor)
+                .frame(width: 40, height: 40)
+                .background(fillColor)
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .accessibilityLabel(label)
+    }
+
+    private var fillColor: Color {
+        isProminent && !isDisabled ? Colors.accent : Colors.separator
+    }
+
+    private var glyphColor: Color {
+        if isProminent { return isDisabled ? Colors.textSecondary : Colors.background }
+        return Colors.text
+    }
+}
+
 private extension Color {
     init(hex: UInt32) {
         self.init(

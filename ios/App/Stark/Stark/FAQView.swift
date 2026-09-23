@@ -52,7 +52,7 @@ struct FAQView: View {
             .navigationTitle("FAQ")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                FlatToolbarButton(title: "Close", placement: .cancellationAction) { dismiss() }
+                SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
             }
         }
         .tint(Colors.accent)

@@ -69,7 +69,7 @@ struct SearchView: View {
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                FlatToolbarButton(title: "Close", placement: .cancellationAction) { dismiss() }
+                SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
             }
             .task {
                 await store.loadAllMonths()
