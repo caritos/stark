@@ -4,6 +4,12 @@ public struct ICSParseResult {
     public let events: [Event]
     public let reminders: [Reminder]
     public let warnings: [String]
+
+    public init(events: [Event], reminders: [Reminder], warnings: [String]) {
+        self.events = events
+        self.reminders = reminders
+        self.warnings = warnings
+    }
 }
 
 public enum ICSParser {
