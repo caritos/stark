@@ -46,7 +46,7 @@ struct CustomRepeatView: View {
                             toggle(day)
                         } label: {
                             HStack {
-                                Text(dayName(day)).foregroundStyle(Colors.text)
+                                Text(day.displayName).foregroundStyle(Colors.text)
                                 Spacer()
                                 if byDay.contains(day) {
                                     Image(systemName: "checkmark").foregroundStyle(Colors.accent)
@@ -65,7 +65,7 @@ struct CustomRepeatView: View {
                                 toggleMonth(month)
                             } label: {
                                 HStack {
-                                    Text(monthName(month)).foregroundStyle(Colors.text)
+                                    Text(month.displayName).foregroundStyle(Colors.text)
                                     Spacer()
                                     if byMonth.contains(month) {
                                         Image(systemName: "checkmark").foregroundStyle(Colors.accent)
@@ -112,13 +112,17 @@ struct CustomRepeatView: View {
             }
         }
         .navigationTitle("Custom")
+        // Deliberately no `.onAppear { commit() }`: that used to commit a default daily rule
+        // the instant this screen appeared, so navigating in from "Never" and immediately
+        // backing out (a stray tap) silently turned on recurrence the user never configured.
+        // Each `.onChange` below only fires on a real edit, so recurrence is only ever written
+        // once the user actually touches something.
         .onChange(of: interval) { _, _ in commit() }
         .onChange(of: unit) { _, _ in commit() }
         .onChange(of: byDay) { _, _ in commit() }
         .onChange(of: byMonth) { _, _ in commit() }
         .onChange(of: byMonthDay) { _, _ in commit() }
         .onChange(of: byPositionalDay) { _, _ in commit() }
-        .onAppear { commit() }
     }
 
     private func toggle(_ day: Weekday) {
@@ -130,13 +134,13 @@ struct CustomRepeatView: View {
     }
 
     private func buildRule() -> RecurrenceRule {
-        RecurrenceRule(
+        .fromPickerFields(
             frequency: unit,
             interval: interval,
-            byDay: unit == .weekly && !byDay.isEmpty ? Array(byDay).sorted { $0.rawValue < $1.rawValue } : nil,
-            byMonthDay: (unit == .monthly || unit == .yearly) ? byMonthDay : nil,
-            byPositionalDay: (unit == .monthly || unit == .yearly) ? byPositionalDay : nil,
-            byMonth: unit == .yearly && !byMonth.isEmpty ? Array(byMonth).sorted { $0.rawValue < $1.rawValue } : nil
+            byDay: byDay,
+            byMonthDay: byMonthDay,
+            byPositionalDay: byPositionalDay,
+            byMonth: byMonth
         )
     }
 
@@ -199,11 +203,4 @@ struct CustomRepeatView: View {
         return "\(byPositionalDay.count) rule\(byPositionalDay.count == 1 ? "" : "s")"
     }
 
-    private func dayName(_ day: Weekday) -> String {
-        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day.rawValue]
-    }
-
-    private func monthName(_ month: Month) -> String {
-        ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][month.rawValue - 1]
-    }
 }
