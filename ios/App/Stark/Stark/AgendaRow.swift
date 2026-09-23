@@ -6,7 +6,7 @@ import StarkKit
 /// (square checkbox for reminders; for events a small filled square, a filled square with a
 /// check when attended, and an outlined square with a cross when skipped) and a text column
 /// with a small time line, the title (an incomplete reminder's priority marks `!`/`!!`/`!!!`
-/// come before it, in the accent colour), and (events) the location. The date lives in the section header, so the row never shows one
+/// come before it, in the accent colour), (a `%birthday`/`%anniversary` event) an emoji before the title and an age note under it, and (events) the location. The date lives in the section header, so the row never shows one
 /// except for an overdue reminder's missed date.
 ///
 /// This view is **visuals only** — nothing in it is tappable. The taps live in
@@ -41,6 +41,7 @@ struct AgendaRowView: View {
 
     var body: some View {
         let timeLine = self.timeLine
+        let milestone = item.milestone
         HStack(alignment: .top, spacing: Spacing.sm) {
             marker
                 .frame(width: Self.markerSize, height: Self.markerSize)
@@ -58,9 +59,20 @@ struct AgendaRowView: View {
                             .font(Fonts.mono(14))
                             .foregroundStyle(Colors.accent)
                     }
+                    // A birthday's cake / an anniversary's party popper, in front of the title so it
+                    // survives truncation. Hidden from VoiceOver: `accessibilitySummary` says it.
+                    if let milestone {
+                        Text(milestone.emoji)
+                            .accessibilityHidden(true)
+                    }
                     Text(item.title)
                         .strikethrough(looksDone || hasOutcome)
                         .foregroundStyle(looksDone || hasOutcome ? Colors.textSecondary : Colors.text)
+                }
+                if let note = milestone?.note {
+                    Text(note)
+                        .font(.footnote)
+                        .foregroundStyle(Colors.textSecondary)
                 }
                 if let location {
                     Text(location)
@@ -126,6 +138,10 @@ struct AgendaRowView: View {
         var parts: [String] = []
         if let timeLine { parts.append(timeLine.text) }
         parts.append(item.title)
+        if let milestone = item.milestone {
+            parts.append(milestone.kind == .birthday ? "birthday" : "anniversary")
+            if let note = milestone.note { parts.append(note) }
+        }
         if showsPriorityMarks { parts.append("\(priorityWord) priority") }
         if let location { parts.append(location) }
         if looksDone { parts.append("completed") }
