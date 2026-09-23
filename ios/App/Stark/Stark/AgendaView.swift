@@ -77,7 +77,7 @@ struct AgendaView: View {
         let sections = makeSections(now: now)
         let rows = makeRows(sections, todayStart: todayStart)
         let itemCount = sections.reduce(0) { $0 + $1.items.count }
-        let rowDayLookup = makeRowDayLookup(sections)
+        let rowDayLookup = makeRowDayLookup(sections, todayStart: todayStart)
 
         GeometryReader { geometry in
             ScrollViewReader { proxy in
@@ -276,14 +276,17 @@ struct AgendaView: View {
 
     /// Maps every row id `makeRows` can produce back to the day it belongs to, so
     /// `.scrollPosition`'s reported top-of-viewport id can be resolved to a day. Mirrors
-    /// `makeRows`'s exact branching (an `.empty` row only exists for a bare day, i.e. one with
-    /// no items) so it never invents an id that isn't actually a row.
-    private func makeRowDayLookup(_ sections: [AgendaDay]) -> [String: Date] {
+    /// `makeRows`'s exact branching so it never invents an id that isn't actually a row:
+    /// an `.empty` row only exists for today when it has no items — every other empty day
+    /// is just its header.
+    private func makeRowDayLookup(_ sections: [AgendaDay], todayStart: Date) -> [String: Date] {
         var lookup: [String: Date] = [:]
         for section in sections {
             lookup[Self.headerID(section.day)] = section.day
             if section.items.isEmpty {
-                lookup["empty-\(Int(section.day.timeIntervalSince1970))"] = section.day
+                if section.day == todayStart {
+                    lookup["empty-\(Int(section.day.timeIntervalSince1970))"] = section.day
+                }
             } else {
                 for item in section.items {
                     lookup[item.id] = section.day
