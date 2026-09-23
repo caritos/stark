@@ -25,6 +25,13 @@ struct SearchView: View {
                     .padding(Spacing.sm)
                     .background(Colors.separator)
                     .padding(Spacing.md)
+                // Trimmed (unlike Add/Edit's fields): a trailing space would make the search
+                // require a literal space right after the tag in the matched text, which fails
+                // whenever the tag is the last word of a title/notes/location.
+                TagSuggestionRow(text: query) {
+                    query = TagAutocomplete.applying($0, to: query).trimmingCharacters(in: .whitespaces)
+                }
+                .padding(.horizontal, Spacing.md)
 
                 if isLoadingHistory {
                     Spacer()

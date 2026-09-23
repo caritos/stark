@@ -88,6 +88,7 @@ struct EditItemView: View {
             List {
                 Section {
                     TextField("Title", text: $title)
+                    TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
                     DatePicker(dateLabel, selection: $date,
                                displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
                         .onChange(of: date) { oldValue, newValue in
@@ -126,6 +127,7 @@ struct EditItemView: View {
 
                     if isEvent {
                         TextField("Location", text: $location)
+                        TagSuggestionRow(text: location) { location = TagAutocomplete.applying($0, to: location) }
                         TextField("URL", text: $url)
                             .keyboardType(.URL)
                             .textInputAutocapitalization(.never)
@@ -143,6 +145,7 @@ struct EditItemView: View {
                     }
                     TextField("Notes", text: $notes, axis: .vertical)
                         .lineLimit(1...6)
+                    TagSuggestionRow(text: notes) { notes = TagAutocomplete.applying($0, to: notes) }
                 } footer: {
                     if item.isRecurring {
                         Text("Changes apply to every occurrence.")
@@ -192,6 +195,11 @@ struct EditItemView: View {
             .onChange(of: recurrence) { _, newValue in
                 // Repeat = Never resets the end.
                 if newValue == nil { repeatEnd = .never }
+            }
+            .task {
+                // Full-history corpus for tag suggestions (`+`/`@`/`%`/`~`); non-blocking --
+                // suggestions simply improve as more months finish loading, same as Search.
+                await store.loadAllMonths()
             }
             .navigationTitle(isEvent ? "Event" : "Reminder")
             .navigationBarTitleDisplayMode(.inline)
