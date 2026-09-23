@@ -117,9 +117,12 @@ struct ContentView: View {
         // would be the one exception. Overlaid on the whole screen (not just the agenda), so
         // it stays reachable and visible even in year mode, above the YearView overlay.
         .overlay(alignment: .bottomTrailing) { addButton }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Colors.background, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        // No navigation title and, since the FAB replaced the toolbar Add button above, no
+        // toolbar content either -- an empty nav bar was still reserving its full height,
+        // showing as a band of dead space above the month grid. Hidden entirely; this screen
+        // never pushes further destinations from itself (Add/Edit are sheets, not pushes), so
+        // nothing relies on the bar being there.
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAdd) { AddItemView() }
         .sheet(item: $selectedItem) { item in EditItemView(item: item) }
         .task {
