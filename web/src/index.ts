@@ -12,13 +12,12 @@ app.use('*', async (c, next) => {
   const url = new URL(c.req.url);
   if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
     // Behind DreamHost's reverse proxy, `c.req.url` carries the *internal* scheme (plain http --
-    // the proxy terminates TLS), not what the visitor's browser actually used, so building the
-    // redirect straight from it silently downgraded a real https:// visit to http://. Trust the
-    // standard `X-Forwarded-Proto` header a TLS-terminating proxy sets, falling back to the
-    // request's own scheme only when it's absent (e.g. local dev, always plain http anyway).
-    url.protocol = `${c.req.header('x-forwarded-proto') ?? url.protocol.replace(':', '')}:`;
-    url.pathname = url.pathname.slice(0, -1);
-    return c.redirect(url.toString(), 301);
+    // the proxy terminates TLS), not what the visitor's browser actually used, so building an
+    // absolute redirect from it silently downgrades a real https:// visit to http://. The proxy
+    // does NOT send `X-Forwarded-Proto` (verified in production; an earlier fix relied on it and
+    // never worked), so redirect to a *relative* Location instead -- the browser resolves it
+    // against the URL it actually requested, keeping its scheme and host with nothing to guess.
+    return c.redirect(`${url.pathname.slice(0, -1)}${url.search}`, 301);
   }
   await next();
 });
