@@ -134,13 +134,6 @@ app.get('/', (c) => {
         Your file works everywhere.
       </p>
       <a class="badge" href="https://apps.apple.com/app/id6772774783">↓ DOWNLOAD ON THE APP STORE</a>
-
-      <h2 style="margin-top:48px;">ALSO AVAILABLE</h2>
-      <p>
-        Prefer the terminal? A companion <strong>command-line tool</strong> is available for macOS.
-        Point it at the same iCloud file and your tasks sync instantly between your iPhone and Mac.
-      </p>
-      <a class="badge" href="https://github.com/caritos/stark/releases/latest">↓ COMMAND-LINE TOOL ON GITHUB</a>
     </main>
     <div class="screenshots">
       <img src="/public/screenshots/01-calendar.png" alt="Calendar view">
