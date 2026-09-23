@@ -77,6 +77,20 @@ public final class PlannerStore: ObservableObject {
         file.retryPendingWrites()
     }
 
+    /// Loads every month file that exists on disk, not just the months the agenda's display
+    /// window touches -- Search needs the user's whole history, not just what's already in
+    /// memory. Already-loaded months are skipped (`loadMonth`'s own guard). `await
+    /// Task.yield()` between each file lets the main actor process other work (a loading
+    /// indicator redrawing) between reads, rather than blocking solid until every file is
+    /// read. Safe to call more than once per session: after the first call every month is
+    /// already in `loadedMonths`, so later calls are a fast no-op loop.
+    public func loadAllMonths() async {
+        for month in file.availableMonths() where !loadedMonths.contains(month) {
+            loadMonth(month)
+            await Task.yield()
+        }
+    }
+
     public func loadMonth(_ month: YearMonth) {
         guard !loadedMonths.contains(month) else { return }
         do {

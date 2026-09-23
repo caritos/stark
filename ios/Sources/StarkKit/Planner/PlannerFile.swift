@@ -59,6 +59,28 @@ public final class PlannerFile {
         try save(fileName: month.fileName, events: events, reminders: reminders)
     }
 
+    /// Every month file that exists in `directory`, discovered by filename pattern
+    /// (`YYYY-MM.ics`) rather than assumed — the app has no other way to know which months
+    /// have ever been saved, which Search needs in order to load everything rather than just
+    /// the agenda's display window. Skips `recurring.ics` and anything that isn't a two-part
+    /// `YYYY-MM` filename. Returns `[]` if `directory` doesn't exist yet or can't be
+    /// enumerated (a normal state for a brand-new install, not an error).
+    public func availableMonths() -> [YearMonth] {
+        guard let files = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else {
+            return []
+        }
+        return files.compactMap { url -> YearMonth? in
+            let name = url.lastPathComponent
+            guard name.hasSuffix(".ics"), name != "recurring.ics" else { return nil }
+            let base = String(name.dropLast(4))
+            let parts = base.split(separator: "-")
+            guard parts.count == 2, let year = Int(parts[0]), let month1 = Int(parts[1]), (1...12).contains(month1) else {
+                return nil
+            }
+            return YearMonth(year: year, month0: month1 - 1)
+        }
+    }
+
     /// Removes a month's file entirely, rather than leaving an empty `BEGIN:VCALENDAR…
     /// END:VCALENDAR` stub on disk once every event/reminder in it has been deleted (or moved
     /// elsewhere by `updateEvent`/`updateReminder`). A no-op if the file doesn't already exist —

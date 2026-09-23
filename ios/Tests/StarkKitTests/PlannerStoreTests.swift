@@ -210,6 +210,43 @@ struct PlannerStoreTests {
         #expect(!FileManager.default.fileExists(atPath: recurringURL.path))
     }
 
+    @Test("loadAllMonths loads a month outside the normal display window")
+    @MainActor
+    func loadAllMonthsLoadsEverything() async throws {
+        let (store, file, _) = makeStore()
+        // Far outside any reasonable display window, and written directly to disk (not via
+        // the store), so nothing has loaded it yet.
+        try file.saveMonth(
+            YearMonth(year: 2020, month0: 0),
+            events: [Event(title: "Old Event", start: DateMath.date(from: "2020-01-15"))],
+            reminders: []
+        )
+        start(store, around: DateMath.date(from: "2026-09-01"))
+        #expect(!store.events.map(\.title).contains("Old Event"))
+
+        await store.loadAllMonths()
+
+        #expect(store.events.map(\.title).contains("Old Event"))
+    }
+
+    @Test("loadAllMonths is a no-op the second time -- already-loaded months aren't re-read")
+    @MainActor
+    func loadAllMonthsSecondCallIsNoOp() async throws {
+        let (store, file, _) = makeStore()
+        try file.saveMonth(
+            YearMonth(year: 2020, month0: 0),
+            events: [Event(id: "old", title: "Old Event", start: DateMath.date(from: "2020-01-15"))],
+            reminders: []
+        )
+        start(store, around: DateMath.date(from: "2026-09-01"))
+
+        await store.loadAllMonths()
+        let countAfterFirst = store.events.count
+        await store.loadAllMonths()
+
+        #expect(store.events.count == countAfterFirst)
+    }
+
     @Test("deleting the only event in a month removes the month file instead of leaving an empty stub")
     @MainActor
     func deletingLastEventInMonthRemovesFile() {

@@ -74,6 +74,36 @@ struct PlannerFileTests {
         #expect(result.events.isEmpty)
     }
 
+    @Test("availableMonths lists every YYYY-MM.ics file, ignoring recurring.ics and non-ics files")
+    func availableMonthsListsMonthFiles() throws {
+        let (directory, pending) = makeTempDirs()
+        let file = PlannerFile(directory: directory, pendingDirectory: pending)
+        try file.saveMonth(
+            YearMonth(year: 2026, month0: 0),
+            events: [],
+            reminders: [Reminder(title: "January reminder", dueDate: DateMath.date(from: "2026-01-05"))]
+        )
+        try file.saveMonth(
+            YearMonth(year: 2025, month0: 11),
+            events: [Event(title: "December event", start: DateMath.date(from: "2025-12-05"))],
+            reminders: []
+        )
+        try file.saveRecurring(events: [], reminders: [])
+        try "not an ics file".write(to: directory.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
+
+        let months = Set(file.availableMonths())
+
+        #expect(months == Set([YearMonth(year: 2026, month0: 0), YearMonth(year: 2025, month0: 11)]))
+    }
+
+    @Test("availableMonths returns empty when the directory doesn't exist yet")
+    func availableMonthsEmptyWhenMissing() {
+        let (directory, pending) = makeTempDirs()
+        let file = PlannerFile(directory: directory, pendingDirectory: pending)
+
+        #expect(file.availableMonths().isEmpty)
+    }
+
     @Test("a save failure queues a pending write, retried later")
     func saveFailureQueuesPendingWrite() throws {
         let (directory, pending) = makeTempDirs()
