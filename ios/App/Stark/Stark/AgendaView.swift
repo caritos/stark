@@ -28,12 +28,26 @@ struct AgendaView: View {
     let anchor: Date
     let scrollRequest: ScrollRequest?
     let onSelect: (AgendaItem) -> Void
+    /// Called (debounced, and suppressed for 300ms after a tap-driven `scrollRequest`) with the
+    /// day whose row is at the top of the list, as the user scrolls. Defaulted so existing call
+    /// sites compile unchanged; `ContentView` passes a real closure to drive calendar paging
+    /// (issue #101). Never called as a side effect of `scrollRequest`'s own programmatic scroll —
+    /// see `scrollSuppressUntil`.
+    let onDayInView: (Date) -> Void = { _ in }
 
     /// False until the list has been scrolled to today once real data has arrived. The display
     /// window includes the previous 14 days, and the store loads asynchronously after the first
     /// render, so the initial scroll has to be repeated when the first items arrive. (Every day
     /// has a section now, so the day list itself no longer changes when data loads.)
     @State private var hasSettled = false
+    /// The row id `.scrollPosition` reports as being at the top of the visible list.
+    @State private var topVisibleRowID: String?
+    /// While `Date()` is before this, `topVisibleRowID` changes are ignored — covers a
+    /// tap-driven `scrollRequest`'s own (instant, unanimated) `proxy.scrollTo` jump, so it can
+    /// never be mistaken for a user scroll and cause an unwanted grid page (issue #96: a tap on
+    /// a neighbouring-month day must never page the month grid, even though it does scroll the
+    /// agenda there).
+    @State private var scrollSuppressUntil = Date.distantPast
 
     private static let calendar = Calendar(identifier: .gregorian)
 
@@ -63,6 +77,7 @@ struct AgendaView: View {
         let sections = makeSections(now: now)
         let rows = makeRows(sections, todayStart: todayStart)
         let itemCount = sections.reduce(0) { $0 + $1.items.count }
+        let rowDayLookup = makeRowDayLookup(sections)
 
         GeometryReader { geometry in
             ScrollViewReader { proxy in
@@ -96,6 +111,7 @@ struct AgendaView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollPosition(id: $topVisibleRowID)
                 // Lets a bare empty-day header be as short as its content; every other row
                 // restores the old minimum via `rowMinHeight`.
                 .environment(\.defaultMinListRowHeight, 0)
@@ -119,11 +135,23 @@ struct AgendaView: View {
                 .onChange(of: scrollRequest) { _, request in
                     guard let request else { return }
                     hasSettled = true
+                    scrollSuppressUntil = Date().addingTimeInterval(0.3)
                     let target = Self.calendar.startOfDay(for: request.date)
                     // The exact day's header; falls back to the first section after it
                     // (else the last) if it is somehow missing from the window.
                     guard let section = sections.first(where: { $0.day >= target }) ?? sections.last else { return }
                     scroll(proxy, to: Self.headerID(section.day))
+                }
+                // Debounced (matches YearView's own 150ms debounce for its density recompute):
+                // `.task(id:)` cancels the previous wait whenever `topVisibleRowID` changes
+                // again before it fires, so a fast scroll reports only where it settles.
+                .task(id: topVisibleRowID) {
+                    guard let topVisibleRowID else { return }
+                    try? await Task.sleep(for: .milliseconds(150))
+                    guard !Task.isCancelled else { return }
+                    guard Date() >= scrollSuppressUntil else { return }
+                    guard let day = rowDayLookup[topVisibleRowID] else { return }
+                    onDayInView(day)
                 }
             }
         }
@@ -244,6 +272,25 @@ struct AgendaView: View {
         }
         rows.append(.tail)
         return rows
+    }
+
+    /// Maps every row id `makeRows` can produce back to the day it belongs to, so
+    /// `.scrollPosition`'s reported top-of-viewport id can be resolved to a day. Mirrors
+    /// `makeRows`'s exact branching (an `.empty` row only exists for a bare day, i.e. one with
+    /// no items) so it never invents an id that isn't actually a row.
+    private func makeRowDayLookup(_ sections: [AgendaDay]) -> [String: Date] {
+        var lookup: [String: Date] = [:]
+        for section in sections {
+            lookup[Self.headerID(section.day)] = section.day
+            if section.items.isEmpty {
+                lookup["empty-\(Int(section.day.timeIntervalSince1970))"] = section.day
+            } else {
+                for item in section.items {
+                    lookup[item.id] = section.day
+                }
+            }
+        }
+        return lookup
     }
 
     // MARK: Scrolling
