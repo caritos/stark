@@ -383,8 +383,12 @@ public final class PlannerStore: ObservableObject {
     }
 
     private func rebuild() {
-        events = recurringEvents + monthEvents.values.flatMap { $0 }
-        reminders = recurringReminders + monthReminders.values.flatMap { $0 }
+        // Dictionary.values has no ordering guarantee, so flattening it directly would make
+        // events/reminders order depend on hash-bucket layout rather than anything meaningful —
+        // sorting the keys first (YearMonth: Comparable) makes the result deterministic:
+        // chronological across months, in each month's own parse/append order within it.
+        events = recurringEvents + monthEvents.keys.sorted().flatMap { monthEvents[$0] ?? [] }
+        reminders = recurringReminders + monthReminders.keys.sorted().flatMap { monthReminders[$0] ?? [] }
     }
 
     private enum StoreLocation: Hashable {

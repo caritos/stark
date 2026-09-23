@@ -94,6 +94,26 @@ struct PlannerStoreTests {
         #expect(relaunchedStore.events.map(\.title).contains("Far Out"))
     }
 
+    @Test("events across months always appear in chronological order, regardless of the order the months were loaded in")
+    @MainActor
+    func rebuildOrdersAcrossMonthsChronologically() {
+        let (store, _, _) = makeStore()
+        // A narrow window so September/October/November are all outside it — each addEvent
+        // below is the first thing that loads its own month, giving deliberate control over
+        // the order months are inserted into the store's internal per-month dictionary.
+        start(store, around: DateMath.date(from: "2026-01-01"))
+
+        // Deliberately scrambled: November, then September, then October. `rebuild()`
+        // flattening a Dictionary's `.values` (rather than iterating months in a defined
+        // order) would make the final order depend on hash-bucket layout, not insertion
+        // order or chronological order — this asserts the latter regardless.
+        store.addEvent(Event(id: "nov", title: "November Event", start: DateMath.date(from: "2026-11-01")))
+        store.addEvent(Event(id: "sep", title: "September Event", start: DateMath.date(from: "2026-09-01")))
+        store.addEvent(Event(id: "oct", title: "October Event", start: DateMath.date(from: "2026-10-01")))
+
+        #expect(store.events.map(\.title) == ["September Event", "October Event", "November Event"])
+    }
+
     // MARK: - Fix 2: pending writes are retried, and errors are observable
 
     @Test("start retries pending writes so a previously failed save becomes visible")
