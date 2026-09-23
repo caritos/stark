@@ -26,11 +26,15 @@ enum Spacing {
     static let lg: CGFloat = 24
 }
 
-// JetBrains Mono isn't bundled in the native app yet, so labels and headers use the
-// system monospaced design. Titles stay on the default system font.
+// JetBrainsMono-Regular.ttf / JetBrainsMono-SemiBold.ttf (bundled in Fonts/, registered via
+// UIAppFonts in Info.plist — see App/Stark/Info.plist) cover the only two weights this app
+// ever asks for. Titles stay on the default system font.
 enum Fonts {
     static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+        switch weight {
+        case .semibold: return .custom("JetBrainsMono-SemiBold", size: size)
+        default: return .custom("JetBrainsMono-Regular", size: size)
+        }
     }
 }
 
