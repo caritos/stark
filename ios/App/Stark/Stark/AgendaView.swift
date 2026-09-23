@@ -33,7 +33,7 @@ struct AgendaView: View {
     /// sites compile unchanged; `ContentView` passes a real closure to drive calendar paging
     /// (issue #101). Never called as a side effect of `scrollRequest`'s own programmatic scroll —
     /// see `scrollSuppressUntil`.
-    let onDayInView: (Date) -> Void = { _ in }
+    var onDayInView: (Date) -> Void = { _ in }
 
     /// False until the list has been scrolled to today once real data has arrived. The display
     /// window includes the previous 14 days, and the store loads asynchronously after the first

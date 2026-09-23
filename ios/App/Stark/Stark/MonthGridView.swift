@@ -20,8 +20,10 @@ import StarkKit
 /// chevrons step the selection by a week (through `onSelectDate`, so the agenda follows) instead
 /// of paging months. `visibleMonth` follows the selected day's month while in week mode and when
 /// returning to month, so the density snapshot and the store's loaded months always cover the
-/// week on screen (the week lies inside its month's 6-row grid). In `.month` mode selecting a day
-/// never changes `visibleMonth`.
+/// week on screen (the week lies inside its month's 6-row grid). In `.month` mode a plain
+/// selection (a tap) never changes `visibleMonth` — but `scrollPagingDate` does (issue #101),
+/// since scrolling the agenda is deliberately allowed to page the month grid even though tapping
+/// it is not.
 struct MonthGridView: View {
     @EnvironmentObject private var store: PlannerStore
     @State private var visibleMonth = YearMonth(date: Date())
@@ -37,6 +39,12 @@ struct MonthGridView: View {
     let mode: CalendarMode
     let selectedDate: Date
     let onSelectDate: (Date) -> Void
+    /// Set by `ContentView` only from `AgendaView.onDayInView` (never from a tap) — pages
+    /// `visibleMonth` to follow the agenda's scroll position, but only in month mode. Structurally
+    /// separate from `selectedDate`/`onSelectDate` (the tap path) so a tap can never accidentally
+    /// page the month grid (issue #96), and a scroll can never accidentally suppress itself
+    /// (issue #101).
+    let scrollPagingDate: Date?
 
     /// The number's square, then a small gap, then the marker row, with a point of air each side.
     private static let rowHeight: CGFloat = 38
@@ -122,10 +130,17 @@ struct MonthGridView: View {
         // Entering week mode, or coming back to month, lands on the selected day's month.
         .onChange(of: mode) { _, _ in syncVisibleMonthToSelection() }
         // In week mode the week row follows the selection, possibly into another month (the
-        // chevrons, a day tap, the midnight follow). In month mode a selection never pages.
+        // chevrons, a day tap, the midnight follow). In month mode a plain selection never pages.
         .onChange(of: selectedDate) { _, _ in
             guard mode == .week else { return }
             syncVisibleMonthToSelection()
+        }
+        // Scroll-driven paging (issue #101): unlike a plain selection, this pages the month grid
+        // — a deliberate, scroll-only exception to "a tap never pages the month view" (issue #96).
+        .onChange(of: scrollPagingDate) { _, newValue in
+            guard mode == .month, let newValue else { return }
+            visibleMonth = YearMonth(date: newValue)
+            loadVisibleMonths()
         }
     }
 

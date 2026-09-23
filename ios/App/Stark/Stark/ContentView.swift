@@ -30,6 +30,9 @@ struct ContentView: View {
     @State private var today: Date
     /// How much calendar the grid shows. Always starts as the month grid; not persisted.
     @State private var mode: CalendarMode = .month
+    /// The day last reported by `AgendaView.onDayInView` (issue #101) — read only by
+    /// `MonthGridView`'s `scrollPagingDate`, to page the month grid as the agenda scrolls.
+    @State private var scrollPagingDate: Date?
 
     init() {
         // One instant for all three, so a launch right at midnight can't split them across days.
@@ -80,14 +83,14 @@ struct ContentView: View {
             }
             ZStack {
                 VStack(spacing: 0) {
-                    MonthGridView(today: today, mode: mode, selectedDate: selectedDate, onSelectDate: selectDate)
+                    MonthGridView(today: today, mode: mode, selectedDate: selectedDate, onSelectDate: selectDate, scrollPagingDate: scrollPagingDate)
                     #if !targetEnvironment(macCatalyst)
                     ModeHandle(mode: $mode)
                     #endif
                     Rectangle()
                         .fill(Colors.separator)
                         .frame(height: 1)
-                    AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 })
+                    AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 }, onDayInView: dayScrolledIntoView)
                 }
                 // Hidden (not removed) in year mode: tearing the agenda down would lose its
                 // scroll position and, on coming back, scroll to today instead of the day
@@ -151,6 +154,17 @@ struct ContentView: View {
         agendaAnchor = newAnchor
         selectedDate = newAnchor
         scrollRequest = ScrollRequest(date: newAnchor)
+    }
+
+    /// A day scrolled into view at the top of the agenda list (`AgendaView.onDayInView`,
+    /// issue #101). Always updates the highlighted/selected day — which alone makes week mode
+    /// page, since `MonthGridView` already derives its week row from `selectedDate` — and
+    /// separately reports it as `scrollPagingDate`, which `MonthGridView` uses to page the month
+    /// grid (month mode only). Never issues a new `scrollRequest`: the agenda is already scrolled
+    /// there by the user, so re-scrolling it here would fight the user's own scroll.
+    private func dayScrolledIntoView(_ date: Date) {
+        selectedDate = date
+        scrollPagingDate = date
     }
 
     /// A day was tapped in the month grid: scroll the agenda to that day's header. A day outside
