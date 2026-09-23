@@ -141,7 +141,7 @@ app.get('/', (c) => {
         Prefer the terminal? A companion <strong>command-line tool</strong> is available for macOS.
         Point it at the same iCloud file and your tasks sync instantly between your iPhone and Mac.
       </p>
-      <a class="badge" href="https://github.com/caritos/todo-txt/releases/latest">↓ COMMAND-LINE TOOL ON GITHUB</a>
+      <a class="badge" href="https://github.com/caritos/stark/releases/latest">↓ COMMAND-LINE TOOL ON GITHUB</a>
     </main>
     <div class="screenshots">
       <img src="/public/screenshots/01-calendar.png" alt="Calendar view">

@@ -32,8 +32,8 @@ Overdue tasks appear in red. Priority tasks lead the line. Recurring items show 
 Requires [Bun](https://bun.sh).
 
 ```bash
-git clone https://github.com/caritos/todo-txt
-cd todo-txt
+git clone https://github.com/caritos/stark
+cd stark
 bun install
 bun link   # registers the global `todo` command
 ```
