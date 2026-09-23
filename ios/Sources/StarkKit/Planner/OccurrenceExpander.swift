@@ -80,6 +80,12 @@ public enum OccurrenceExpander {
         occurrences(anchor: event.start, rule: event.recurrence, exceptionDates: event.exceptionDates, in: range)
     }
 
+    /// A `nil` `dueDate` returns no occurrences ever, by design: undated reminders are
+    /// deliberately not a supported feature (the agenda only lists dated items — see
+    /// "Add/edit fields" in the root CLAUDE.md), and `AddItemView` never constructs one. This is
+    /// not reachable in practice today, but a future code path that did construct an undated
+    /// reminder would store it permanently invisible rather than erroring, which is worth knowing
+    /// if this ever needs debugging.
     public static func expand(reminder: Reminder, in range: ClosedRange<Date>) -> [Date] {
         guard let due = reminder.dueDate else { return [] }
         return occurrences(anchor: due, rule: reminder.recurrence, exceptionDates: reminder.exceptionDates, in: range)
