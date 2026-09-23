@@ -1,17 +1,11 @@
 {
-  "name": "todo",
+  "name": "stark",
   "version": "0.1.0",
-  "module": "console/index.ts",
-  "bin": {
-    "todo": "./console/index.ts"
-  },
+  "private": true,
   "scripts": {
-    "test": "bun test shared console"
+    "test": "bun test shared"
   },
   "devDependencies": {
     "@types/bun": "latest"
-  },
-  "dependencies": {
-    "ical.js": "^2.2.1"
   }
 }

@@ -10,5 +10,5 @@
     "noEmit": true,
     "strict": true
   },
-  "include": ["shared", "console"]
+  "include": ["shared"]
 }
