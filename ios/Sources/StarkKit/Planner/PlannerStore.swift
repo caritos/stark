@@ -7,6 +7,11 @@ public final class PlannerStore: ObservableObject {
     @Published public private(set) var events: [Event] = []
     @Published public private(set) var reminders: [Reminder] = []
     @Published public var error: String?
+    /// Non-fatal parse warnings accumulated across every file read this session (a skipped
+    /// malformed `VEVENT`/`VTODO` block, prefixed with the file name it came from), so a
+    /// silently-skipped corrupt block is no longer invisible. Never cleared automatically —
+    /// this is a running diagnostic log for the app's lifetime, not per-load state.
+    @Published public private(set) var warnings: [String] = []
 
     private let file: PlannerFile
     private var loadedMonths: Set<YearMonth> = []
@@ -34,6 +39,7 @@ public final class PlannerStore: ObservableObject {
             let recurring = try file.loadRecurring()
             recurringEvents = recurring.events
             recurringReminders = recurring.reminders
+            warnings.append(contentsOf: recurring.warnings.map { "recurring.ics: \($0)" })
         } catch {
             // A genuine read failure must never be treated as "no recurring items" —
             // leave whatever recurring state already existed untouched and surface the error.
@@ -77,6 +83,7 @@ public final class PlannerStore: ObservableObject {
             let result = try file.loadMonth(month)
             monthEvents[month] = result.events
             monthReminders[month] = result.reminders
+            warnings.append(contentsOf: result.warnings.map { "\(month.fileName): \($0)" })
             loadedMonths.insert(month)
         } catch {
             // Do NOT mark as loaded and do NOT set an empty result — a real read failure

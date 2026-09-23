@@ -143,6 +143,38 @@ struct PlannerStoreTests {
         #expect(onDisk == corruptBytes)
     }
 
+    @Test("a malformed VEVENT block in recurring.ics surfaces a warning instead of being silently dropped")
+    @MainActor
+    func malformedRecurringBlockSurfacesWarning() throws {
+        let (store, _, root) = makeStore()
+        let docsDir = root.appendingPathComponent("docs")
+        try FileManager.default.createDirectory(at: docsDir, withIntermediateDirectories: true)
+        // Missing UID and DTSTART: ICSParser.parse skips this block and records a warning,
+        // rather than throwing (the file itself decodes fine as UTF-8 text).
+        let malformed = "BEGIN:VEVENT\nSUMMARY:Missing UID and DTSTART\nEND:VEVENT\n"
+        try malformed.write(to: docsDir.appendingPathComponent("recurring.ics"), atomically: true, encoding: .utf8)
+
+        start(store, around: DateMath.date(from: "2026-09-01"))
+
+        #expect(store.warnings.contains { $0.contains("recurring.ics") && $0.contains("missing UID/SUMMARY/DTSTART") })
+    }
+
+    @Test("a malformed VTODO block in a month file surfaces a warning instead of being silently dropped")
+    @MainActor
+    func malformedMonthBlockSurfacesWarning() throws {
+        let (store, _, root) = makeStore()
+        let docsDir = root.appendingPathComponent("docs")
+        try FileManager.default.createDirectory(at: docsDir, withIntermediateDirectories: true)
+        let month = YearMonth(year: 2026, month0: 8)
+        // Missing UID: ICSParser.parse skips this VTODO block and records a warning.
+        let malformed = "BEGIN:VTODO\nSUMMARY:Missing UID\nEND:VTODO\n"
+        try malformed.write(to: docsDir.appendingPathComponent(month.fileName), atomically: true, encoding: .utf8)
+
+        start(store, around: DateMath.date(from: "2026-09-01"))
+
+        #expect(store.warnings.contains { $0.contains(month.fileName) && $0.contains("missing UID/SUMMARY") })
+    }
+
     @Test("deleting a month-only event does not rewrite recurring.ics")
     @MainActor
     func monthOnlyEventDeleteDoesNotTouchRecurringFile() {
