@@ -158,6 +158,51 @@ struct PlannerStoreTests {
         #expect(!FileManager.default.fileExists(atPath: recurringURL.path))
     }
 
+    @Test("deleting the only event in a month removes the month file instead of leaving an empty stub")
+    @MainActor
+    func deletingLastEventInMonthRemovesFile() {
+        let (store, _, root) = makeStore()
+        start(store, around: DateMath.date(from: "2026-09-01"))
+        let monthURL = root.appendingPathComponent("docs").appendingPathComponent(YearMonth(year: 2026, month0: 8).fileName)
+
+        store.addEvent(Event(id: "evt-1", title: "Standup", start: DateMath.date(from: "2026-09-17")))
+        #expect(FileManager.default.fileExists(atPath: monthURL.path))
+
+        store.deleteEvent(id: "evt-1")
+
+        #expect(!FileManager.default.fileExists(atPath: monthURL.path))
+    }
+
+    @Test("deleting the only reminder in a month removes the month file instead of leaving an empty stub")
+    @MainActor
+    func deletingLastReminderInMonthRemovesFile() {
+        let (store, _, root) = makeStore()
+        start(store, around: DateMath.date(from: "2026-09-01"))
+        let monthURL = root.appendingPathComponent("docs").appendingPathComponent(YearMonth(year: 2026, month0: 8).fileName)
+
+        store.addReminder(Reminder(id: "rem-1", title: "Buy milk", dueDate: DateMath.date(from: "2026-09-17")))
+        #expect(FileManager.default.fileExists(atPath: monthURL.path))
+
+        store.deleteReminder(id: "rem-1")
+
+        #expect(!FileManager.default.fileExists(atPath: monthURL.path))
+    }
+
+    @Test("deleting one of two events in a month keeps the file, with only the other event left")
+    @MainActor
+    func deletingOneOfTwoEventsKeepsFile() throws {
+        let (store, file, _) = makeStore()
+        start(store, around: DateMath.date(from: "2026-09-01"))
+
+        store.addEvent(Event(id: "evt-1", title: "Standup", start: DateMath.date(from: "2026-09-17")))
+        store.addEvent(Event(id: "evt-2", title: "Lunch", start: DateMath.date(from: "2026-09-18")))
+
+        store.deleteEvent(id: "evt-1")
+
+        let onDisk = try file.loadMonth(YearMonth(year: 2026, month0: 8))
+        #expect(onDisk.events.map(\.title) == ["Lunch"])
+    }
+
     @Test("deleting a month-only reminder does not rewrite recurring.ics")
     @MainActor
     func monthOnlyReminderDeleteDoesNotTouchRecurringFile() {

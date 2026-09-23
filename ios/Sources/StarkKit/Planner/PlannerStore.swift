@@ -403,8 +403,17 @@ public final class PlannerStore: ObservableObject {
     }
 
     private func persistMonth(_ month: YearMonth) {
+        let events = monthEvents[month] ?? []
+        let reminders = monthReminders[month] ?? []
         do {
-            try file.saveMonth(month, events: monthEvents[month] ?? [], reminders: monthReminders[month] ?? [])
+            // A month that has lost its last event/reminder (deleted, or moved elsewhere by
+            // updateEvent/updateReminder) gets its file removed entirely, not overwritten with an
+            // empty stub.
+            if events.isEmpty && reminders.isEmpty {
+                try file.deleteMonth(month)
+            } else {
+                try file.saveMonth(month, events: events, reminders: reminders)
+            }
         } catch {
             self.error = "Couldn't save changes: \(error.localizedDescription)"
         }

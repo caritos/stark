@@ -49,6 +49,31 @@ struct PlannerFileTests {
         #expect(result.events.map(\.title) == ["Standup"])
     }
 
+    @Test("deleteMonth removes an existing month file")
+    func deleteMonthRemovesFile() throws {
+        let (directory, pending) = makeTempDirs()
+        let file = PlannerFile(directory: directory, pendingDirectory: pending)
+        let month = YearMonth(year: 2026, month0: 8)
+        try file.saveMonth(month, events: [Event(title: "Standup", start: DateMath.date(from: "2026-09-17"))], reminders: [])
+        let url = directory.appendingPathComponent(month.fileName)
+        #expect(FileManager.default.fileExists(atPath: url.path))
+
+        try file.deleteMonth(month)
+
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
+
+    @Test("deleteMonth is a no-op when the month file never existed")
+    func deleteMonthNoOpWhenMissing() throws {
+        let (directory, pending) = makeTempDirs()
+        let file = PlannerFile(directory: directory, pendingDirectory: pending)
+
+        try file.deleteMonth(YearMonth(year: 2026, month0: 8))
+
+        let result = try file.loadMonth(YearMonth(year: 2026, month0: 8))
+        #expect(result.events.isEmpty)
+    }
+
     @Test("a save failure queues a pending write, retried later")
     func saveFailureQueuesPendingWrite() throws {
         let (directory, pending) = makeTempDirs()

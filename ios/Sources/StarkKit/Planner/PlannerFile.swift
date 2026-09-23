@@ -59,6 +59,19 @@ public final class PlannerFile {
         try save(fileName: month.fileName, events: events, reminders: reminders)
     }
 
+    /// Removes a month's file entirely, rather than leaving an empty `BEGIN:VCALENDAR…
+    /// END:VCALENDAR` stub on disk once every event/reminder in it has been deleted (or moved
+    /// elsewhere by `updateEvent`/`updateReminder`). A no-op if the file doesn't already exist —
+    /// callers don't need to check first. Also clears any stale pending-write stub for the same
+    /// month, so a previously-failed save can't resurrect the file on the next retry.
+    public func deleteMonth(_ month: YearMonth) throws {
+        let url = directory.appendingPathComponent(month.fileName)
+        if fileManager.fileExists(atPath: url.path) {
+            try fileManager.removeItem(at: url)
+        }
+        clearPendingWrite(fileName: month.fileName)
+    }
+
     private func save(fileName: String, events: [Event], reminders: [Reminder]) throws {
         let content = ICSSerializer.serialize(events: events, reminders: reminders)
         do {
