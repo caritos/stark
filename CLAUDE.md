@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **`mobile/` (the Expo/React Native app) is deprecated as of 2026-09-22.** Active development is the native Swift app in `ios/`. Do not fix bugs, add features, or otherwise propose changes in `mobile/` unless a human explicitly asks for `mobile/` by name — a bug report that just says "the app" almost always means `ios/`. This applies to automated tooling (issue-fixer bots, scheduled agents) as much as to an interactive session: if an issue's screenshot or wording doesn't specify which app, assume `ios/`, and check the screenshot's own visual style (Braun/Bauhaus dark theme with a single orange accent for both) before touching either codebase — `mobile/` and `ios/` render enough alike from a distance that only that check (or a stack trace / file path in the report) reliably tells them apart.
 
+**Repository and pricing.** The GitHub repo was renamed from `caritos/todo-txt` to **`caritos/stark`** (2026-09-23); `origin` is `git@github.com:caritos/stark.git`. GitHub redirects the old URL, so the `caritos/todo-txt/issues/N` links in older `docs/superpowers/` plans and specs still resolve and are deliberately left as written; user-facing links (`README.md` clone URL, the `web/` site's release badge) use the new name. The local checkout folder is still named `todo-txt`. The app's price is **$9.99, set globally in App Store Connect** (2026-09-23) — it appears nowhere in this repo (no StoreKit config, no purchase code, no price on the `web/` site), so a price change is an App Store Connect edit only. The site's "no subscriptions" copy assumes a one-time price.
+
 ## Commands
 
 ```bash
