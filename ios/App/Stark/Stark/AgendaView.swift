@@ -41,9 +41,10 @@ struct AgendaView: View {
     /// render, so the initial scroll has to be repeated when the first items arrive. (Every day
     /// has a section now, so the day list itself no longer changes when data loads.)
     @State private var hasSettled = false
-    /// The row id `.scrollPosition` reports as being at the top of the visible list.
-    @State private var topVisibleRowID: String?
-    /// While `Date()` is before this, `topVisibleRowID` changes are ignored — covers a
+    /// Ids of the rows a list cell is currently displayed for (`onAppear`/`onDisappear`). Used
+    /// instead of `.scrollPosition(id:)`, which never reports a position on a `List` (issue #101).
+    @State private var displayedRowIDs: Set<String> = []
+    /// While `Date()` is before this, scroll-tracking reports are ignored — covers a
     /// tap-driven `scrollRequest`'s own (instant, unanimated) `proxy.scrollTo` jump, so it can
     /// never be mistaken for a user scroll and cause an unwanted grid page (issue #96: a tap on
     /// a neighbouring-month day must never page the month grid, even though it does scroll the
@@ -84,6 +85,7 @@ struct AgendaView: View {
             ScrollViewReader { proxy in
                 List {
                     ForEach(rows) { row in
+                        Group {
                         switch row {
                         case .header(let day, let compact):
                             headerRow(day: day, todayStart: todayStart, compact: compact)
@@ -109,10 +111,12 @@ struct AgendaView: View {
                                 .listRowBackground(Colors.background)
                                 .listRowInsets(EdgeInsets())
                         }
+                        }
+                        .onAppear { displayedRowIDs.insert(row.id) }
+                        .onDisappear { displayedRowIDs.remove(row.id) }
                     }
                 }
                 .listStyle(.plain)
-                .scrollPosition(id: $topVisibleRowID)
                 // Lets a bare empty-day header be as short as its content; every other row
                 // restores the old minimum via `rowMinHeight`.
                 .environment(\.defaultMinListRowHeight, 0)
@@ -144,14 +148,15 @@ struct AgendaView: View {
                     scroll(proxy, to: Self.headerID(section.day))
                 }
                 // Debounced (matches YearView's own 150ms debounce for its density recompute):
-                // `.task(id:)` cancels the previous wait whenever `topVisibleRowID` changes
+                // `.task(id:)` cancels the previous wait whenever the displayed rows change
                 // again before it fires, so a fast scroll reports only where it settles.
-                .task(id: topVisibleRowID) {
-                    guard let topVisibleRowID else { return }
+                .task(id: displayedRowIDs) {
                     try? await Task.sleep(for: .milliseconds(150))
                     guard !Task.isCancelled else { return }
                     guard Date() >= scrollSuppressUntil else { return }
-                    guard let day = rowDayLookup[topVisibleRowID] else { return }
+                    guard let top = AgendaScrollTracking.topRowID(displayed: displayedRowIDs,
+                                                                  orderedRowIDs: rows.map(\.id)),
+                          let day = rowDayLookup[top] else { return }
                     onDayInView(day)
                 }
             }
@@ -276,7 +281,7 @@ struct AgendaView: View {
     }
 
     /// Maps every row id `makeRows` can produce back to the day it belongs to, so
-    /// `.scrollPosition`'s reported top-of-viewport id can be resolved to a day. Mirrors
+    /// `AgendaScrollTracking.topRowID`'s top-of-viewport id can be resolved to a day. Mirrors
     /// `makeRows`'s exact branching so it never invents an id that isn't actually a row:
     /// an `.empty` row only exists for today when it has no items — every other empty day
     /// is just its header.
