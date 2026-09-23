@@ -19,6 +19,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var showSearch = false
+    @State private var showSettings = false
     @State private var selectedItem: AgendaItem?
     @State private var selectedDate: Date
     @State private var scrollRequest: ScrollRequest?
@@ -119,6 +120,7 @@ struct ContentView: View {
         // it stays reachable and visible even in year mode, above the YearView overlay.
         .overlay(alignment: .bottomTrailing) {
             HStack(spacing: Spacing.sm) {
+                settingsButton
                 searchButton
                 addButton
             }
@@ -132,6 +134,7 @@ struct ContentView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAdd) { AddItemView() }
         .sheet(isPresented: $showSearch) { SearchView() }
+        .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(item: $selectedItem) { item in EditItemView(item: item) }
         .task {
             // Load the wider window (includes the overdue lookback), not the display window.
@@ -187,6 +190,22 @@ struct ContentView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Search")
+    }
+
+    /// Same square/flat/accent style as `addButton`/`searchButton`, gearshape glyph, leftmost in
+    /// the bottom-trailing HStack (Add stays rightmost/closest to the corner as the primary action).
+    private var settingsButton: some View {
+        Button {
+            showSettings = true
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Colors.background)
+                .frame(width: 56, height: 56)
+                .background(Colors.accent)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Settings")
     }
 
     /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone
