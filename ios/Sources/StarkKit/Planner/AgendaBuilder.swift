@@ -172,9 +172,13 @@ private struct SortKey {
     let item: AgendaItem
 }
 
-/// 0 = overdue, 1 = normal incomplete/event, 2 = completed.
+/// 0 = overdue, 1 = normal incomplete/event, 2 = completed (or, for an event, attended/skipped —
+/// `isCompleted` is always false for events, since `outcome` is the event equivalent of
+/// completion; without checking it here an attended/skipped event stayed stuck in the normal
+/// group even though the row already renders it dimmed and struck through like a completed
+/// reminder, via `AgendaRowView`'s `hasOutcome`).
 private func sortGroup(_ item: AgendaItem) -> Int {
     if item.isOverdue { return 0 }
-    if item.isCompleted { return 2 }
+    if item.isCompleted || item.outcome != nil { return 2 }
     return 1
 }

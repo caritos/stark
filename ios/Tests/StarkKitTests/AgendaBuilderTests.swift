@@ -310,6 +310,27 @@ struct AgendaBuilderTests {
         #expect(build(reminders: [reminder])[0].outcome == nil)
     }
 
+    @Test("an event marked attended or skipped sorts after incomplete items on the same day, like a completed reminder")
+    func outcomeEventSortsLast() {
+        // `isCompleted` is always false for events (see its doc comment), so sorting must not
+        // rely on it alone -- an attended/skipped event still needs to move to the bottom, the
+        // same place a completed reminder goes, because the row already renders it that way
+        // (dimmed, struck through) via `AgendaRowView`'s `hasOutcome`.
+        let attended = Event(
+            id: "e1", title: "Attended Event", start: dt("2026-09-22", hour: 8, minute: 0),
+            outcomes: [EventOutcomeRecord(date: d("2026-09-22"), outcome: .attended)]
+        )
+        let skipped = Event(
+            id: "e2", title: "Skipped Event", start: dt("2026-09-22", hour: 9, minute: 0),
+            outcomes: [EventOutcomeRecord(date: d("2026-09-22"), outcome: .skipped)]
+        )
+        let incomplete = Reminder(id: "r1", title: "Incomplete", dueDate: dt("2026-09-22", hour: 17, minute: 0))
+
+        let items = build(events: [attended, skipped], reminders: [incomplete])
+
+        #expect(items.map(\.title) == ["Incomplete", "Attended Event", "Skipped Event"])
+    }
+
     // MARK: - Priority
 
     @Test("a reminder's agenda item reports its priority level; events and unprioritised reminders report none")
