@@ -7,6 +7,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @State private var showFAQ = false
 
     // Read from the bundle, not hardcoded, so these can never drift from the actual build
     // (mirrors the Expo app's About section, which read from `Constants.expoConfig` for the
@@ -17,20 +18,37 @@ struct SettingsView: View {
 
     private static let developerURL = URL(string: "http://caritos.com")!
     private static let privacyURL = URL(string: "https://stark.caritos.com/privacy")!
+    private static let termsURL = URL(string: "https://stark.caritos.com/terms")!
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
+                    LabeledContent("App Name") {
+                        Text(Self.appName)
+                    }
                     LabeledContent("Version") {
                         Text("\(Self.version) (\(Self.build))")
                     }
-                    Button("Developer") { openURL(Self.developerURL) }
-                        .foregroundStyle(Colors.accent)
+                    Button {
+                        openURL(Self.developerURL)
+                    } label: {
+                        HStack {
+                            Text("Developer").foregroundStyle(Colors.text)
+                            Spacer()
+                            Text("Eladio Caritos").foregroundStyle(Colors.accent)
+                        }
+                    }
                     Button("Privacy Policy") { openURL(Self.privacyURL) }
                         .foregroundStyle(Colors.accent)
+                    Button("Terms of Service") { openURL(Self.termsURL) }
+                        .foregroundStyle(Colors.accent)
+                    // In-app, not a link to the website's /support page -- available offline,
+                    // like the rest of the app.
+                    Button("FAQ") { showFAQ = true }
+                        .foregroundStyle(Colors.accent)
                 } header: {
-                    Text(Self.appName)
+                    Text("About")
                 }
                 .listRowBackground(Colors.background)
             }
@@ -43,6 +61,7 @@ struct SettingsView: View {
             .toolbar {
                 FlatToolbarButton(title: "Close", placement: .cancellationAction) { dismiss() }
             }
+            .sheet(isPresented: $showFAQ) { FAQView() }
         }
         .tint(Colors.accent)
         .preferredColorScheme(.dark)

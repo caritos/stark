@@ -130,7 +130,45 @@ app.get('/', (c) => {
       <img src="/public/screenshots/03-year.png" alt="Year view">
       <img src="/public/screenshots/04-day.png" alt="Day view">
     </div>`,
-    `<a href="/privacy">PRIVACY POLICY</a><a href="/support">SUPPORT</a>`,
+    `<a href="/privacy">PRIVACY POLICY</a><a href="/terms">TERMS OF SERVICE</a><a href="/support">SUPPORT</a>`,
+  );
+  return c.html(html);
+});
+
+app.get('/terms', (c) => {
+  const html = layout(
+    'Terms of Service — Stark',
+    `<header>
+      <div class="wordmark"><a href="/">STARK</a></div>
+      <h1>Terms of Service</h1>
+      <p class="updated">LAST UPDATED: SEPTEMBER 2026</p>
+    </header>
+    <main>
+      <h2>THE SHORT VERSION</h2>
+      <p>Stark is provided as-is, for personal task and calendar management. By downloading or using the app, you agree to these terms.</p>
+
+      <h2>ACCEPTANCE OF TERMS</h2>
+      <p>By downloading, installing, or using Stark, you agree to be bound by these Terms of Service. If you do not agree, do not use the app.</p>
+
+      <h2>USE OF THE APP</h2>
+      <p>Stark is a personal task and calendar manager. You are responsible for the content you create in it and for keeping your device secure.</p>
+
+      <h2>YOUR DATA</h2>
+      <p>Stark stores your data locally on your device (and, where offered, in your personal iCloud storage). See the <a href="/privacy" style="color:#E8461A;text-decoration:none;">Privacy Policy</a> for details — Stark itself collects nothing.</p>
+
+      <h2>NO WARRANTY</h2>
+      <p>Stark is provided "as is," without warranty of any kind, express or implied. We do not guarantee the app will be error-free or uninterrupted.</p>
+
+      <h2>LIMITATION OF LIABILITY</h2>
+      <p>To the maximum extent permitted by law, we are not liable for any damages, including data loss, arising from your use of the app.</p>
+
+      <h2>CHANGES TO THESE TERMS</h2>
+      <p>We may update these terms from time to time. Continued use of the app after a change constitutes acceptance of the new terms.</p>
+
+      <h2>CONTACT</h2>
+      <p>Questions about these terms? Email <strong>eladio@caritos.com</strong>.</p>
+    </main>`,
+    `<a href="/">HOME</a><a href="/privacy">PRIVACY POLICY</a>`,
   );
   return c.html(html);
 });
@@ -168,7 +206,7 @@ app.get('/privacy', (c) => {
       <h2>CONTACT</h2>
       <p>Questions about this policy? Email <strong>eladio@caritos.com</strong>.</p>
     </main>`,
-    `<a href="/">HOME</a><a href="/support">SUPPORT</a>`,
+    `<a href="/">HOME</a><a href="/terms">TERMS OF SERVICE</a><a href="/support">SUPPORT</a>`,
   );
   return c.html(html);
 });
@@ -207,7 +245,7 @@ app.get('/support', (c) => {
       <p><strong>Does Stark work offline?</strong><br>
       Yes. Stark reads and writes a local file. iCloud syncs when a connection is available, but the app works fully offline.</p>
     </main>`,
-    `<a href="/">HOME</a><a href="/privacy">PRIVACY POLICY</a>`,
+    `<a href="/">HOME</a><a href="/privacy">PRIVACY POLICY</a><a href="/terms">TERMS OF SERVICE</a>`,
   );
   return c.html(html);
 });
