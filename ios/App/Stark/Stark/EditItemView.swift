@@ -210,14 +210,14 @@ struct EditItemView: View {
                 // suggestions simply improve as more months finish loading, same as Search.
                 await store.loadAllMonths()
             }
+            .sigilKeyboardBar(isVisible: focusedField != nil && focusedField != .url,
+                              onTap: insertSigil)
             .navigationTitle(isEvent ? "Event" : "Reminder")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Colors.background, for: .navigationBar)
             .toolbar {
                 FlatToolbarButton(title: "Cancel", placement: .cancellationAction) { dismiss() }
                 FlatToolbarButton(title: "Save", placement: .confirmationAction, isDisabled: trimmedTitle.isEmpty) { save() }
-                SigilKeyboardToolbar(isVisible: focusedField != nil && focusedField != .url,
-                                     onTap: insertSigil)
             }
             .confirmationDialog(deleteMessage, isPresented: $showDeleteConfirm, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) { delete() }

@@ -1,13 +1,13 @@
 // ios/App/Stark/Stark/SettingsView.swift
 import SwiftUI
 
-/// About-only for now — the app has nothing configurable yet (storage is just the local
-/// Documents directory; no iCloud toggle, no file picker, unlike the deprecated Expo app's
-/// Settings screen). A real settings screen once there's something to configure.
+/// A Keyboard toggle (iPhone only) plus About. Storage is just the local Documents directory;
+/// there is no iCloud toggle or file picker, unlike the deprecated Expo app's Settings screen.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var showFAQ = false
+    @AppStorage(SigilKeyboardSetting.key) private var sigilKeyboardBar = SigilKeyboardSetting.defaultValue
 
     // Read from the bundle, not hardcoded, so these can never drift from the actual build
     // (mirrors the Expo app's About section, which read from `Constants.expoConfig` for the
@@ -24,6 +24,21 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // No on-screen keyboard on Mac Catalyst, so there is nothing to toggle there.
+                #if !targetEnvironment(macCatalyst)
+                Section {
+                    Toggle("Tag buttons above keyboard", isOn: $sigilKeyboardBar)
+                        .foregroundStyle(Colors.text)
+                } header: {
+                    Text("Keyboard")
+                } footer: {
+                    Text("Shows + @ % ~ buttons above the keyboard when you type a title, notes, location or search.")
+                        .font(.footnote)
+                        .foregroundStyle(Colors.textSecondary)
+                }
+                .listRowBackground(Colors.background)
+                #endif
+
                 Section {
                     Button {
                         openURL(Self.websiteURL)

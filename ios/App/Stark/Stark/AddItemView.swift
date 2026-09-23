@@ -110,6 +110,8 @@ struct AddItemView: View {
                 // suggestions simply improve as more months finish loading, same as Search.
                 await store.loadAllMonths()
             }
+            .sigilKeyboardBar(isVisible: focusedField == .title || focusedField == .notes,
+                              onTap: insertSigil)
             .navigationTitle("Add \(kind.rawValue)")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -118,8 +120,6 @@ struct AddItemView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                SigilKeyboardToolbar(isVisible: focusedField == .title || focusedField == .notes,
-                                     onTap: insertSigil)
             }
         }
         .tint(Colors.accent)

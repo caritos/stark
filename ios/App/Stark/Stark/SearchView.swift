@@ -65,11 +65,11 @@ struct SearchView: View {
                 }
             }
             .background(Colors.background)
+            .sigilKeyboardBar(isVisible: searchFocused) { query = TagAutocomplete.appending($0, to: query) }
             .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 FlatToolbarButton(title: "Close", placement: .cancellationAction) { dismiss() }
-                SigilKeyboardToolbar(isVisible: searchFocused) { query = TagAutocomplete.appending($0, to: query) }
             }
             .task {
                 await store.loadAllMonths()
