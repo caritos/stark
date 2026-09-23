@@ -201,6 +201,9 @@ app.get('/support', (c) => {
       <p><strong>What is todo.txt?</strong><br>
       A simple, open plain text format for task management. One task per line. Human-readable in any text editor. You own your data completely — no proprietary format, no lock-in.</p>
 
+      <p><strong>Can I tag people, projects, or labels in a task?</strong><br>
+      Yes — just type the tag anywhere in the title or notes. <strong>+project</strong> and <strong>@context</strong> are todo.txt's own standard tags; <strong>%label</strong> and <strong>~person</strong> are free-form ones Stark also understands, for whatever categories or people you want to track (e.g. "Call mom ~mom %family"). As you type a tag, Stark suggests matching ones you've already used elsewhere, so you don't have to remember your own spelling.</p>
+
       <p><strong>Does Stark work offline?</strong><br>
       Yes. Stark reads and writes a local file. iCloud syncs when a connection is available, but the app works fully offline.</p>
     </main>`,
