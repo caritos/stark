@@ -135,10 +135,12 @@ app.get('/', (c) => {
       <a class="badge" href="https://apps.apple.com/app/id6772774783">↓ DOWNLOAD ON THE APP STORE</a>
     </main>
     <div class="screenshots">
-      <img src="/public/screenshots/01-calendar.png" alt="Calendar view">
-      <img src="/public/screenshots/02-month.png" alt="Month view">
-      <img src="/public/screenshots/03-year.png" alt="Year view">
-      <img src="/public/screenshots/04-day.png" alt="Day view">
+      <img src="/public/screenshots/01-agenda.png" alt="Month calendar with today's reminders and events in one agenda">
+      <img src="/public/screenshots/02-week.png" alt="Week view with the agenda for today and tomorrow">
+      <img src="/public/screenshots/03-year.png" alt="Year view with busy days highlighted">
+      <img src="/public/screenshots/04-search.png" alt="Search results for a person tag">
+      <img src="/public/screenshots/05-event.png" alt="Editing an event">
+      <img src="/public/screenshots/06-add.png" alt="Adding a new event">
     </div>`,
     `<a href="/privacy">PRIVACY POLICY</a><a href="/terms">TERMS OF SERVICE</a><a href="/faq">FAQ</a><a href="/support">SUPPORT</a>`,
   );
