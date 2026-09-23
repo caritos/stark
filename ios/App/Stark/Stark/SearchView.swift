@@ -39,7 +39,12 @@ struct SearchView: View {
                             Button {
                                 selectedItem = item
                             } label: {
-                                AgendaRowView(item: item)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(AgendaFormat.shortDate(item.displayDate))
+                                        .font(Fonts.mono(11))
+                                        .foregroundStyle(Colors.textSecondary)
+                                    AgendaRowView(item: item)
+                                }
                             }
                             .buttonStyle(.plain)
                             .listRowSeparatorTint(Colors.separator)
@@ -66,32 +71,7 @@ struct SearchView: View {
         .preferredColorScheme(.dark)
     }
 
-    /// Every event/reminder matching `query`, sorted by date. Built directly from
-    /// `store.events`/`store.reminders` (not through occurrence expansion, unlike the agenda)
-    /// -- a search result represents the item's own master record, one row per stored
-    /// event/reminder, not per calendar occurrence.
     private var results: [AgendaItem] {
-        guard !query.isEmpty else { return [] }
-        let needle = query.lowercased()
-        var found: [AgendaItem] = []
-        for event in store.events where matches(event, needle: needle) {
-            found.append(AgendaItem(kind: .event(event), occurrence: event.start, displayDate: event.start, isOverdue: false))
-        }
-        for reminder in store.reminders where matches(reminder, needle: needle) {
-            let date = reminder.dueDate ?? Date()
-            found.append(AgendaItem(kind: .reminder(reminder), occurrence: date, displayDate: date, isOverdue: false))
-        }
-        return found.sorted { $0.displayDate < $1.displayDate }
-    }
-
-    private func matches(_ event: Event, needle: String) -> Bool {
-        event.title.lowercased().contains(needle)
-            || (event.notes?.lowercased().contains(needle) ?? false)
-            || (event.location?.lowercased().contains(needle) ?? false)
-    }
-
-    private func matches(_ reminder: Reminder, needle: String) -> Bool {
-        reminder.title.lowercased().contains(needle)
-            || (reminder.notes?.lowercased().contains(needle) ?? false)
+        SearchResults.find(events: store.events, reminders: store.reminders, query: query)
     }
 }
