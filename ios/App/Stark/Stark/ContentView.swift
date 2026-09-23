@@ -111,12 +111,15 @@ struct ContentView: View {
             }
         }
         .background(Colors.background)
+        // A floating action button (Fantastical-style) instead of a nav-bar "Add" button,
+        // which read as too much real-estate on the iPhone's title bar. Square, not circular —
+        // this app has no rounded corners anywhere else (Braun/Bauhaus), so a circular FAB
+        // would be the one exception. Overlaid on the whole screen (not just the agenda), so
+        // it stays reachable and visible even in year mode, above the YearView overlay.
+        .overlay(alignment: .bottomTrailing) { addButton }
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Colors.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .toolbar {
-            FlatToolbarButton(title: "Add", systemImage: "plus", placement: .primaryAction) { showAdd = true }
-        }
         .sheet(isPresented: $showAdd) { AddItemView() }
         .sheet(item: $selectedItem) { item in EditItemView(item: item) }
         .task {
@@ -138,6 +141,24 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
             followCalendarDay()
         }
+    }
+
+    /// Square (hard-edged, matching the rest of the app), accent-filled, no shadow or glass
+    /// effect — flat like `FlatToolbarButton`. 56pt is the usual floating-action-button minimum
+    /// touch target, padded off the corner so it never sits flush against the screen edge.
+    private var addButton: some View {
+        Button {
+            showAdd = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Colors.background)
+                .frame(width: 56, height: 56)
+                .background(Colors.accent)
+        }
+        .buttonStyle(.plain)
+        .padding(Spacing.lg)
+        .accessibilityLabel("Add")
     }
 
     /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone
