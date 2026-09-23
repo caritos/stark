@@ -18,6 +18,7 @@ struct ContentView: View {
     @EnvironmentObject private var pending: PendingCompletions
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
+    @State private var showSearch = false
     @State private var selectedItem: AgendaItem?
     @State private var selectedDate: Date
     @State private var scrollRequest: ScrollRequest?
@@ -116,7 +117,13 @@ struct ContentView: View {
         // this app has no rounded corners anywhere else (Braun/Bauhaus), so a circular FAB
         // would be the one exception. Overlaid on the whole screen (not just the agenda), so
         // it stays reachable and visible even in year mode, above the YearView overlay.
-        .overlay(alignment: .bottomTrailing) { addButton }
+        .overlay(alignment: .bottomTrailing) {
+            HStack(spacing: Spacing.sm) {
+                searchButton
+                addButton
+            }
+            .padding(Spacing.lg)
+        }
         // No navigation title and, since the FAB replaced the toolbar Add button above, no
         // toolbar content either -- an empty nav bar was still reserving its full height,
         // showing as a band of dead space above the month grid. Hidden entirely; this screen
@@ -124,6 +131,7 @@ struct ContentView: View {
         // nothing relies on the bar being there.
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAdd) { AddItemView() }
+        .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(item: $selectedItem) { item in EditItemView(item: item) }
         .task {
             // Load the wider window (includes the overdue lookback), not the display window.
@@ -148,7 +156,9 @@ struct ContentView: View {
 
     /// Square (hard-edged, matching the rest of the app), accent-filled, no shadow or glass
     /// effect — flat like `FlatToolbarButton`. 56pt is the usual floating-action-button minimum
-    /// touch target, padded off the corner so it never sits flush against the screen edge.
+    /// touch target. Padding off the screen corner now lives on the HStack wrapping this and
+    /// `searchButton` together, not on each button individually (that would double the gap
+    /// between them).
     private var addButton: some View {
         Button {
             showAdd = true
@@ -160,8 +170,23 @@ struct ContentView: View {
                 .background(Colors.accent)
         }
         .buttonStyle(.plain)
-        .padding(Spacing.lg)
         .accessibilityLabel("Add")
+    }
+
+    /// Same square/flat/accent style as `addButton`, magnifying-glass glyph, positioned to its
+    /// left in the bottom-trailing HStack.
+    private var searchButton: some View {
+        Button {
+            showSearch = true
+        } label: {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(Colors.background)
+                .frame(width: 56, height: 56)
+                .background(Colors.accent)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Search")
     }
 
     /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone
