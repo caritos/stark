@@ -20,15 +20,13 @@ nav-bar Add button).
    `PlannerFile` needs that capability added.
 2. **Entry point:** a second floating button next to the existing Add FAB,
    same square/flat/accent style, a magnifying-glass glyph.
-3. **Matching fields, with a filter row** (adapted from Fantastical's own
-   search, which offers Title / Location / Invitees / All): a row of
-   hard-edged toggle chips — **Title / Notes / Location / All** — narrows
-   which field the substring match applies to. "Invitees" is dropped (no
-   such field exists in this app's data model); "Notes" replaces it, since
-   that's a real, searchable field here. Default: **All** (matches title,
-   notes, and location for events; title and notes for reminders — a
-   reminder has no location field). Case-insensitive substring match, not
-   fuzzy/ranked search, regardless of which chip is selected.
+3. **Matching fields:** title, notes, and location (events) / title and
+   notes (reminders) — the natural things people search by, matched
+   unconditionally, with no filter/field picker in the UI. (Fantastical's
+   own search offers a Title/Location/Invitees/All filter row; considered
+   and deliberately dropped for simplicity — see the note in the Search
+   screen section below.) Case-insensitive substring match, not
+   fuzzy/ranked search.
 4. **Results open the existing `EditItemView`** — no new detail UI. A
    recurring item opens its master series, matching how editing already
    works everywhere else in the app.
@@ -71,14 +69,7 @@ Search and shouldn't pay for it.
 
 A sheet presented from `ContentView`. Structure:
 - A search `TextField` at the top.
-- A filter row directly below it: four hard-edged toggle chips — **Title**,
-  **Notes**, **Location**, **All** — single-select (tapping one selects it
-  and deselects the others), styled like `CustomRepeatView`'s existing "On
-  Days"/"On Week" chip rows (flat, `Colors.accent` when selected,
-  `Colors.checkboxBorder`-outlined otherwise — no native
-  `.pickerStyle(.segmented)`, which is rounded and would break the
-  no-rounded-corners rule). Defaults to **All**.
-- Below that, a results list reusing `AgendaRowView` for each match (so
+- Below it, a results list reusing `AgendaRowView` for each match (so
   results look like agenda rows — same title/time/priority rendering the
   user already knows).
 - On appear: calls `await store.loadAllMonths()`, showing a lightweight
@@ -86,15 +77,13 @@ A sheet presented from `ContentView`. Structure:
   `loadedMonths` persists for the app's session, re-opening Search later
   skips straight to instant results.
 - Filtering: for each `store.events`/`store.reminders` entry, a
-  case-insensitive substring match against whichever field(s) the selected
-  chip implies — **Title**: title only. **Notes**: notes only. **Location**:
-  location only (events only; reminders never match under this chip, since
-  they have no location field). **All**: title, notes, and location
-  (events) or title and notes (reminders) — same as the single "always
-  match everywhere" behavior from the original design, now just one of
-  four choices instead of the only one. Empty search text shows no results
-  (not the full list) — searching, not browsing, is the point of this
-  screen.
+  case-insensitive substring match against title + notes + location
+  (events) or title + notes (reminders) — no field picker, always all of
+  them. (A Fantastical-style Title/Notes/Location/All filter row was
+  considered and deliberately dropped: one always-on match covers the same
+  ground with a simpler UI and no extra state to manage.) Empty search
+  text shows no results (not the full list) — searching, not browsing, is
+  the point of this screen.
 - Tapping a result builds an `AgendaItem` directly from the found
   `Event`/`Reminder` (`AgendaItem(kind: .event(event)` or
   `.reminder(reminder), occurrence: event.start` or
