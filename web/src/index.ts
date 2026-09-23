@@ -130,7 +130,7 @@ app.get('/', (c) => {
       <img src="/public/screenshots/03-year.png" alt="Year view">
       <img src="/public/screenshots/04-day.png" alt="Day view">
     </div>`,
-    `<a href="/privacy">PRIVACY POLICY</a><a href="/terms">TERMS OF SERVICE</a><a href="/support">SUPPORT</a>`,
+    `<a href="/privacy">PRIVACY POLICY</a><a href="/terms">TERMS OF SERVICE</a><a href="/faq">FAQ</a><a href="/support">SUPPORT</a>`,
   );
   return c.html(html);
 });
@@ -168,7 +168,7 @@ app.get('/terms', (c) => {
       <h2>CONTACT</h2>
       <p>Questions about these terms? Email <strong>eladio@caritos.com</strong>.</p>
     </main>`,
-    `<a href="/">HOME</a><a href="/privacy">PRIVACY POLICY</a>`,
+    `<a href="/">HOME</a><a href="/privacy">PRIVACY POLICY</a><a href="/faq">FAQ</a>`,
   );
   return c.html(html);
 });
@@ -206,7 +206,7 @@ app.get('/privacy', (c) => {
       <h2>CONTACT</h2>
       <p>Questions about this policy? Email <strong>eladio@caritos.com</strong>.</p>
     </main>`,
-    `<a href="/">HOME</a><a href="/terms">TERMS OF SERVICE</a><a href="/support">SUPPORT</a>`,
+    `<a href="/">HOME</a><a href="/terms">TERMS OF SERVICE</a><a href="/faq">FAQ</a><a href="/support">SUPPORT</a>`,
   );
   return c.html(html);
 });
@@ -224,9 +224,20 @@ app.get('/support', (c) => {
       <div class="contact-block">
         <a href="mailto:eladio@caritos.com">eladio@caritos.com</a>
       </div>
+    </main>`,
+    `<a href="/">HOME</a><a href="/faq">FAQ</a><a href="/privacy">PRIVACY POLICY</a><a href="/terms">TERMS OF SERVICE</a>`,
+  );
+  return c.html(html);
+});
 
-      <h2>FREQUENTLY ASKED QUESTIONS</h2>
-
+app.get('/faq', (c) => {
+  const html = layout(
+    'FAQ — Stark',
+    `<header>
+      <div class="wordmark"><a href="/">STARK</a></div>
+      <h1>Frequently Asked Questions</h1>
+    </header>
+    <main>
       <p><strong>Where is my data stored?</strong><br>
       Your tasks are stored in a plain text <strong>todo.txt</strong> file. By default Stark uses iCloud Drive so your tasks sync across your devices. You can point the app to any file location in Settings.</p>
 
@@ -245,7 +256,7 @@ app.get('/support', (c) => {
       <p><strong>Does Stark work offline?</strong><br>
       Yes. Stark reads and writes a local file. iCloud syncs when a connection is available, but the app works fully offline.</p>
     </main>`,
-    `<a href="/">HOME</a><a href="/privacy">PRIVACY POLICY</a><a href="/terms">TERMS OF SERVICE</a>`,
+    `<a href="/">HOME</a><a href="/support">SUPPORT</a>`,
   );
   return c.html(html);
 });

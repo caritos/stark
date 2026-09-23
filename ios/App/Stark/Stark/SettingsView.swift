@@ -16,6 +16,7 @@ struct SettingsView: View {
     private static let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     private static let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
 
+    private static let websiteURL = URL(string: "https://stark.caritos.com")!
     private static let developerURL = URL(string: "http://caritos.com")!
     private static let privacyURL = URL(string: "https://stark.caritos.com/privacy")!
     private static let termsURL = URL(string: "https://stark.caritos.com/terms")!
@@ -24,8 +25,14 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Section {
-                    LabeledContent("App Name") {
-                        Text(Self.appName)
+                    Button {
+                        openURL(Self.websiteURL)
+                    } label: {
+                        HStack {
+                            Text("App Name").foregroundStyle(Colors.text)
+                            Spacer()
+                            Text(Self.appName).foregroundStyle(Colors.accent)
+                        }
                     }
                     LabeledContent("Version") {
                         Text("\(Self.version) (\(Self.build))")
