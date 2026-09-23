@@ -75,8 +75,12 @@ public enum RRuleCodec {
             case "FREQ": frequency = RecurrenceRule.Frequency(rawValue: kv[1].lowercased())
             case "INTERVAL": interval = Int(kv[1]) ?? 1
             case "BYDAY": byDayRaw = kv[1].split(separator: ",").map(String.init)
-            case "BYMONTHDAY": byMonthDayRaw = kv[1].split(separator: ",").compactMap { Int($0) }
-            case "BYMONTH": byMonth = kv[1].split(separator: ",").compactMap { Int($0).flatMap(Month.init) }
+            case "BYMONTHDAY":
+                let parsed = kv[1].split(separator: ",").compactMap { Int($0) }
+                byMonthDayRaw = parsed.isEmpty ? nil : parsed
+            case "BYMONTH":
+                let parsed = kv[1].split(separator: ",").compactMap { Int($0).flatMap(Month.init) }
+                byMonth = parsed.isEmpty ? nil : parsed
             case "BYSETPOS": bySetPos = Int(kv[1])
             case "COUNT": count = Int(kv[1])
             case "UNTIL": until = ICSDateFormat.parse(String(kv[1]))?.date

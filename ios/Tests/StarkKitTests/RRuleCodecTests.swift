@@ -20,6 +20,24 @@ struct RRuleCodecTests {
         #expect(RRuleCodec.decode(encoded) == rule)
     }
 
+    @Test("an empty BYMONTHDAY value decodes to nil, not an empty array")
+    func emptyByMonthDayDecodesToNil() {
+        let decoded = RRuleCodec.decode("FREQ=MONTHLY;BYMONTHDAY=")
+        #expect(decoded?.byMonthDay == nil)
+    }
+
+    @Test("a BYMONTHDAY value with only unparseable tokens decodes to nil, not an empty array")
+    func unparseableByMonthDayDecodesToNil() {
+        let decoded = RRuleCodec.decode("FREQ=MONTHLY;BYMONTHDAY=abc")
+        #expect(decoded?.byMonthDay == nil)
+    }
+
+    @Test("an empty BYMONTH value decodes to nil, not an empty array")
+    func emptyByMonthDecodesToNil() {
+        let decoded = RRuleCodec.decode("FREQ=YEARLY;BYMONTH=")
+        #expect(decoded?.byMonth == nil)
+    }
+
     @Test("encodes and decodes a specific-weekday positional day as ordinal BYDAY")
     func positionalSpecificWeekday() {
         let rule = RecurrenceRule(frequency: .monthly, byPositionalDay: [PositionalDay(position: .second, dayType: .weekday(.tuesday))])
