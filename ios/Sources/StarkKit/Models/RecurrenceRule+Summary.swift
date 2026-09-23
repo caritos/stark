@@ -11,12 +11,12 @@ extension RecurrenceRule {
         var result = "Every \(interval == 1 ? "" : "\(interval) ")\(unitLabel)\(interval == 1 ? "" : "s")"
 
         if frequency == .weekly, let byDay, !byDay.isEmpty {
-            let names = byDay.sorted { $0.rawValue < $1.rawValue }.map(Self.weekdayName)
+            let names = byDay.sorted { $0.rawValue < $1.rawValue }.map(\.displayName)
             result += " on \(names.joined(separator: ", "))"
         }
 
         if frequency == .yearly, let byMonth, !byMonth.isEmpty {
-            let names = byMonth.sorted { $0.rawValue < $1.rawValue }.map(Self.monthName)
+            let names = byMonth.sorted { $0.rawValue < $1.rawValue }.map(\.displayName)
             result += " in \(names.joined(separator: ", "))"
         }
 
@@ -42,15 +42,6 @@ extension RecurrenceRule {
         }
     }
 
-    private static func weekdayName(_ day: Weekday) -> String {
-        ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day.rawValue]
-    }
-
-    private static func monthName(_ month: Month) -> String {
-        ["January", "February", "March", "April", "May", "June", "July", "August",
-         "September", "October", "November", "December"][month.rawValue - 1]
-    }
-
     private static func positionalDayDescription(_ positional: PositionalDay) -> String {
         let positionWord: String
         switch positional.position {
@@ -62,7 +53,7 @@ extension RecurrenceRule {
         }
         let dayWord: String
         switch positional.dayType {
-        case .weekday(let w): dayWord = weekdayName(w)
+        case .weekday(let w): dayWord = w.displayName
         case .anyDay: dayWord = "day"
         case .weekdayOnly: dayWord = "weekday"
         case .weekendDay: dayWord = "weekend day"
