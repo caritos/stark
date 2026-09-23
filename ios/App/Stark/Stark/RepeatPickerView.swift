@@ -34,10 +34,17 @@ struct RepeatPickerView: View {
         List {
             ForEach(RepeatPreset.allCases) { preset in
                 if preset == .custom {
-                    NavigationLink(preset.rawValue) {
+                    NavigationLink {
                         CustomRepeatView(recurrence: $recurrence)
+                    } label: {
+                        HStack {
+                            Text(preset.rawValue).foregroundStyle(Colors.text)
+                            Spacer()
+                            if isCustomRuleActive {
+                                Image(systemName: "checkmark").foregroundStyle(Colors.accent)
+                            }
+                        }
                     }
-                    .foregroundStyle(Colors.text)
                 } else {
                     Button {
                         recurrence = preset.rule
@@ -55,5 +62,13 @@ struct RepeatPickerView: View {
             }
         }
         .navigationTitle("Repeat")
+    }
+
+    /// True when `recurrence` is set but matches none of the five concrete presets - i.e. it's
+    /// a genuinely custom rule, which previously showed no checkmark at all (looking like
+    /// nothing was selected, even though a real recurrence was active).
+    private var isCustomRuleActive: Bool {
+        guard let recurrence else { return false }
+        return !RepeatPreset.allCases.contains { $0.rule == recurrence }
     }
 }
