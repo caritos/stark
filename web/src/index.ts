@@ -120,18 +120,17 @@ app.get('/', (c) => {
     'Stark — To Do List & Calendar',
     `<header>
       <div class="wordmark">STARK</div>
-      <h1>Plain text tasks.<span class="sub">To Do List &amp; Calendar for iOS</span></h1>
+      <h1>Tasks and events, one agenda.<span class="sub">To Do List &amp; Calendar for iOS</span></h1>
     </header>
     <main>
       <p>
-        <strong>Stark</strong> is a minimal task manager and calendar that stores everything
-        in a plain text <strong>todo.txt</strong> file — no accounts, no cloud lock-in,
-        no subscriptions. Just your tasks, in a format you own.
+        <strong>Stark</strong> is a minimal to-do list and calendar for iPhone. Reminders and events
+        share one scrolling agenda, with a week, month and year calendar above it — no accounts,
+        no cloud lock-in, no subscriptions.
       </p>
       <p>
-        Fully compatible with the <a href="http://todotxt.org/" style="color:#E8461A;text-decoration:none;">todo.txt format</a>
-        — an open standard used by apps and tools across every platform.
-        Your file works everywhere.
+        Repeat anything daily, weekly, monthly or yearly, or with a custom rule. Search your whole
+        history. Everything stays on your device — nothing is sent anywhere.
       </p>
       <a class="badge" href="https://apps.apple.com/app/id6772774783">↓ DOWNLOAD ON THE APP STORE</a>
     </main>
@@ -165,7 +164,7 @@ app.get('/terms', (c) => {
       <p>Stark is a personal task and calendar manager. You are responsible for the content you create in it and for keeping your device secure.</p>
 
       <h2>YOUR DATA</h2>
-      <p>Stark stores your data locally on your device (and, where offered, in your personal iCloud storage). See the <a href="/privacy" style="color:#E8461A;text-decoration:none;">Privacy Policy</a> for details — Stark itself collects nothing.</p>
+      <p>Stark stores your data locally on your device. See the <a href="/privacy" style="color:#E8461A;text-decoration:none;">Privacy Policy</a> for details — Stark itself collects nothing.</p>
 
       <h2>NO WARRANTY</h2>
       <p>Stark is provided "as is," without warranty of any kind, express or implied. We do not guarantee the app will be error-free or uninterrupted.</p>
@@ -190,15 +189,15 @@ app.get('/privacy', (c) => {
     `<header>
       <div class="wordmark"><a href="/">STARK</a></div>
       <h1>Privacy Policy</h1>
-      <p class="updated">LAST UPDATED: JUNE 2026</p>
+      <p class="updated">LAST UPDATED: SEPTEMBER 2026</p>
     </header>
     <main>
       <h2>THE SHORT VERSION</h2>
-      <p><strong>Stark collects no data about you.</strong> Your tasks stay on your device and in your personal iCloud storage. Nothing is sent to us or any third party.</p>
+      <p><strong>Stark collects no data about you.</strong> Your reminders and events stay on your device. Nothing is sent to us or any third party.</p>
 
       <h2>DATA STORAGE</h2>
-      <p>All tasks and calendar data are stored in a plain text <strong>todo.txt</strong> file on your device or in your personal iCloud Drive. You choose the file location in Settings.</p>
-      <p>iCloud syncing is handled entirely by Apple using your personal Apple ID. We have no access to your iCloud storage and never receive or transmit your task data.</p>
+      <p>All reminders and events are stored in files inside Stark's private storage on your device. Stark does not use iCloud and does not sync between devices.</p>
+      <p>If you back up your device with iCloud Backup or to a computer, Apple's backup includes Stark's data along with your other apps. That backup is handled entirely by Apple using your Apple ID. We have no access to it and never receive your data.</p>
 
       <h2>DATA COLLECTION</h2>
       <p>Stark does <strong>not</strong> collect, transmit, or store any of the following:</p>
@@ -206,7 +205,11 @@ app.get('/privacy', (c) => {
       — Usage data or analytics<br>
       — Crash reports or diagnostics<br>
       — Location data<br>
-      — Task content or metadata</p>
+      — Reminder or event content or metadata</p>
+      <p>Stark does not ask for access to your contacts, calendars, photos, location, or notifications.</p>
+
+      <h2>LINKS</h2>
+      <p>If you tap a link in Stark, such as an event's URL or a link in Settings, it opens in your browser. That site's own privacy policy applies to your visit.</p>
 
       <h2>THIRD PARTIES</h2>
       <p>Stark contains no third-party analytics, advertising SDKs, or tracking libraries. No data is shared with any third party.</p>
@@ -250,22 +253,28 @@ app.get('/faq', (c) => {
     </header>
     <main>
       <p><strong>Where is my data stored?</strong><br>
-      Your tasks are stored in a plain text <strong>todo.txt</strong> file. By default Stark uses iCloud Drive so your tasks sync across your devices. You can point the app to any file location in Settings.</p>
+      On your device only, in Stark's private storage, as standard iCalendar (<strong>.ics</strong>) files. Nothing is uploaded and there is no account.</p>
 
-      <p><strong>How do I sync with my Mac or other apps?</strong><br>
-      Point both Stark and your other todo.txt app to the same file in iCloud Drive. Any app that reads and writes the todo.txt format will work.</p>
+      <p><strong>Does Stark sync between my devices?</strong><br>
+      No. Each device keeps its own data. Stark's data is included in your normal device backups (iCloud Backup or a computer backup), so restoring a device from a backup restores it too.</p>
 
-      <p><strong>How do I add a recurring task?</strong><br>
-      Add a task and tap it to open the detail view. Use the recurrence picker to set daily, weekly, monthly, or yearly repeats. The task advances to its next occurrence automatically when you mark it done.</p>
+      <p><strong>How do I add a recurring reminder or event?</strong><br>
+      Tap + to add an item, then use the Repeat row to choose daily, weekly, monthly or yearly, or a custom rule such as every two weeks or the first Tuesday of the month. Repeat End stops the series after a date or a number of times. Completing a repeating reminder completes only that occurrence; the series continues.</p>
 
-      <p><strong>What is todo.txt?</strong><br>
-      A simple, open plain text format for task management. One task per line. Human-readable in any text editor. You own your data completely — no proprietary format, no lock-in.</p>
+      <p><strong>What happens to a reminder I miss?</strong><br>
+      An overdue reminder moves to today's section with its missed date shown, until you complete or skip it. Missed daily repeats are not carried forward, so they don't nag you every day.</p>
+
+      <p><strong>Can I record whether I attended an event?</strong><br>
+      Yes. Open the event and choose Attended or Didn't Attend. The event stays on your agenda, marked and dimmed, and you can clear the mark at any time.</p>
+
+      <p><strong>Can I search old items?</strong><br>
+      Yes. Search looks through the titles, notes and locations of everything you have ever saved, not just what is near today's date.</p>
 
       <p><strong>Can I tag people, projects, or labels in a task?</strong><br>
       Yes — just type the tag anywhere in the title or notes. <strong>+project</strong> and <strong>@context</strong> are todo.txt's own standard tags; <strong>%label</strong> and <strong>~person</strong> are free-form ones Stark also understands, for whatever categories or people you want to track (e.g. "Call mom ~mom %family"). As you type a tag, Stark suggests matching ones you've already used elsewhere, so you don't have to remember your own spelling.</p>
 
       <p><strong>Does Stark work offline?</strong><br>
-      Yes. Stark reads and writes a local file. iCloud syncs when a connection is available, but the app works fully offline.</p>
+      Yes. Stark never needs a connection: everything is read from and written to your device.</p>
     </main>`,
     `<a href="/">HOME</a><a href="/support">SUPPORT</a>`,
   );
