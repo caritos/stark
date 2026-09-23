@@ -36,7 +36,9 @@ NEXT_BUILD=$((CURRENT_BUILD + 1))
 # the build-number counter below. App Store Connect rejects an upload whose
 # version isn't strictly greater than the current live one.
 IFS='.' read -r MV_MAJOR MV_MINOR MV_PATCH <<< "$MARKETING_VERSION"
-NEXT_MARKETING_VERSION="${MV_MAJOR}.${MV_MINOR}.$((MV_PATCH + 1))"
+# Set NEXT_MARKETING_VERSION in the environment (e.g. NEXT_MARKETING_VERSION=2.0.0) to ship a
+# specific version instead of the automatic patch bump - for a minor/major release.
+NEXT_MARKETING_VERSION="${NEXT_MARKETING_VERSION:-${MV_MAJOR}.${MV_MINOR}.$((MV_PATCH + 1))}"
 
 ARCHIVE_PATH="$BUILD_DIR/Stark.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export"
