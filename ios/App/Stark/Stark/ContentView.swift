@@ -158,7 +158,7 @@ struct ContentView: View {
     }
 
     /// Square (hard-edged, matching the rest of the app), accent-filled, no shadow or glass
-    /// effect — flat like `FlatToolbarButton`. 56pt is the usual floating-action-button minimum
+    /// effect — flat like `SquareToolbarButton`. 56pt is the usual floating-action-button minimum
     /// touch target. Padding off the screen corner now lives on the HStack wrapping this and
     /// `searchButton` together, not on each button individually (that would double the gap
     /// between them).

@@ -216,8 +216,9 @@ struct EditItemView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Colors.background, for: .navigationBar)
             .toolbar {
-                FlatToolbarButton(title: "Cancel", placement: .cancellationAction) { dismiss() }
-                FlatToolbarButton(title: "Save", placement: .confirmationAction, isDisabled: trimmedTitle.isEmpty) { save() }
+                SquareToolbarButton(systemImage: "checkmark", label: "Save", placement: .confirmationAction,
+                                    isProminent: true, isDisabled: trimmedTitle.isEmpty) { save() }
+                SquareToolbarButton(systemImage: "xmark", label: "Cancel", placement: .cancellationAction) { dismiss() }
             }
             .confirmationDialog(deleteMessage, isPresented: $showDeleteConfirm, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) { delete() }
