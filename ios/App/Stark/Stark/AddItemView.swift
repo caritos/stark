@@ -114,12 +114,10 @@ struct AddItemView: View {
                               onTap: insertSigil)
             .navigationTitle("Add \(kind.rawValue)")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { add() }.disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
+                SquareToolbarButton(systemImage: "plus", label: "Add", placement: .confirmationAction,
+                                    isProminent: true,
+                                    isDisabled: title.trimmingCharacters(in: .whitespaces).isEmpty) { add() }
+                SquareToolbarButton(systemImage: "xmark", label: "Cancel", placement: .cancellationAction) { dismiss() }
             }
         }
         .tint(Colors.accent)
