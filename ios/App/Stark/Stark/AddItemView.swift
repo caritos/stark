@@ -16,7 +16,6 @@ struct AddItemView: View {
     @State private var recurrence: RecurrenceRule?
     @State private var repeatEnd: RepeatEnd = .never
     @State private var notes = ""
-    @State private var location = ""
     @State private var url = ""
     @State private var priority: ReminderPriority = .none
 
@@ -75,8 +74,6 @@ struct AddItemView: View {
                 }
 
                 if kind == .event {
-                    TextField("Location", text: $location)
-                    TagSuggestionRow(text: location) { location = TagAutocomplete.applying($0, to: location) }
                     TextField("URL", text: $url)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
@@ -133,7 +130,8 @@ struct AddItemView: View {
                 start: start,
                 end: allDay ? nil : EventSchedule.storedEnd(endDate, start: date),
                 isAllDay: allDay,
-                location: FormFields.trimmedOrNil(location),
+                // No Location field on Add -- keeps the add form quick; it can still be set
+                // afterward via Edit.
                 recurrence: repeatEnd.applied(to: recurrence),
                 url: FormFields.trimmedOrNil(url)
             ))
