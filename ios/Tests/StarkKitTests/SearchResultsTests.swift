@@ -77,8 +77,8 @@ struct SearchResultsTests {
         #expect(results[0].occurrence <= until)
     }
 
-    @Test("a reminder with no due date is not lost -- sorts to the very beginning, not 'now'")
-    func undatedReminderSortsFirst() {
+    @Test("a reminder with no due date is not lost -- sorts to the very end, not 'now'")
+    func undatedReminderSortsLast() {
         let today = DateMath.date(from: "2026-09-23")
         let dated = Reminder(title: "Dated Match", dueDate: today)
         let undated = Reminder(title: "Undated Match", dueDate: nil)
@@ -86,17 +86,18 @@ struct SearchResultsTests {
         let results = SearchResults.find(events: [], reminders: [dated, undated], query: "match", today: today)
 
         #expect(results.count == 2)
-        #expect(results[0].title == "Undated Match")
+        #expect(results[0].title == "Dated Match")
+        #expect(results[1].title == "Undated Match")
     }
 
-    @Test("results are sorted by occurrence date")
-    func sortedByDate() {
+    @Test("results are sorted newest date first")
+    func sortedByDateDescending() {
         let today = DateMath.date(from: "2026-09-23")
         let events = [
-            Event(title: "Match Later", start: DateMath.date(from: "2026-10-01")),
             Event(title: "Match Earlier", start: DateMath.date(from: "2026-09-24")),
+            Event(title: "Match Later", start: DateMath.date(from: "2026-10-01")),
         ]
         let results = SearchResults.find(events: events, reminders: [], query: "match", today: today)
-        #expect(results.map(\.title) == ["Match Earlier", "Match Later"])
+        #expect(results.map(\.title) == ["Match Later", "Match Earlier"])
     }
 }

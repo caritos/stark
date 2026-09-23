@@ -39,7 +39,10 @@ public enum SearchResults {
             results.append(AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: occurrence, isOverdue: false))
         }
 
-        return results.sorted { $0.displayDate < $1.displayDate }
+        // Newest date first (issue raised as "sort by most recent created" -- there is no
+        // creation timestamp anywhere in the model or the .ics format, so this sorts by each
+        // item's own date instead, descending).
+        return results.sorted { $0.displayDate > $1.displayDate }
     }
 
     private static func representativeOccurrence(event: Event, today: Date) -> Date {
@@ -49,9 +52,9 @@ public enum SearchResults {
     }
 
     /// `.distantPast` for an undated reminder (rather than `Date()`), so it sorts to the very
-    /// beginning of the results -- stable across recomputation, unlike "now", which would also
-    /// make the row's `AgendaItem.id` (which embeds the occurrence's timestamp) change on every
-    /// keystroke.
+    /// end of the (newest-first) results -- stable across recomputation, unlike "now", which
+    /// would also make the row's `AgendaItem.id` (which embeds the occurrence's timestamp)
+    /// change on every keystroke.
     private static func representativeOccurrence(reminder: Reminder, today: Date) -> Date {
         guard let dueDate = reminder.dueDate else { return .distantPast }
         guard reminder.recurrence != nil else { return dueDate }
