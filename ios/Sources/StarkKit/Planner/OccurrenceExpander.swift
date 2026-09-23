@@ -98,6 +98,13 @@ public enum OccurrenceExpander {
             return days >= 0 && days % rule.interval == 0
 
         case .weekly:
+            // `calendar` is always a bare `Calendar(identifier: .gregorian)` with no `.locale`
+            // set (see `occurrences` above), which fixes `firstWeekday` at 1 (Sunday) regardless
+            // of device region -- confirmed empirically, not locale-derived (a bare Calendar's
+            // locale is a "fixed empty" one, distinct from `Calendar.current`). This is
+            // deliberate, not a latent bug: the whole app is Sunday-first everywhere else
+            // (MonthGrid, the mini-grid headers), so `every:N>1` week-interval parity below is
+            // already consistent with that, and must never be made locale-adaptive.
             let weekday = Weekday(rawValue: calendar.component(.weekday, from: date) - 1)!
             let activeDays = rule.byDay ?? [Weekday(rawValue: calendar.component(.weekday, from: anchor) - 1)!]
             guard activeDays.contains(weekday) else { return false }
