@@ -4,6 +4,19 @@ import { serveStatic } from 'hono/bun';
 const app = new Hono();
 const PORT = parseInt(process.env.PORT ?? '3456');
 
+// Hono matches routes exactly, so "/terms/" 404s even though "/terms" is defined -- true of
+// every route here (a person typing the URL by habit, or a browser/link adding the slash, hits
+// this easily). Redirect any non-root path with a trailing slash to its slash-free form instead
+// of 404ing, before any route handler runs.
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url);
+  if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+    url.pathname = url.pathname.slice(0, -1);
+    return c.redirect(url.toString(), 301);
+  }
+  await next();
+});
+
 // ── Shared layout ─────────────────────────────────────────────────────────────
 
 const CSS = `
