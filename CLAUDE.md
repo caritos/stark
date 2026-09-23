@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**`mobile/` (the Expo/React Native app) is deprecated as of 2026-09-22.** Active development is the native Swift app in `ios/`. Do not fix bugs, add features, or otherwise propose changes in `mobile/` unless a human explicitly asks for `mobile/` by name — a bug report that just says "the app" almost always means `ios/`. This applies to automated tooling (issue-fixer bots, scheduled agents) as much as to an interactive session: if an issue's screenshot or wording doesn't specify which app, assume `ios/`, and check the screenshot's own visual style (Braun/Bauhaus dark theme with a single orange accent for both) before touching either codebase — `mobile/` and `ios/` render enough alike from a distance that only that check (or a stack trace / file path in the report) reliably tells them apart.
+
 ## Commands
 
 ```bash
@@ -101,7 +103,7 @@ console/                      ← CLI (Node.js / Bun)
 ├── commands/                 ← thin wrappers: read → shared transform → write → print
 └── tests/
 
-mobile/                       ← Expo Router iOS app
+mobile/                       ← Expo Router iOS app — DEPRECATED (2026-09-22); see top of this file
 ├── modules/expo-icloud-file/ ← local native module: bookmark-based pickFolder/readFile/writeFile for iCloud Drive storage (see ios/ExpoIcloudFile.m)
 ├── app/                      ← file-based screens (Expo Router)
 │   ├── _layout.tsx           ← root Stack layout, fonts, TaskProvider, BottomActionBar
@@ -144,6 +146,8 @@ mobile/                       ← Expo Router iOS app
 **`export-ics` converts a todo.txt into the native app's files** (`console/commands/export-ics.ts` → pure transform `shared/commands/exportIcs.ts`, built from `shared/ics/*`): `t export-ics [--out DIR] [--force]` writes `recurring.ics`, one `YYYY-MM.ics` per month and an `export-report.txt` (default `./stark-export`; refuses a non-empty directory without `--force`, which deletes only earlier export files). Design: `docs/superpowers/specs/2026-09-20-todo-txt-to-native-migration-design.md`. The output format is exactly what the Swift `ICSSerializer` writes (CRLF, floating local times, `;VALUE=DATE` for all-day, one `EXDATE` line each) and is pinned by golden fixtures in `shared/tests/fixtures/ics/expected/` that a Swift test (`ExportFixtureTests`) parses with the real `ICSParser`; if you change either side, both suites must still pass. Rules worth knowing: only the known structural keys are removed from a title (tags, `bus:16:00`, and times in prose like `9:00` stay); recurring *reminders* are re-based to the first occurrence after `last-done:`/the `x` date while recurring *events* keep their original start (a birthday keeps its birth year); a done line with `frequency:` + `start:` is a live series, not history; `frequency-month-day` is valid on monthly **and** yearly rules; native positions stop at `fourth`/`last`, so an unrepresentable rule (`fifth-*`) is imported as a one-off and reported, never dropped; values that look like dates but are not real calendar dates or times (`2026-13-45`, `T25:00`) are never emitted — `parseWall` validates, and a bad `exdate:`/`recur-until:`/completion date is reported as an `ignored-extension` entry, and a bad `start:` is reported too (which entry depends on the line: an untyped reminder gets `ignored-extension`, a typed line gets `event-without-start`, and a recurring reminder also gets `unsupported-recurrence`), instead of being written where the Swift parser would silently drop it. `--force` is defensive: it refuses up front if an export-named entry in the directory is not a regular file or symlink, writes the new files first and only then prunes stale export-named files, and never writes through a symlink. Every line is accounted for: events + reminders always equals the input line count (`applyExportIcs` throws otherwise); the author's real file reconciles exactly (8,302 lines = 3,337 events + 4,965 reminders), and its export report lists genuine source-data problems, not converter defects (as of 2026-09-20 the author's file reports 6 undated tasks, 2 malformed-start completed lines, 1 `frequency-day:` on a monthly rule, 3 `end:`-before-`start:` lines and 1 start-less yearly task). Known gaps (multi-day events show only on their start day, undated tasks and overdue tasks older than 90 days are invisible in the native agenda) are listed in the spec.
 
 ## Mobile Layer
+
+**Deprecated (2026-09-22) — see the note at the top of this file.** Kept for reference only; do not build new features or fix bugs here unless explicitly asked.
 
 **Tech stack**: Expo SDK 52, Expo Router v3, React Native (iOS only), expo-file-system, react-native-reanimated, react-native-gesture-handler, @expo-google-fonts/jetbrains-mono, chrono-node.
 
