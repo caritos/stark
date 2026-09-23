@@ -53,13 +53,9 @@ struct OnWeekPickerView: View {
                             }
                         }
                     )) {
-                        Text("Sunday").tag(DayTypeOrWeekday.weekday(.sunday))
-                        Text("Monday").tag(DayTypeOrWeekday.weekday(.monday))
-                        Text("Tuesday").tag(DayTypeOrWeekday.weekday(.tuesday))
-                        Text("Wednesday").tag(DayTypeOrWeekday.weekday(.wednesday))
-                        Text("Thursday").tag(DayTypeOrWeekday.weekday(.thursday))
-                        Text("Friday").tag(DayTypeOrWeekday.weekday(.friday))
-                        Text("Saturday").tag(DayTypeOrWeekday.weekday(.saturday))
+                        ForEach(Weekday.allCases, id: \.self) { day in
+                            Text(day.displayName).tag(DayTypeOrWeekday.weekday(day))
+                        }
                         Text("Day").tag(DayTypeOrWeekday.anyDay)
                         Text("Weekday").tag(DayTypeOrWeekday.weekdayOnly)
                         Text("Weekend Day").tag(DayTypeOrWeekday.weekendDay)
@@ -75,7 +71,14 @@ struct OnWeekPickerView: View {
 
             if !hasGenericEntry {
                 Button("Add Rule") {
-                    entries.append(PositionalDay(position: .first, dayType: .weekday(.sunday)))
+                    // Every entry here is the specific-weekday case (a generic day-type forces
+                    // a sole entry, hiding this button entirely - see hasGenericEntry). Varying
+                    // the default weekday by how many entries already exist means two
+                    // consecutive un-edited taps can never produce two content-equal
+                    // PositionalDay values, which `ForEach($entries, id: \.self)` would
+                    // otherwise treat as the same identity.
+                    let nextDay = Weekday(rawValue: entries.count % Weekday.allCases.count) ?? .sunday
+                    entries.append(PositionalDay(position: .first, dayType: .weekday(nextDay)))
                 }
             }
         }
