@@ -191,11 +191,18 @@ struct MonthGridView: View {
 
     private var header: some View {
         HStack(spacing: 0) {
-            Text(monthTitle)
-                .font(Fonts.mono(11, weight: .semibold))
-                .tracking(2)
-                .foregroundStyle(Colors.text)
-                .padding(.leading, Spacing.sm)
+            Button(action: goToToday) {
+                Text(monthTitle)
+                    .font(Fonts.mono(11, weight: .semibold))
+                    .tracking(2)
+                    .foregroundStyle(Colors.text)
+                    .padding(.leading, Spacing.sm)
+                    .padding(.trailing, Spacing.md)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Goes to today")
             Spacer()
             if mode == .week {
                 chevron("‹", label: "Previous week") { onSelectDate(MonthGrid.weekStepped(selectedDate, by: -1)) }
@@ -273,6 +280,17 @@ struct MonthGridView: View {
         if mode == .week { return AgendaFormat.monthYear(selectedDate).uppercased() }
         let first = DateMath.date(from: DateMath.isoDate(year: visibleMonth.year, month0: visibleMonth.month0, day: 1))
         return AgendaFormat.monthYear(first).uppercased()
+    }
+
+    /// Tapping the month title returns to today: selects it (which scrolls the agenda there and
+    /// re-centres the window if today is outside it) and pages the grid back to today's month.
+    /// Unlike tapping a day cell, which never pages the grid (issue #96), this is an explicit
+    /// "take me back", so the grid follows. In week mode `visibleMonth` already follows the
+    /// selected day, so setting it here is harmless.
+    private func goToToday() {
+        onSelectDate(today)
+        visibleMonth = YearMonth(date: today)
+        loadVisibleMonths()
     }
 
     private func changeMonth(by offset: Int) {
