@@ -107,6 +107,7 @@ struct AddItemView: View {
                 }
             }
         }
+        .tint(Colors.accent)
     }
 
     private var recurrenceSummary: String {
