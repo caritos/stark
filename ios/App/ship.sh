@@ -38,11 +38,6 @@ NEXT_BUILD=$((CURRENT_BUILD + 1))
 IFS='.' read -r MV_MAJOR MV_MINOR MV_PATCH <<< "$MARKETING_VERSION"
 NEXT_MARKETING_VERSION="${MV_MAJOR}.${MV_MINOR}.$((MV_PATCH + 1))"
 
-echo "==> Bumping version: $MARKETING_VERSION -> $NEXT_MARKETING_VERSION (build $CURRENT_BUILD -> $NEXT_BUILD)"
-sed -i '' "s/MARKETING_VERSION = $MARKETING_VERSION;/MARKETING_VERSION = $NEXT_MARKETING_VERSION;/g" "$PBXPROJ"
-sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION = $NEXT_BUILD;/g" "$PBXPROJ"
-MARKETING_VERSION="$NEXT_MARKETING_VERSION"
-
 ARCHIVE_PATH="$BUILD_DIR/Stark.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export"
 
@@ -51,7 +46,10 @@ mkdir -p "$BUILD_DIR"
 
 export PATH="/usr/bin:$PATH"
 
-echo "==> Archiving version $MARKETING_VERSION (build $NEXT_BUILD)..."
+# The new version/build number are passed as xcodebuild overrides, not written into
+# project.pbxproj yet - so a failed archive or export (set -e exits immediately) leaves
+# the working tree untouched instead of stuck with an uncommitted, never-shipped bump.
+echo "==> Archiving version $NEXT_MARKETING_VERSION (build $NEXT_BUILD)..."
 xcodebuild archive \
   -project Stark.xcodeproj \
   -scheme Stark \
@@ -61,7 +59,9 @@ xcodebuild archive \
   -allowProvisioningUpdates \
   -authenticationKeyPath "$API_KEY_PATH" \
   -authenticationKeyID "$API_KEY_ID" \
-  -authenticationKeyIssuerID "$API_ISSUER_ID"
+  -authenticationKeyIssuerID "$API_ISSUER_ID" \
+  MARKETING_VERSION="$NEXT_MARKETING_VERSION" \
+  CURRENT_PROJECT_VERSION="$NEXT_BUILD"
 
 echo "==> Exporting and uploading to App Store Connect..."
 xcodebuild -exportArchive \
@@ -73,6 +73,12 @@ xcodebuild -exportArchive \
   -authenticationKeyID "$API_KEY_ID" \
   -authenticationKeyIssuerID "$API_ISSUER_ID"
 
+# Only now, after a successful archive AND export, persist the bump to the checked-in
+# project file - recording what was actually shipped, not what was merely attempted.
+echo "==> Recording shipped version $NEXT_MARKETING_VERSION (build $NEXT_BUILD) in project.pbxproj"
+sed -i '' "s/MARKETING_VERSION = $MARKETING_VERSION;/MARKETING_VERSION = $NEXT_MARKETING_VERSION;/g" "$PBXPROJ"
+sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION = $NEXT_BUILD;/g" "$PBXPROJ"
+
 echo ""
-echo "Done. Shipped v$MARKETING_VERSION (build $NEXT_BUILD) to App Store Connect."
+echo "Done. Shipped v$NEXT_MARKETING_VERSION (build $NEXT_BUILD) to App Store Connect."
 echo "Check TestFlight processing status at appstoreconnect.apple.com."
