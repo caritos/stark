@@ -90,4 +90,43 @@ struct TagAutocompleteTests {
         #expect(TagAutocomplete.applying("~sophia", to: "Call ~s") == "Call ~sophia ")
         #expect(TagAutocomplete.applying("~sophia", to: "~s") == "~sophia ")
     }
+
+    // MARK: appending (keyboard sigil buttons)
+
+    @Test("appends the sigil to empty text with no leading space")
+    func appendsToEmpty() {
+        #expect(TagAutocomplete.appending("~", to: "") == "~")
+    }
+
+    @Test("adds a separating space when the text ends in a word")
+    func appendsWithSeparator() {
+        #expect(TagAutocomplete.appending("~", to: "Call mom") == "Call mom ~")
+        #expect(TagAutocomplete.appending("+", to: "Call ~sophia") == "Call ~sophia +")
+    }
+
+    @Test("adds no extra space when the text already ends in whitespace")
+    func appendsAfterWhitespace() {
+        #expect(TagAutocomplete.appending("~", to: "Call mom ") == "Call mom ~")
+        #expect(TagAutocomplete.appending("@", to: "line one\n") == "line one\n@")
+    }
+
+    @Test("does nothing when the last word is already a bare sigil")
+    func ignoresBareSigil() {
+        #expect(TagAutocomplete.appending("~", to: "Call ~") == "Call ~")
+        #expect(TagAutocomplete.appending("+", to: "Call ~") == "Call ~")
+        #expect(TagAutocomplete.appending("%", to: "%") == "%")
+        #expect(TagAutocomplete.appending("+", to: "line one\n~") == "line one\n~")
+    }
+
+    @Test("the appended sigil is an active prefix, so suggestions show at once")
+    func appendedSigilOpensSuggestions() {
+        let text = TagAutocomplete.appending("~", to: "Call mom")
+        #expect(TagAutocomplete.currentPrefix(in: text) == TagAutocomplete.Prefix(sigil: "~", partial: "~"))
+    }
+
+    @Test("appending a sigil to a tag that is followed by a space starts a new tag")
+    func appendsAfterFinishedTag() {
+        let text = TagAutocomplete.appending("+", to: TagAutocomplete.applying("~sophia", to: "Call ~s"))
+        #expect(text == "Call ~sophia +")
+    }
 }

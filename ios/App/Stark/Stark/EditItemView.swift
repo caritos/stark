@@ -29,6 +29,11 @@ struct EditItemView: View {
     @State private var priority: ReminderPriority
     @State private var showDeleteConfirm = false
 
+    /// Which text field has focus, so the keyboard's sigil buttons know which one to append to
+    /// (and stay hidden for the URL field, which must not get tags).
+    private enum Field { case title, location, url, notes }
+    @FocusState private var focusedField: Field?
+
     /// The date and all-day flag the form started with, used to tell "left alone" from "edited".
     private let initialDate: Date
     private let initialAllDay: Bool
@@ -88,6 +93,7 @@ struct EditItemView: View {
             List {
                 Section {
                     TextField("Title", text: $title)
+                        .focused($focusedField, equals: .title)
                     TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
                     DatePicker(dateLabel, selection: $date,
                                displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
@@ -127,11 +133,13 @@ struct EditItemView: View {
 
                     if isEvent {
                         TextField("Location", text: $location)
+                            .focused($focusedField, equals: .location)
                         TagSuggestionRow(text: location) { location = TagAutocomplete.applying($0, to: location) }
                         TextField("URL", text: $url)
                             .keyboardType(.URL)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
+                            .focused($focusedField, equals: .url)
                     }
                     if !isEvent {
                         // A segmented picker drops its label on iOS, so it is shown by the row.
@@ -145,6 +153,7 @@ struct EditItemView: View {
                     }
                     TextField("Notes", text: $notes, axis: .vertical)
                         .lineLimit(1...6)
+                        .focused($focusedField, equals: .notes)
                     TagSuggestionRow(text: notes) { notes = TagAutocomplete.applying($0, to: notes) }
                 } footer: {
                     if item.isRecurring {
@@ -207,6 +216,8 @@ struct EditItemView: View {
             .toolbar {
                 FlatToolbarButton(title: "Cancel", placement: .cancellationAction) { dismiss() }
                 FlatToolbarButton(title: "Save", placement: .confirmationAction, isDisabled: trimmedTitle.isEmpty) { save() }
+                SigilKeyboardToolbar(isVisible: focusedField != nil && focusedField != .url,
+                                     onTap: insertSigil)
             }
             .confirmationDialog(deleteMessage, isPresented: $showDeleteConfirm, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) { delete() }
@@ -214,6 +225,15 @@ struct EditItemView: View {
         }
         .tint(Colors.accent)
         .preferredColorScheme(.dark)
+    }
+
+    private func insertSigil(_ sigil: Character) {
+        switch focusedField {
+        case .title: title = TagAutocomplete.appending(sigil, to: title)
+        case .location: location = TagAutocomplete.appending(sigil, to: location)
+        case .notes: notes = TagAutocomplete.appending(sigil, to: notes)
+        case .url, nil: break
+        }
     }
 
     // MARK: Derived state

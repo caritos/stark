@@ -9,7 +9,10 @@ import Foundation
 /// somewhere suggests it back to you), mirroring a feature originally built the same way in the
 /// deprecated Expo app's `AddTaskModal`.
 public enum TagAutocomplete {
-    private static let sigils: Set<Character> = ["+", "@", "%", "~"]
+    /// The four sigils, in the order the keyboard bar shows them.
+    public static let allSigils: [Character] = ["+", "@", "%", "~"]
+
+    private static let sigils: Set<Character> = Set(allSigils)
 
     /// The sigil-prefixed word currently being typed, if any.
     public struct Prefix: Equatable {
@@ -57,6 +60,25 @@ public enum TagAutocomplete {
         guard !words.isEmpty else { return tag + " " }
         words[words.count - 1] = tag
         return words.joined(separator: " ") + " "
+    }
+
+    /// Appends `sigil` to the end of `text` for the keyboard's one-tap sigil buttons, with a space
+    /// before it unless the text is empty or already ends in whitespace. Always at the end, never
+    /// at the cursor, for the same reason `currentPrefix` only reads the last word: SwiftUI's
+    /// plain text fields expose no cursor position, and a mid-text sigil would not open
+    /// suggestions anyway. The result ends in a bare sigil, which `currentPrefix` treats as an
+    /// active prefix, so the suggestion row opens straight away. If the last word is already a
+    /// bare sigil the text is returned unchanged, so a double tap can't produce `~~` or `~ +`.
+    public static func appending(_ sigil: Character, to text: String) -> String {
+        if text.isEmpty || text.last?.isWhitespace == true {
+            return text + String(sigil)
+        }
+        // Whitespace, not just a space, so a bare sigil after a newline in Notes counts too.
+        if let last = text.split(whereSeparator: \.isWhitespace).last,
+           last.count == 1, let only = last.first, sigils.contains(only) {
+            return text
+        }
+        return text + " " + String(sigil)
     }
 
     /// A token is the sigil plus one or more non-space characters -- a bare sigil alone (nothing

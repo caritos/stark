@@ -16,11 +16,13 @@ struct SearchView: View {
     @State private var query = ""
     @State private var isLoadingHistory = true
     @State private var selectedItem: AgendaItem?
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 TextField("Search", text: $query)
+                    .focused($searchFocused)
                     .foregroundStyle(Colors.text)
                     .padding(Spacing.sm)
                     .background(Colors.separator)
@@ -67,6 +69,7 @@ struct SearchView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 FlatToolbarButton(title: "Close", placement: .cancellationAction) { dismiss() }
+                SigilKeyboardToolbar(isVisible: searchFocused) { query = TagAutocomplete.appending($0, to: query) }
             }
             .task {
                 await store.loadAllMonths()

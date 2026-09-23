@@ -21,6 +21,11 @@ struct AddItemView: View {
 
     enum Kind: String, CaseIterable { case event = "Event", reminder = "Reminder" }
 
+    /// Which text field has focus, so the keyboard's sigil buttons know which one to append to
+    /// (and stay hidden for the URL field, which must not get tags).
+    private enum Field { case title, notes, url }
+    @FocusState private var focusedField: Field?
+
     init() {
         let now = Date()
         _date = State(initialValue: now)
@@ -36,6 +41,7 @@ struct AddItemView: View {
                 .pickerStyle(.segmented)
 
                 TextField("Title", text: $title)
+                    .focused($focusedField, equals: .title)
                 TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
                 DatePicker(kind == .event ? "Starts" : "Due", selection: $date,
                            displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
@@ -78,6 +84,7 @@ struct AddItemView: View {
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .focused($focusedField, equals: .url)
                 }
                 if kind == .reminder {
                     // A segmented picker drops its label on iOS, so it is shown by the row.
@@ -91,6 +98,7 @@ struct AddItemView: View {
                 }
                 TextField("Notes", text: $notes, axis: .vertical)
                     .lineLimit(1...6)
+                    .focused($focusedField, equals: .notes)
                 TagSuggestionRow(text: notes) { notes = TagAutocomplete.applying($0, to: notes) }
             }
             .onChange(of: recurrence) { _, newValue in
@@ -110,9 +118,19 @@ struct AddItemView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                SigilKeyboardToolbar(isVisible: focusedField == .title || focusedField == .notes,
+                                     onTap: insertSigil)
             }
         }
         .tint(Colors.accent)
+    }
+
+    private func insertSigil(_ sigil: Character) {
+        switch focusedField {
+        case .title: title = TagAutocomplete.appending(sigil, to: title)
+        case .notes: notes = TagAutocomplete.appending(sigil, to: notes)
+        case .url, nil: break
+        }
     }
 
     private var recurrenceSummary: String {
