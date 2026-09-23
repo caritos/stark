@@ -32,7 +32,8 @@ struct AgendaView: View {
     /// day whose row is at the top of the list, as the user scrolls. Defaulted so existing call
     /// sites compile unchanged; `ContentView` passes a real closure to drive calendar paging
     /// (issue #101). Never called as a side effect of `scrollRequest`'s own programmatic scroll —
-    /// see `scrollSuppressUntil`.
+    /// see `scrollSuppressUntil`. `var`, not `let`: a `let` with an inline default is excluded
+    /// from the synthesized memberwise init entirely, so the parameter would not exist.
     var onDayInView: (Date) -> Void = { _ in }
 
     /// False until the list has been scrolled to today once real data has arrived. The display
@@ -309,6 +310,12 @@ struct AgendaView: View {
     private func scroll(_ proxy: ScrollViewProxy, to id: String) {
         // Deferred one runloop turn so the rows exist by the time the scroll is applied.
         DispatchQueue.main.async {
+            // Re-armed here too (not just in the scrollRequest onChange): this covers the
+            // scroll→settle gap in addition to the request→scroll gap, since the debounced
+            // scroll-tracking report can otherwise land inside a still-unsuppressed window on a
+            // slow settle (e.g. after selectDate re-centers agendaAnchor and buildAgendaItems
+            // reruns over the whole display range before this deferred scroll even happens).
+            scrollSuppressUntil = Date().addingTimeInterval(0.3)
             proxy.scrollTo(id, anchor: .top)
         }
     }

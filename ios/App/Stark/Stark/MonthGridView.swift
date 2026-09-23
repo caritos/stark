@@ -24,6 +24,14 @@ import StarkKit
 /// selection (a tap) never changes `visibleMonth` — but `scrollPagingDate` does (issue #101),
 /// since scrolling the agenda is deliberately allowed to page the month grid even though tapping
 /// it is not.
+/// A request to page the month grid to a date's month. A fresh `token` per request makes
+/// scrolling back to the same day twice a *different* value, so `onChange` fires (and pages)
+/// again — see `scrollPagingDate`. Mirrors `ScrollRequest` in `AgendaView.swift`.
+struct GridPagingRequest: Equatable {
+    let date: Date
+    let token = UUID()
+}
+
 struct MonthGridView: View {
     @EnvironmentObject private var store: PlannerStore
     @State private var visibleMonth = YearMonth(date: Date())
@@ -43,8 +51,13 @@ struct MonthGridView: View {
     /// `visibleMonth` to follow the agenda's scroll position, but only in month mode. Structurally
     /// separate from `selectedDate`/`onSelectDate` (the tap path) so a tap can never accidentally
     /// page the month grid (issue #96), and a scroll can never accidentally suppress itself
-    /// (issue #101).
-    let scrollPagingDate: Date?
+    /// (issue #101). Carries a token (mirroring `ScrollRequest` in `AgendaView.swift`) so scrolling
+    /// back to a day that equals the last-reported one still forces a re-page — scroll always wins
+    /// over an independent chevron browse (`changeMonth`), which pages `visibleMonth` without
+    /// touching this property at all. Without the token, browsing ahead with the chevrons and then
+    /// scrolling the agenda back to the same day already reported here would silently leave the
+    /// grid stuck on the chevron-browsed month, since `.onChange` only fires on a real value change.
+    let scrollPagingDate: GridPagingRequest?
 
     /// The number's square, then a small gap, then the marker row, with a point of air each side.
     private static let rowHeight: CGFloat = 38
@@ -137,9 +150,11 @@ struct MonthGridView: View {
         }
         // Scroll-driven paging (issue #101): unlike a plain selection, this pages the month grid
         // — a deliberate, scroll-only exception to "a tap never pages the month view" (issue #96).
+        // Scroll always wins over an independent chevron browse (changeMonth) — see
+        // GridPagingRequest's doc comment for why the token matters here.
         .onChange(of: scrollPagingDate) { _, newValue in
             guard mode == .month, let newValue else { return }
-            visibleMonth = YearMonth(date: newValue)
+            visibleMonth = YearMonth(date: newValue.date)
             loadVisibleMonths()
         }
     }

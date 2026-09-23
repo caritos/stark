@@ -31,8 +31,10 @@ struct ContentView: View {
     /// How much calendar the grid shows. Always starts as the month grid; not persisted.
     @State private var mode: CalendarMode = .month
     /// The day last reported by `AgendaView.onDayInView` (issue #101) — read only by
-    /// `MonthGridView`'s `scrollPagingDate`, to page the month grid as the agenda scrolls.
-    @State private var scrollPagingDate: Date?
+    /// `MonthGridView`'s `scrollPagingDate`, to page the month grid as the agenda scrolls. A fresh
+    /// `GridPagingRequest` every time (even for a repeated date) so scroll always wins over an
+    /// independent chevron browse — see `GridPagingRequest`'s doc comment in `MonthGridView.swift`.
+    @State private var scrollPagingDate: GridPagingRequest?
 
     init() {
         // One instant for all three, so a launch right at midnight can't split them across days.
@@ -164,7 +166,7 @@ struct ContentView: View {
     /// there by the user, so re-scrolling it here would fight the user's own scroll.
     private func dayScrolledIntoView(_ date: Date) {
         selectedDate = date
-        scrollPagingDate = date
+        scrollPagingDate = GridPagingRequest(date: date)
     }
 
     /// A day was tapped in the month grid: scroll the agenda to that day's header. A day outside
