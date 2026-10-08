@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(swift test)",
+      "Bash(swift test *)",
+      "Bash(xcodebuild test *)",
+      "Bash(xcodebuild build *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git merge *)"
+    ]
+  }
+}
