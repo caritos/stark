@@ -24,6 +24,12 @@ public struct WeeklyReview: Equatable {
     /// Event occurrences in the week marked attended.
     public let attendedEventCount: Int
 
+    /// e.g. "14 done · 3 open".
+    public var countsLabel: String { "\(completed.count) done · \(open.count) open" }
+
+    /// e.g. "Events attended: 2".
+    public var attendedLabel: String { "Events attended: \(attendedEventCount)" }
+
     /// The week to open on: last week on a Monday (reviewing the week just ended), otherwise the
     /// current one. Returned as the start of that week's Sunday.
     public static func defaultWeekStart(today: Date, calendar: Calendar = Calendar(identifier: .gregorian)) -> Date {

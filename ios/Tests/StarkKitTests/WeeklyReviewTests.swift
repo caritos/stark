@@ -182,4 +182,13 @@ struct WeeklyReviewTests {
         #expect(future.lowerBound <= lookback)
         #expect(future.upperBound >= dt("2026-12-12"))
     }
+
+    @Test("summary labels")
+    func labels() {
+        let done = Reminder(id: "d", title: "D", dueDate: dt("2026-09-21"), isCompleted: true, completedDate: dt("2026-09-21"))
+        let open = Reminder(id: "o", title: "O", dueDate: dt("2026-09-22"))
+        let s = summary(reminders: [done, open], week: "2026-09-20", now: "2026-09-27")
+        #expect(s.countsLabel == "1 done · 1 open")
+        #expect(s.attendedLabel == "Events attended: 0")
+    }
 }
