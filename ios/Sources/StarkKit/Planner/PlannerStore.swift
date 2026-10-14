@@ -251,21 +251,23 @@ public final class PlannerStore: ObservableObject {
     /// Completes one occurrence of a recurring reminder (exdate on the master + a completed
     /// one-off copy), or completes a one-off in place.
     ///
-    /// When `date` is a *missed* occurrence of a weekly/monthly/yearly reminder (its day is before
-    /// `today`'s), every earlier un-exdated miss inside the overdue lookback is exdated too — with
-    /// no completed copies — because the agenda only ever shows the latest miss, so resolving it
-    /// would otherwise just surface the next-latest one. `today` is injectable for tests.
+    /// When `date` is a *missed* occurrence of a recurring reminder (its day is before `today`'s),
+    /// every un-exdated occurrence after it, up to and including today's, is exdated too — with no
+    /// completed copies — because the agenda carries only the OLDEST miss (later misses and today
+    /// are folded into that one row), so resolving it resolves them all. Daily series included.
+    /// The completed copy records `seriesID` (the master's id) and `completedAt` (`now`);
+    /// `completedDate` stays the due-occurrence date. `today` and `now` are injectable for tests.
     ///
     /// Idempotent: a no-op (nothing written) for an unknown id, for a one-off that is already
     /// completed, and for a recurring master that already has an exception on `date`'s calendar
     /// day — whether that exception came from an earlier completion or from a skip. This is what
     /// lets a checkbox's pending completion fire after Done/Skip in the detail sheet resolved the
     /// same occurrence without adding a second exception or a second completed copy.
-    public func completeReminder(id: String, on date: Date, today: Date = Date()) {
+    public func completeReminder(id: String, on date: Date, today: Date = Date(), now: Date = Date()) {
         let calendar = Calendar(identifier: .gregorian)
         if let index = recurringReminders.firstIndex(where: { $0.id == id }) {
             guard !recurringReminders[index].exceptionDates.contains(where: { calendar.isDate($0, inSameDayAs: date) }) else { return }
-            let earlierMisses = earlierMissedOccurrences(of: recurringReminders[index], before: date, today: today)
+            let earlierMisses = carriedOccurrences(of: recurringReminders[index], from: date, today: today)
             recurringReminders[index].exceptionDates.append(date)
             recurringReminders[index].exceptionDates.append(contentsOf: earlierMisses)
             var completedCopy = recurringReminders[index]
@@ -274,6 +276,8 @@ public final class PlannerStore: ObservableObject {
             completedCopy.exceptionDates = []
             completedCopy.isCompleted = true
             completedCopy.completedDate = date
+            completedCopy.completedAt = now
+            completedCopy.seriesID = recurringReminders[index].id
             completedCopy.dueDate = date
 
             let month = YearMonth(date: date)
@@ -288,6 +292,7 @@ public final class PlannerStore: ObservableObject {
                 guard monthReminders[month]?[idx].isCompleted != true else { return }
                 monthReminders[month]?[idx].isCompleted = true
                 monthReminders[month]?[idx].completedDate = date
+                monthReminders[month]?[idx].completedAt = now
                 persistMonth(month)
                 rebuild()
                 return
@@ -306,6 +311,7 @@ public final class PlannerStore: ObservableObject {
             guard monthReminders[month]?[idx].isCompleted == true else { return }
             monthReminders[month]?[idx].isCompleted = false
             monthReminders[month]?[idx].completedDate = nil
+            monthReminders[month]?[idx].completedAt = nil
             persistMonth(month)
             rebuild()
             return
@@ -329,7 +335,8 @@ public final class PlannerStore: ObservableObject {
     /// its month file for a one-off), so no copy is created and nothing is exdated: the occurrence
     /// stays in the agenda. Matched by calendar day. Idempotent: no-op (nothing written) for an
     /// unknown id, when that day already has this outcome, and when clearing an unmarked day.
-    public func setEventOutcome(id: String, on date: Date, outcome: EventOutcome?) {
+    /// `now` is stamped on the record as `recordedAt`.
+    public func setEventOutcome(id: String, on date: Date, outcome: EventOutcome?, now: Date = Date()) {
         let calendar = Calendar(identifier: .gregorian)
 
         func updated(_ event: Event) -> Event? {
@@ -337,7 +344,7 @@ public final class PlannerStore: ObservableObject {
             guard existing?.outcome != outcome else { return nil }
             var copy = event
             copy.outcomes.removeAll { calendar.isDate($0.date, inSameDayAs: date) }
-            if let outcome { copy.outcomes.append(EventOutcomeRecord(date: date, outcome: outcome)) }
+            if let outcome { copy.outcomes.append(EventOutcomeRecord(date: date, outcome: outcome, recordedAt: now)) }
             copy.outcomes.sort { $0.date < $1.date }
             return copy
         }
@@ -363,42 +370,35 @@ public final class PlannerStore: ObservableObject {
     }
 
     /// Reminder counterpart of `skipEvent(id:on:)`. Like `completeReminder`, skipping a missed
-    /// weekly/monthly/yearly occurrence (day before `today`'s) also exdates every earlier
-    /// un-exdated miss inside the overdue lookback; skipping today or later clears nothing extra.
+    /// occurrence (day before `today`'s) of any recurring reminder, daily included, also exdates
+    /// every un-exdated occurrence after it up to and including today (the carried row is the
+    /// OLDEST miss, with the rest folded into it); skipping today or later clears nothing extra.
     public func skipReminder(id: String, on date: Date, today: Date = Date()) {
         guard let index = recurringReminders.firstIndex(where: { $0.id == id }) else { return }
         let calendar = Calendar(identifier: .gregorian)
         guard !recurringReminders[index].exceptionDates.contains(where: { calendar.isDate($0, inSameDayAs: date) }) else { return }
-        let earlierMisses = earlierMissedOccurrences(of: recurringReminders[index], before: date, today: today)
+        let earlierMisses = carriedOccurrences(of: recurringReminders[index], from: date, today: today)
         recurringReminders[index].exceptionDates.append(date)
         recurringReminders[index].exceptionDates.append(contentsOf: earlierMisses)
         persistRecurring()
         rebuild()
     }
 
-    /// The still-visible missed occurrences of `reminder` strictly before `date`'s day, within
-    /// `[startOfDay(today) - overdueLookbackDays ..< date]` — the ones `buildAgendaItems` would
-    /// otherwise surface one at a time as the later ones get resolved. Empty unless `date` is
-    /// itself a miss (its day is before today's) of a non-daily recurring reminder: daily misses
-    /// are never shown as overdue, and today's/future occurrences are independent of overdue rows.
+    /// Everything a resolved carried row must clear besides the occurrence itself: every
+    /// un-exdated occurrence strictly after `date`'s day up to and including today. Empty unless
+    /// `date`'s day is before today (resolving today or a future occurrence clears nothing extra).
     /// Already-exdated days are excluded by `OccurrenceExpander`, so callers can append the result
     /// directly without duplicating a calendar day.
-    private func earlierMissedOccurrences(of reminder: Reminder, before date: Date, today: Date) -> [Date] {
-        guard let rule = reminder.recurrence, rule.frequency != .daily else { return [] }
+    private func carriedOccurrences(of reminder: Reminder, from date: Date, today: Date) -> [Date] {
+        guard reminder.recurrence != nil else { return [] }
         let calendar = Calendar(identifier: .gregorian)
         let todayStart = calendar.startOfDay(for: today)
         let dateStart = calendar.startOfDay(for: date)
-        guard dateStart < todayStart else { return [] }
-        guard let lookbackStart = calendar.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: todayStart),
-              lookbackStart < dateStart else { return [] }
-        let earlier = OccurrenceExpander
-            .expand(reminder: reminder, in: lookbackStart...dateStart)
-            .filter { calendar.startOfDay(for: $0) < dateStart }
-        // Today's own occurrence is folded into the overdue row (see `buildAgendaItems`), so
-        // resolving the miss resolves it too — otherwise it would reappear as a second row.
-        guard let todayEnd = calendar.date(byAdding: .day, value: 1, to: todayStart)?.addingTimeInterval(-1) else { return earlier }
-        let todays = OccurrenceExpander.expand(reminder: reminder, in: todayStart...todayEnd)
-        return earlier + todays
+        guard dateStart < todayStart,
+              let after = calendar.date(byAdding: .day, value: 1, to: dateStart),
+              let todayEnd = calendar.date(byAdding: .day, value: 1, to: todayStart)?.addingTimeInterval(-1),
+              after <= todayEnd else { return [] }
+        return OccurrenceExpander.expand(reminder: reminder, in: after...todayEnd)
     }
 
     private func rebuild() {

@@ -327,9 +327,9 @@ struct PendingCompletionsTests {
         #expect(master.exceptionDates.count == 1)
     }
 
-    @Test("completing a missed weekly occurrence through a pending completion clears the earlier misses")
+    @Test("completing the carried first missed weekly occurrence through a pending completion clears the later misses")
     @MainActor
-    func weeklyMissedCompletionClearsEarlierMisses() throws {
+    func weeklyFirstMissCompletionClearsLaterMisses() throws {
         let store = makeStore()
         let scheduler = ManualScheduler()
         let pending = pendingBackedBy(store, scheduler)
@@ -339,14 +339,13 @@ struct PendingCompletionsTests {
         let cal = Calendar(identifier: .gregorian)
         let todayStart = cal.startOfDay(for: Date())
         let first = try #require(cal.date(bySettingHour: 9, minute: 30, second: 0, of: cal.date(byAdding: .day, value: -28, to: todayStart)!))
-        let latestMiss = try #require(cal.date(byAdding: .day, value: 21, to: first))
         store.addReminder(Reminder(id: "rem-w", title: "Weekly review", dueDate: first, recurrence: RecurrenceRule(frequency: .weekly)))
 
-        pending.toggle(key: "k", reminderID: "rem-w", occurrence: latestMiss)
+        pending.toggle(key: "k", reminderID: "rem-w", occurrence: first)
         scheduler.fire(0)
 
         let master = try #require(store.reminders.first { $0.id == "rem-w" })
-        // The latest miss, the three earlier ones and today's own occurrence are all exdated.
+        // The carried first miss, the three later ones and today's own occurrence are all exdated.
         #expect(master.exceptionDates.count == 5)
         #expect(store.reminders.filter(\.isCompleted).count == 1)
     }

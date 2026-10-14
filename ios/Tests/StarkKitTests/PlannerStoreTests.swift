@@ -63,7 +63,7 @@ struct PlannerStoreTests {
             recurrence: RecurrenceRule(frequency: .weekly)
         ))
 
-        store.completeReminder(id: "rem-1", on: DateMath.date(from: "2026-09-17"))
+        store.completeReminder(id: "rem-1", on: DateMath.date(from: "2026-09-17"), today: DateMath.date(from: "2026-09-17"))
 
         let recurring = try file.loadRecurring()
         #expect(recurring.reminders.first?.exceptionDates.count == 1)
@@ -524,7 +524,7 @@ struct PlannerStoreTests {
         let day = DateMath.date(from: "2026-09-17")
         start(store, around: Self.anchor)
         store.addReminder(Reminder(id: "rem-rec", title: "Trash", dueDate: day, recurrence: RecurrenceRule(frequency: .weekly)))
-        store.completeReminder(id: "rem-rec", on: day)
+        store.completeReminder(id: "rem-rec", on: day, today: day)
         let copy = try #require(store.reminders.first { $0.isCompleted })
         #expect(copy.id != "rem-rec")
 
@@ -693,30 +693,30 @@ struct PlannerStoreTests {
         return (store, file)
     }
 
-    @Test("completing the latest missed weekly occurrence clears the earlier misses and makes exactly one completed copy")
+    @Test("completing the carried first missed weekly occurrence clears the later misses and makes exactly one completed copy")
     @MainActor
-    func completeLatestMissedClearsEarlierMisses() throws {
+    func completeFirstMissedClearsLaterMisses() throws {
         let (store, _) = makeWeeklyStore()
-        #expect(overdueDays(store) == ["2026-09-13"])
+        #expect(overdueDays(store) == ["2026-08-30"])
         let overdue = try #require(overdueItem(store))
 
         store.completeReminder(id: "rem-w", on: overdue.occurrence, today: fixedToday)
 
         #expect(overdueDays(store).isEmpty)
-        // Today's occurrence was folded into the overdue row and cleared with it; only later ones remain.
+        // Later misses and today's occurrence were folded into the carried row and cleared with it.
         #expect(upcomingDays(store).prefix(3) == ["2026-09-27", "2026-10-04", "2026-10-11"])
         let completed = store.reminders.filter(\.isCompleted)
         #expect(completed.count == 1)
         #expect(completed.first?.dueDate == overdue.occurrence)
-        // Aug 30, Sep 6 (cleared) and Sep 13 (completed) are all exdated on the master.
+        // Aug 30 (completed), Sep 6, Sep 13 and today's Sep 20 (cleared) are all exdated on the master.
         let master = try #require(store.reminders.first { $0.id == "rem-w" })
         #expect(isoDays(master.exceptionDates).sorted() == ["2026-08-30", "2026-09-06", "2026-09-13", "2026-09-20"])
         #expect(store.error == nil)
     }
 
-    @Test("skipping the latest missed weekly occurrence clears the earlier misses and makes no completed copy")
+    @Test("skipping the carried first missed weekly occurrence clears the later misses and makes no completed copy")
     @MainActor
-    func skipLatestMissedClearsEarlierMisses() throws {
+    func skipFirstMissedClearsLaterMisses() throws {
         let (store, _) = makeWeeklyStore()
         let overdue = try #require(overdueItem(store))
 
@@ -735,14 +735,14 @@ struct PlannerStoreTests {
     func resolvingTodayDoesNotClearOverdue() throws {
         let (completeStore, _) = makeWeeklyStore()
         completeStore.completeReminder(id: "rem-w", on: dt("2026-09-20", hour: 9, minute: 30), today: fixedToday)
-        #expect(overdueDays(completeStore) == ["2026-09-13"])
+        #expect(overdueDays(completeStore) == ["2026-08-30"])
         let completeMaster = try #require(completeStore.reminders.first { $0.id == "rem-w" })
         #expect(completeMaster.exceptionDates.count == 1)
         #expect(completeStore.reminders.filter(\.isCompleted).count == 1)
 
         let (skipStore, _) = makeWeeklyStore()
         skipStore.skipReminder(id: "rem-w", on: dt("2026-09-20", hour: 9, minute: 30), today: fixedToday)
-        #expect(overdueDays(skipStore) == ["2026-09-13"])
+        #expect(overdueDays(skipStore) == ["2026-08-30"])
         let skipMaster = try #require(skipStore.reminders.first { $0.id == "rem-w" })
         #expect(skipMaster.exceptionDates.count == 1)
     }
@@ -767,25 +767,30 @@ struct PlannerStoreTests {
     func resolvingFutureDoesNotClearOverdue() throws {
         let (store, _) = makeWeeklyStore()
         store.skipReminder(id: "rem-w", on: dt("2026-09-27", hour: 9, minute: 30), today: fixedToday)
-        #expect(overdueDays(store) == ["2026-09-13"])
+        #expect(overdueDays(store) == ["2026-08-30"])
         let master = try #require(store.reminders.first { $0.id == "rem-w" })
         #expect(master.exceptionDates.count == 1)
     }
 
-    @Test("a daily recurring reminder gets no extra exceptions")
+    @Test("a daily recurring reminder clears later misses and today like any other series")
     @MainActor
-    func dailyReminderIsUnaffected() throws {
+    func dailyReminderClearsLaterMisses() throws {
         let (store, _, _) = makeStore()
         start(store, around: fixedToday)
         store.addReminder(Reminder(id: "rem-d", title: "Vitamins", dueDate: dt("2026-09-10", hour: 9, minute: 30), recurrence: RecurrenceRule(frequency: .daily)))
+        #expect(overdueDays(store) == ["2026-09-10"])
 
-        store.completeReminder(id: "rem-d", on: dt("2026-09-15", hour: 9, minute: 30), today: fixedToday)
+        store.completeReminder(id: "rem-d", on: dt("2026-09-10", hour: 9, minute: 30), today: fixedToday)
         let afterComplete = try #require(store.reminders.first { $0.id == "rem-d" })
-        #expect(afterComplete.exceptionDates.count == 1)
+        // Sep 10 resolved, Sep 11 ... Sep 19 later misses, Sep 20 today.
+        #expect(afterComplete.exceptionDates.count == 11)
+        #expect(overdueDays(store).isEmpty)
+        #expect(upcomingDays(store).first == "2026-09-21")
 
-        store.skipReminder(id: "rem-d", on: dt("2026-09-16", hour: 9, minute: 30), today: fixedToday)
+        // Resolving a day that is after today clears nothing extra.
+        store.skipReminder(id: "rem-d", on: dt("2026-09-22", hour: 9, minute: 30), today: fixedToday)
         let afterSkip = try #require(store.reminders.first { $0.id == "rem-d" })
-        #expect(afterSkip.exceptionDates.count == 2)
+        #expect(afterSkip.exceptionDates.count == 12)
     }
 
     @Test("a monthly reminder behaves like the weekly one")
@@ -795,7 +800,7 @@ struct PlannerStoreTests {
         start(store, around: fixedToday)
         // Jun 25, Jul 25 and Aug 25 are missed; Sep 25 and Oct 25 are upcoming.
         store.addReminder(Reminder(id: "rem-m", title: "Pay card", dueDate: dt("2026-06-25", hour: 9, minute: 30), recurrence: RecurrenceRule(frequency: .monthly)))
-        #expect(overdueDays(store) == ["2026-08-25"])
+        #expect(overdueDays(store) == ["2026-06-25"])
         let overdue = try #require(overdueItem(store))
 
         store.completeReminder(id: "rem-m", on: overdue.occurrence, today: fixedToday)
@@ -807,22 +812,100 @@ struct PlannerStoreTests {
         #expect(isoDays(master.exceptionDates).sorted() == ["2026-06-25", "2026-07-25", "2026-08-25"])
     }
 
-    @Test("only misses inside the overdue lookback are cleared")
+    @Test("resolving the carried first miss clears every later miss through today")
     @MainActor
-    func clearingIsBoundedByLookback() throws {
+    func clearingCoversAllLaterMisses() throws {
         let (store, _, _) = makeStore()
         start(store, around: fixedToday)
-        // Sundays since January. The lookback starts 90 days before Sep 20 = Jun 22, so the
-        // cleared misses are Jun 28 ... Sep 6 (11 Sundays) plus the resolved Sep 13.
+        // Sundays since January. The carried row is the oldest miss inside the 90-day lookback
+        // (Jun 28); resolving it clears Jul 5 ... Sep 20 too.
         store.addReminder(Reminder(id: "rem-w", title: "Weekly review", dueDate: dt("2026-01-04", hour: 9, minute: 30), recurrence: RecurrenceRule(frequency: .weekly)))
+        #expect(overdueDays(store) == ["2026-06-28"])
+        let overdue = try #require(overdueItem(store))
 
-        store.skipReminder(id: "rem-w", on: dt("2026-09-13", hour: 9, minute: 30), today: fixedToday)
+        store.skipReminder(id: "rem-w", on: overdue.occurrence, today: fixedToday)
 
         let master = try #require(store.reminders.first { $0.id == "rem-w" })
         let days = isoDays(master.exceptionDates).sorted()
         #expect(days.count == 13)
         #expect(days.first == "2026-06-28")
         #expect(days.last == "2026-09-20")
+        #expect(overdueDays(store).isEmpty)
+    }
+
+    @Test("completing the carried first miss clears every later miss and today's occurrence")
+    @MainActor
+    func completeFirstMissClearsRest() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: fixedToday)
+        store.addReminder(Reminder(id: "rem-d", title: "Walk", dueDate: dt("2026-09-14", hour: 9, minute: 0), recurrence: RecurrenceRule(frequency: .daily)))
+        #expect(overdueDays(store) == ["2026-09-14"])
+        let now = dt("2026-09-20", hour: 10, minute: 59)
+
+        store.completeReminder(id: "rem-d", on: dt("2026-09-14", hour: 9, minute: 0), today: fixedToday, now: now)
+
+        #expect(overdueDays(store).isEmpty)
+        #expect(upcomingDays(store).first == "2026-09-21")
+        let copies = store.reminders.filter(\.isCompleted)
+        #expect(copies.count == 1)
+        #expect(copies[0].completedAt == now)
+        #expect(copies[0].seriesID == "rem-d")
+        #expect(copies[0].dueDate == dt("2026-09-14", hour: 9, minute: 0))
+        let master = try #require(store.reminders.first { $0.id == "rem-d" })
+        #expect(isoDays(master.exceptionDates).sorted() == ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20"])
+    }
+
+    @Test("completing the same carried miss twice adds one copy and one set of exceptions")
+    @MainActor
+    func completeTwiceIsIdempotent() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: fixedToday)
+        store.addReminder(Reminder(id: "rem-d", title: "Walk", dueDate: dt("2026-09-14", hour: 9, minute: 0), recurrence: RecurrenceRule(frequency: .daily)))
+        let day = dt("2026-09-14", hour: 9, minute: 0)
+        store.completeReminder(id: "rem-d", on: day, today: fixedToday)
+        store.completeReminder(id: "rem-d", on: day, today: fixedToday)
+        #expect(store.reminders.filter(\.isCompleted).count == 1)
+        let master = try #require(store.reminders.first { $0.id == "rem-d" })
+        #expect(master.exceptionDates.count == 7)
+    }
+
+    @Test("skipping the carried first miss clears the rest and makes no copy")
+    @MainActor
+    func skipFirstMissClearsRest() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: fixedToday)
+        store.addReminder(Reminder(id: "rem-d", title: "Walk", dueDate: dt("2026-09-14", hour: 9, minute: 0), recurrence: RecurrenceRule(frequency: .daily)))
+        store.skipReminder(id: "rem-d", on: dt("2026-09-14", hour: 9, minute: 0), today: fixedToday)
+        #expect(overdueDays(store).isEmpty)
+        #expect(store.reminders.filter(\.isCompleted).isEmpty)
+    }
+
+    @Test("undoing a completed copy clears completedAt")
+    @MainActor
+    func undoClearsCompletedAt() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: fixedToday)
+        store.addReminder(Reminder(id: "rem-w", title: "Trash", dueDate: dt("2026-09-13", hour: 9, minute: 0), recurrence: RecurrenceRule(frequency: .weekly)))
+        store.completeReminder(id: "rem-w", on: dt("2026-09-13", hour: 9, minute: 0), today: fixedToday, now: fixedToday)
+        let copy = try #require(store.reminders.first { $0.isCompleted })
+        #expect(copy.completedAt == fixedToday)
+        store.uncompleteReminder(id: copy.id)
+        let reopened = try #require(store.reminders.first { $0.id == copy.id })
+        #expect(reopened.completedAt == nil)
+        #expect(!reopened.isCompleted)
+    }
+
+    @Test("marking an event attended stamps recordedAt; clearing removes the record")
+    @MainActor
+    func attendedStampsRecordedAt() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: fixedToday)
+        store.addEvent(Event(id: "e", title: "Gym", start: dt("2026-09-19", hour: 7, minute: 0)))
+        store.setEventOutcome(id: "e", on: dt("2026-09-19", hour: 7, minute: 0), outcome: .attended, now: fixedToday)
+        let event = try #require(store.events.first { $0.id == "e" })
+        #expect(event.outcomes.first?.recordedAt == fixedToday)
+        store.setEventOutcome(id: "e", on: dt("2026-09-19", hour: 7, minute: 0), outcome: nil, now: fixedToday)
+        #expect(try #require(store.events.first { $0.id == "e" }).outcomes.isEmpty)
     }
 
     @Test("clearing earlier misses persists across a fresh store over the same directory")
@@ -1078,10 +1161,11 @@ struct PlannerStoreTests {
         start(store, around: Self.anchor)
         store.addEvent(Event(id: "evt-1", title: "Dinner", start: DateMath.date(from: "2026-09-17")))
 
-        store.setEventOutcome(id: "evt-1", on: DateMath.date(from: "2026-09-17"), outcome: .attended)
+        let now = dt("2026-09-18", hour: 8, minute: 0)
+        store.setEventOutcome(id: "evt-1", on: DateMath.date(from: "2026-09-17"), outcome: .attended, now: now)
 
         let live = try #require(store.events.first { $0.id == "evt-1" })
-        #expect(live.outcomes == [EventOutcomeRecord(date: DateMath.date(from: "2026-09-17"), outcome: .attended)])
+        #expect(live.outcomes == [EventOutcomeRecord(date: DateMath.date(from: "2026-09-17"), outcome: .attended, recordedAt: now)])
         let onDisk = try #require(try file.loadMonth(YearMonth(year: 2026, month0: 8)).events.first)
         #expect(onDisk.outcomes.map(\.outcome) == [.attended])
         let reloaded = PlannerStore(file: file)
@@ -1115,8 +1199,9 @@ struct PlannerStoreTests {
         let day = DateMath.date(from: "2026-09-17")
 
         store.setEventOutcome(id: "evt-1", on: day, outcome: .attended)
-        store.setEventOutcome(id: "evt-1", on: day, outcome: .skipped)
-        #expect(try #require(store.events.first).outcomes == [EventOutcomeRecord(date: day, outcome: .skipped)])
+        let later = dt("2026-09-18", hour: 9, minute: 0)
+        store.setEventOutcome(id: "evt-1", on: day, outcome: .skipped, now: later)
+        #expect(try #require(store.events.first).outcomes == [EventOutcomeRecord(date: day, outcome: .skipped, recordedAt: later)])
 
         store.setEventOutcome(id: "evt-1", on: day, outcome: nil)
         #expect(try #require(store.events.first).outcomes.isEmpty)
