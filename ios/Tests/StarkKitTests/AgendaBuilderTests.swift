@@ -145,8 +145,8 @@ struct AgendaBuilderTests {
         #expect(build(reminders: [sixty, hundred], lookback: 120).map(\.title) == ["Hundred", "Sixty"])
     }
 
-    @Test("a weekly reminder with three missed occurrences yields exactly one overdue row: the latest")
-    func weeklyOnlyLatestMissedIsOverdue() {
+    @Test("a weekly reminder with three missed occurrences yields exactly one overdue row: the first miss")
+    func weeklyOnlyFirstMissedIsOverdue() {
         // Mondays: Aug 31, Sep 7, Sep 14 are missed; Sep 21 onward is upcoming.
         let reminder = Reminder(id: "w", title: "Weekly review", dueDate: d("2026-08-31"), recurrence: RecurrenceRule(frequency: .weekly))
 
@@ -154,7 +154,7 @@ struct AgendaBuilderTests {
 
         let overdue = items.filter(\.isOverdue)
         #expect(overdue.count == 1)
-        #expect(overdue[0].occurrence == d("2026-09-14"))
+        #expect(overdue[0].occurrence == d("2026-08-31"))
         #expect(overdue[0].displayDate == todayStart)
         #expect(overdue[0].isRecurring)
 
@@ -165,8 +165,8 @@ struct AgendaBuilderTests {
         ])
         #expect(upcoming.allSatisfy { $0.displayDate == $0.occurrence })
 
-        // The earlier missed occurrences are dropped entirely, not shown at their own dates.
-        #expect(!items.contains { iso($0.occurrence) == "2026-08-31" || iso($0.occurrence) == "2026-09-07" })
+        // The later misses and today's occurrence are folded into the one open row.
+        #expect(!items.contains { ["2026-09-07", "2026-09-14", "2026-09-20"].contains(iso($0.occurrence)) })
     }
 
     @Test("a weekly reminder with an occurrence today shows one overdue row with the missed date, not two rows")
@@ -181,29 +181,55 @@ struct AgendaBuilderTests {
         #expect(iso(items[0].occurrence) == "2026-09-13")
     }
 
-    @Test("a monthly reminder keeps only its most recent missed occurrence as overdue")
-    func monthlyOnlyLatestMissedIsOverdue() {
+    @Test("a daily reminder missed for several days shows one overdue row dated at the FIRST miss")
+    func dailyCarriesFirstMiss() {
+        let r = Reminder(id: "d", title: "Walk", dueDate: d("2026-09-14"), recurrence: RecurrenceRule(frequency: .daily))
+        let open = build(reminders: [r]).filter { $0.displayDate == todayStart }
+        #expect(open.count == 1)
+        #expect(open[0].isOverdue)
+        #expect(iso(open[0].occurrence) == "2026-09-14")
+        #expect(open[0].daysOverdue(today: today) == 6)
+    }
+
+    @Test("a weekly reminder with several misses carries the oldest one")
+    func weeklyCarriesFirstMiss() {
+        let r = Reminder(id: "w", title: "Review", dueDate: d("2026-08-31"), recurrence: RecurrenceRule(frequency: .weekly))
+        let overdue = build(reminders: [r]).filter(\.isOverdue)
+        #expect(overdue.count == 1)
+        #expect(iso(overdue[0].occurrence) == "2026-08-31")
+    }
+
+    @Test("a recurring reminder with no miss and an occurrence today shows it normally")
+    func noMissShowsTodayNormally() {
+        let r = Reminder(id: "d", title: "Walk", dueDate: d("2026-09-20"), recurrence: RecurrenceRule(frequency: .daily))
+        let items = build(reminders: [r]).filter { iso($0.displayDate) == "2026-09-20" }
+        #expect(items.count == 1)
+        #expect(!items[0].isOverdue)
+    }
+
+    @Test("a monthly reminder keeps only its first missed occurrence in the lookback as overdue")
+    func monthlyOnlyFirstMissedIsOverdue() {
         // Day 25: Jun 25, Jul 25, Aug 25 are missed; Sep 25 and Oct 25 are upcoming
         // (Nov 25 is past the display window).
         let reminder = Reminder(id: "m", title: "Pay card", dueDate: d("2026-06-25"), recurrence: RecurrenceRule(frequency: .monthly))
 
         let items = build(reminders: [reminder])
 
-        #expect(items.filter(\.isOverdue).map { iso($0.occurrence) } == ["2026-08-25"])
+        #expect(items.filter(\.isOverdue).map { iso($0.occurrence) } == ["2026-06-25"])
         #expect(items.filter { !$0.isOverdue }.map { iso($0.occurrence) } == ["2026-09-25", "2026-10-25"])
     }
 
-    @Test("a daily recurring reminder never yields an overdue row")
-    func dailyNeverOverdue() {
+    @Test("a daily recurring reminder yields one overdue row at its first miss, then upcoming days")
+    func dailyOneOverdueRow() {
         let reminder = Reminder(id: "d", title: "Vitamins", dueDate: d("2026-09-15"), recurrence: RecurrenceRule(frequency: .daily))
 
         let items = build(reminders: [reminder])
 
-        #expect(items.allSatisfy { !$0.isOverdue })
-        #expect(items.allSatisfy { $0.occurrence >= todayStart })
-        #expect(iso(items.first!.occurrence) == "2026-09-20")
-        // 2026-09-20 through 2026-11-19 inclusive.
-        #expect(items.count == 61)
+        #expect(items.filter(\.isOverdue).map { iso($0.occurrence) } == ["2026-09-15"])
+        let upcoming = items.filter { !$0.isOverdue }
+        // Today's occurrence is folded into the overdue row; 2026-09-21 through 2026-11-19 remain.
+        #expect(iso(upcoming.first!.occurrence) == "2026-09-21")
+        #expect(upcoming.count == 60)
     }
 
     @Test("a skipped or completed (exdated) missed occurrence is not overdue")
@@ -211,9 +237,9 @@ struct AgendaBuilderTests {
         let anchor = d("2026-08-31")
         let rule = RecurrenceRule(frequency: .weekly)
 
-        // The latest missed occurrence (Sep 14) was skipped, so the next-most-recent one is
+        // The first missed occurrence (Aug 31) was skipped, so the next-oldest one is
         // the overdue row.
-        let skippedLatest = Reminder(id: "w", title: "Weekly review", dueDate: anchor, recurrence: rule, exceptionDates: [d("2026-09-14")])
+        let skippedLatest = Reminder(id: "w", title: "Weekly review", dueDate: anchor, recurrence: rule, exceptionDates: [d("2026-08-31")])
         #expect(build(reminders: [skippedLatest]).filter(\.isOverdue).map { iso($0.occurrence) } == ["2026-09-07"])
 
         // Every missed occurrence resolved: no overdue row at all.

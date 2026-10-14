@@ -77,10 +77,9 @@ public struct AgendaItem: Identifiable, Equatable {
 ///   `displayRange`; never overdue.
 /// - Incomplete reminders also expand `overdueLookbackDays` back from today. Occurrences before
 ///   today are overdue and pinned to start-of-today (`displayDate`), keeping the missed date in
-///   `occurrence`. A non-recurring reminder is pinned as-is; a weekly/monthly/yearly one keeps
-///   only its most recent missed occurrence — unless the series also has an occurrence today, in
-///   which case that row stands in and no overdue copy is added; a daily one drops missed occurrences entirely (a
-///   missed daily occurrence isn't meaningful, and pinning it would nag every day).
+///   `occurrence`. A non-recurring reminder is pinned as-is; a recurring one (daily included)
+///   shows ONE open row carrying its first (oldest) unresolved miss in the lookback, with today's
+///   own occurrence folded into it (no separate today row while a miss is open).
 ///   Occurrences already skipped/completed are excluded by `OccurrenceExpander`'s exception dates.
 ///
 /// "Overdue" is day-granular: an occurrence is overdue iff its day is before today's day.
@@ -136,15 +135,16 @@ public func buildAgendaItems(
         }
 
         let overdueOccurrences: [Date]
-        switch reminder.recurrence?.frequency {
-        case nil: overdueOccurrences = missed
-        case .daily: overdueOccurrences = []
-        case .weekly, .monthly, .yearly:
-            overdueOccurrences = missed.max().map { [$0] } ?? []
+        if reminder.recurrence == nil {
+            overdueOccurrences = missed
+        } else {
+            // One open row per series, carrying the OLDEST unresolved miss so the row says how long
+            // it has really been open. Daily included (a missed day is what the user wants to see).
+            overdueOccurrences = missed.min().map { [$0] } ?? []
         }
         // One open row per series: the missed occurrence (original date kept) stands in for
         // today's own occurrence, which `PlannerStore` exdates when the miss is resolved.
-        if let todayRow, overdueOccurrences.isEmpty || reminder.recurrence?.frequency == .daily {
+        if let todayRow, overdueOccurrences.isEmpty {
             items.append(todayRow)
         }
         for occurrence in overdueOccurrences {
