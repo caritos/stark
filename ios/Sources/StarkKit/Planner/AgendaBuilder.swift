@@ -125,13 +125,13 @@ public func buildAgendaItems(
         }
 
         var missed: [Date] = []
-        var hasOccurrenceToday = false
+        var todayRow: AgendaItem?
         for occurrence in OccurrenceExpander.expand(reminder: reminder, in: reminderRange) {
             if calendar.startOfDay(for: occurrence) < todayStart {
                 missed.append(occurrence)
             } else if displayRange.contains(occurrence) {
-                if calendar.isDate(occurrence, inSameDayAs: todayStart) { hasOccurrenceToday = true }
-                items.append(AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: occurrence, isOverdue: false))
+                let row = AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: occurrence, isOverdue: false)
+                if calendar.isDate(occurrence, inSameDayAs: todayStart) { todayRow = row } else { items.append(row) }
             }
         }
 
@@ -140,9 +140,12 @@ public func buildAgendaItems(
         case nil: overdueOccurrences = missed
         case .daily: overdueOccurrences = []
         case .weekly, .monthly, .yearly:
-            // Today's own occurrence already stands in for the miss: showing both would be the
-            // same task twice. Completing/skipping it clears the earlier misses (`PlannerStore`).
-            overdueOccurrences = hasOccurrenceToday ? [] : (missed.max().map { [$0] } ?? [])
+            overdueOccurrences = missed.max().map { [$0] } ?? []
+        }
+        // One open row per series: the missed occurrence (original date kept) stands in for
+        // today's own occurrence, which `PlannerStore` exdates when the miss is resolved.
+        if let todayRow, overdueOccurrences.isEmpty || reminder.recurrence?.frequency == .daily {
+            items.append(todayRow)
         }
         for occurrence in overdueOccurrences {
             items.append(AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: todayStart, isOverdue: true))

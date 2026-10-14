@@ -169,16 +169,16 @@ struct AgendaBuilderTests {
         #expect(!items.contains { iso($0.occurrence) == "2026-08-31" || iso($0.occurrence) == "2026-09-07" })
     }
 
-    @Test("a weekly reminder with an occurrence today shows only today's row, not an overdue copy too")
-    func weeklyOccurrenceTodaySuppressesOverdueCopy() {
-        // Sundays: Sep 13 is missed, Sep 20 is today. One open row, not two.
+    @Test("a weekly reminder with an occurrence today shows one overdue row with the missed date, not two rows")
+    func weeklyOccurrenceTodayFoldsIntoOverdueRow() {
+        // Sundays: Sep 13 is missed, Sep 20 is today. One open row, keeping the missed date.
         let reminder = Reminder(id: "w", title: "Walk", dueDate: d("2026-09-13"), recurrence: RecurrenceRule(frequency: .weekly))
 
-        let items = build(reminders: [reminder]).filter { $0.displayDate == todayStart || iso($0.displayDate) == "2026-09-20" }
+        let items = build(reminders: [reminder]).filter { $0.displayDate == todayStart }
 
         #expect(items.count == 1)
-        #expect(items[0].isOverdue == false)
-        #expect(iso(items[0].occurrence) == "2026-09-20")
+        #expect(items[0].isOverdue)
+        #expect(iso(items[0].occurrence) == "2026-09-13")
     }
 
     @Test("a monthly reminder keeps only its most recent missed occurrence as overdue")

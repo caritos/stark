@@ -346,8 +346,8 @@ struct PendingCompletionsTests {
         scheduler.fire(0)
 
         let master = try #require(store.reminders.first { $0.id == "rem-w" })
-        // The latest miss plus the three earlier ones are all exdated.
-        #expect(master.exceptionDates.count == 4)
+        // The latest miss, the three earlier ones and today's own occurrence are all exdated.
+        #expect(master.exceptionDates.count == 5)
         #expect(store.reminders.filter(\.isCompleted).count == 1)
     }
 }

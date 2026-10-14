@@ -379,7 +379,7 @@ public final class PlannerStore: ObservableObject {
     /// The still-visible missed occurrences of `reminder` strictly before `date`'s day, within
     /// `[startOfDay(today) - overdueLookbackDays ..< date]` — the ones `buildAgendaItems` would
     /// otherwise surface one at a time as the later ones get resolved. Empty unless `date` is
-    /// itself a miss or today's occurrence (its day is not after today's) of a non-daily recurring reminder: daily misses
+    /// itself a miss (its day is before today's) of a non-daily recurring reminder: daily misses
     /// are never shown as overdue, and today's/future occurrences are independent of overdue rows.
     /// Already-exdated days are excluded by `OccurrenceExpander`, so callers can append the result
     /// directly without duplicating a calendar day.
@@ -388,12 +388,17 @@ public final class PlannerStore: ObservableObject {
         let calendar = Calendar(identifier: .gregorian)
         let todayStart = calendar.startOfDay(for: today)
         let dateStart = calendar.startOfDay(for: date)
-        guard dateStart <= todayStart else { return [] }
+        guard dateStart < todayStart else { return [] }
         guard let lookbackStart = calendar.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: todayStart),
               lookbackStart < dateStart else { return [] }
-        return OccurrenceExpander
+        let earlier = OccurrenceExpander
             .expand(reminder: reminder, in: lookbackStart...dateStart)
             .filter { calendar.startOfDay(for: $0) < dateStart }
+        // Today's own occurrence is folded into the overdue row (see `buildAgendaItems`), so
+        // resolving the miss resolves it too — otherwise it would reappear as a second row.
+        guard let todayEnd = calendar.date(byAdding: .day, value: 1, to: todayStart)?.addingTimeInterval(-1) else { return earlier }
+        let todays = OccurrenceExpander.expand(reminder: reminder, in: todayStart...todayEnd)
+        return earlier + todays
     }
 
     private func rebuild() {
