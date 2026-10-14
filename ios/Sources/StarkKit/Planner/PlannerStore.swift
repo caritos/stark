@@ -394,7 +394,10 @@ public final class PlannerStore: ObservableObject {
         let calendar = Calendar(identifier: .gregorian)
         let todayStart = calendar.startOfDay(for: today)
         let dateStart = calendar.startOfDay(for: date)
-        guard dateStart < todayStart,
+        // Weekly Review can pass a miss older than the lookback; never sweep forward from there.
+        guard let lookbackStart = calendar.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: todayStart),
+              dateStart >= lookbackStart,
+              dateStart < todayStart,
               let after = calendar.date(byAdding: .day, value: 1, to: dateStart),
               let todayEnd = calendar.date(byAdding: .day, value: 1, to: todayStart)?.addingTimeInterval(-1),
               after <= todayEnd else { return [] }

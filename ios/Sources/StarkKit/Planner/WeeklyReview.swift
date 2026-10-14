@@ -7,11 +7,13 @@ import Foundation
 /// by each item's real `occurrence`, never the overdue-pinned `displayDate`: a reminder missed on
 /// Tuesday is still open for *Tuesday's* week.
 ///
-/// Known limitations (by design, no new timestamps in the model or `.ics`):
-/// - "Completed this week" means *due* that week -- the model stores the occurrence date as
-///   `completedDate`, not when the checkbox was ticked.
-/// - Daily recurring misses are not open (existing `buildAgendaItems` behaviour).
-/// - Open items for older weeks are limited by the 90-day overdue lookback.
+/// Known limitations:
+/// - "Completed this week" means *due* that week (bucketed by occurrence date, deliberately, even
+///   though `completedAt` now records when it was ticked).
+/// - A recurring series (daily included) has ONE open row carrying its first unresolved miss, so it
+///   is bucketed into the week of that first miss, not the later weeks it was carried through.
+/// - For weeks older than the 90-day lookback an open row can appear for that week's first miss;
+///   resolving it clears only that occurrence (`PlannerStore` bounds clearing by the lookback).
 public struct WeeklyReview: Equatable {
     /// Start of the week's Sunday.
     public let weekStart: Date

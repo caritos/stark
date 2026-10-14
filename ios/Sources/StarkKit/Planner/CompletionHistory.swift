@@ -73,4 +73,38 @@ public struct CompletionHistory: Equatable {
             longestGapDays: gaps.max()
         )
     }
+
+    // MARK: Plain-text summary (kept out of the view so it is testable)
+
+    /// Stat lines followed by up to `maxEntries` entry lines, newest first.
+    public func summaryLines(maxEntries: Int = 10) -> [String] {
+        var lines = ["Last 30 days: \(doneLast30)"]
+        lines.append(lateLast90 > 0 ? "Last 90 days: \(doneLast90) (\(lateLast90) late)"
+                                    : "Last 90 days: \(doneLast90)")
+        if let lastDone { lines.append("Last done: \(Self.monthDay(lastDone))") }
+        if let averageGapDays { lines.append("Average gap: \(String(format: "%.1f", averageGapDays)) days") }
+        if let longestGapDays { lines.append("Longest gap: \(longestGapDays) days") }
+        lines.append(contentsOf: entries.prefix(maxEntries).map(\.line))
+        return lines
+    }
+
+    fileprivate static func monthDay(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MMM d"
+        return f.string(from: date)
+    }
+}
+
+extension CompletionEntry {
+    /// "Due Sep 14", or "Due Sep 14 · done Sep 16 (2 days late)".
+    public var line: String {
+        var text = "Due \(CompletionHistory.monthDay(due))"
+        if let done {
+            text += " · done \(CompletionHistory.monthDay(done))"
+            if daysLate > 0 { text += " (\(daysLate) \(daysLate == 1 ? "day" : "days") late)" }
+        }
+        return text
+    }
 }

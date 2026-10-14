@@ -895,6 +895,38 @@ struct PlannerStoreTests {
         #expect(!reopened.isCompleted)
     }
 
+    @Test("undoing a completed missed occurrence leaves exactly one open row for it")
+    @MainActor
+    func undoLeavesSingleOpenRow() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: fixedToday)
+        store.addReminder(Reminder(id: "rem-w", title: "Trash", dueDate: dt("2026-09-13", hour: 9, minute: 0), recurrence: RecurrenceRule(frequency: .weekly)))
+        store.completeReminder(id: "rem-w", on: dt("2026-09-13", hour: 9, minute: 0), today: fixedToday, now: fixedToday)
+        let copy = try #require(store.reminders.first { $0.isCompleted })
+        store.uncompleteReminder(id: copy.id)
+        let open = agenda(store).filter { !$0.isCompleted && $0.title == "Trash" && isoDays([$0.occurrence])[0] == "2026-09-13" }
+        #expect(open.count == 1)
+    }
+
+    @Test("resolving a miss older than the lookback clears only that occurrence; the carried row still clears the rest")
+    @MainActor
+    func lookbackBoundsClearing() throws {
+        let (store, _, _) = makeStore()
+        start(store, around: fixedToday)
+        // Sundays since January; the lookback starts Jun 22, so Jun 28 is the carried row.
+        store.addReminder(Reminder(id: "rem-w", title: "Weekly review", dueDate: dt("2026-01-04", hour: 9, minute: 30), recurrence: RecurrenceRule(frequency: .weekly)))
+        store.completeReminder(id: "rem-w", on: dt("2026-06-14", hour: 9, minute: 30), today: fixedToday, now: fixedToday)
+        var master = try #require(store.reminders.first { $0.id == "rem-w" })
+        #expect(isoDays(master.exceptionDates) == ["2026-06-14"])
+        #expect(overdueDays(store) == ["2026-06-28"])
+
+        let carried = try #require(overdueItem(store))
+        store.completeReminder(id: "rem-w", on: carried.occurrence, today: fixedToday, now: fixedToday)
+        master = try #require(store.reminders.first { $0.id == "rem-w" })
+        #expect(isoDays(master.exceptionDates).sorted().last == "2026-09-20")
+        #expect(overdueDays(store).isEmpty)
+    }
+
     @Test("marking an event attended stamps recordedAt; clearing removes the record")
     @MainActor
     func attendedStampsRecordedAt() throws {
