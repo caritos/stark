@@ -78,7 +78,8 @@ public struct AgendaItem: Identifiable, Equatable {
 /// - Incomplete reminders also expand `overdueLookbackDays` back from today. Occurrences before
 ///   today are overdue and pinned to start-of-today (`displayDate`), keeping the missed date in
 ///   `occurrence`. A non-recurring reminder is pinned as-is; a weekly/monthly/yearly one keeps
-///   only its most recent missed occurrence; a daily one drops missed occurrences entirely (a
+///   only its most recent missed occurrence — unless the series also has an occurrence today, in
+///   which case that row stands in and no overdue copy is added; a daily one drops missed occurrences entirely (a
 ///   missed daily occurrence isn't meaningful, and pinning it would nag every day).
 ///   Occurrences already skipped/completed are excluded by `OccurrenceExpander`'s exception dates.
 ///
@@ -124,10 +125,12 @@ public func buildAgendaItems(
         }
 
         var missed: [Date] = []
+        var hasOccurrenceToday = false
         for occurrence in OccurrenceExpander.expand(reminder: reminder, in: reminderRange) {
             if calendar.startOfDay(for: occurrence) < todayStart {
                 missed.append(occurrence)
             } else if displayRange.contains(occurrence) {
+                if calendar.isDate(occurrence, inSameDayAs: todayStart) { hasOccurrenceToday = true }
                 items.append(AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: occurrence, isOverdue: false))
             }
         }
@@ -136,7 +139,10 @@ public func buildAgendaItems(
         switch reminder.recurrence?.frequency {
         case nil: overdueOccurrences = missed
         case .daily: overdueOccurrences = []
-        case .weekly, .monthly, .yearly: overdueOccurrences = missed.max().map { [$0] } ?? []
+        case .weekly, .monthly, .yearly:
+            // Today's own occurrence already stands in for the miss: showing both would be the
+            // same task twice. Completing/skipping it clears the earlier misses (`PlannerStore`).
+            overdueOccurrences = hasOccurrenceToday ? [] : (missed.max().map { [$0] } ?? [])
         }
         for occurrence in overdueOccurrences {
             items.append(AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: todayStart, isOverdue: true))
