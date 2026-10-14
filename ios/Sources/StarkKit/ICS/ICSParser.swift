@@ -85,7 +85,12 @@ public enum ICSParser {
             default: return nil
             }
             guard let date = ICSDateFormat.parse(String(line[line.index(after: colon)...]))?.date else { return nil }
-            return EventOutcomeRecord(date: date, outcome: outcome)
+            let head = String(line[line.startIndex..<colon])
+            let recordedAt = head.split(separator: ";").compactMap { part -> Date? in
+                guard part.hasPrefix("X-RECORDED=") else { return nil }
+                return ICSDateFormat.parse(String(part.dropFirst("X-RECORDED=".count)))?.date
+            }.first
+            return EventOutcomeRecord(date: date, outcome: outcome, recordedAt: recordedAt)
         }
     }
 
@@ -123,7 +128,9 @@ public enum ICSParser {
             completedDate: props["COMPLETED"].flatMap { ICSDateFormat.parse($0)?.date },
             priority: props["PRIORITY"].flatMap(Int.init),
             recurrence: props["RRULE"].flatMap(RRuleCodec.decode),
-            exceptionDates: exceptionDates(block)
+            exceptionDates: exceptionDates(block),
+            completedAt: props["X-STARK-COMPLETED-AT"].flatMap { ICSDateFormat.parse($0)?.date },
+            seriesID: props["X-STARK-SERIES"]
         )
     }
 

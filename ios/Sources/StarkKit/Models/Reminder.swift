@@ -11,6 +11,10 @@ public struct Reminder: Equatable, Codable, Identifiable, Sendable {
     public var priority: Int?
     public var recurrence: RecurrenceRule?
     public var exceptionDates: [Date]
+    /// When the user actually ticked it done (`completedDate` stays the due occurrence).
+    public var completedAt: Date?
+    /// For a completed copy of a recurring reminder: the master's id.
+    public var seriesID: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -21,8 +25,12 @@ public struct Reminder: Equatable, Codable, Identifiable, Sendable {
         completedDate: Date? = nil,
         priority: Int? = nil,
         recurrence: RecurrenceRule? = nil,
-        exceptionDates: [Date] = []
+        exceptionDates: [Date] = [],
+        completedAt: Date? = nil,
+        seriesID: String? = nil
     ) {
+        self.completedAt = completedAt
+        self.seriesID = seriesID
         self.id = id
         self.title = title
         self.notes = notes

@@ -20,7 +20,8 @@ public enum ICSSerializer {
         }
         for record in event.outcomes {
             let name = record.outcome == .attended ? "X-STARK-ATTENDED" : "X-STARK-SKIPPED"
-            lines.append("\(name)\(dateParam(event.isAllDay)):\(ICSDateFormat.format(record.date, allDay: event.isAllDay))")
+            let recorded = record.recordedAt.map { ";X-RECORDED=\(ICSDateFormat.format($0, allDay: false))" } ?? ""
+            lines.append("\(name)\(dateParam(event.isAllDay))\(recorded):\(ICSDateFormat.format(record.date, allDay: event.isAllDay))")
         }
         lines.append("END:VEVENT")
         return lines.joined(separator: "\r\n")
@@ -33,6 +34,8 @@ public enum ICSSerializer {
         if let priority = reminder.priority { lines.append("PRIORITY:\(priority)") }
         lines.append("STATUS:\(reminder.isCompleted ? "COMPLETED" : "NEEDS-ACTION")")
         if let completed = reminder.completedDate { lines.append("COMPLETED:\(ICSDateFormat.format(completed, allDay: false))") }
+        if let at = reminder.completedAt { lines.append("X-STARK-COMPLETED-AT:\(ICSDateFormat.format(at, allDay: false))") }
+        if let series = reminder.seriesID { lines.append("X-STARK-SERIES:\(series.filter { !$0.isNewline })") }
         if let recurrence = reminder.recurrence { lines.append("RRULE:\(RRuleCodec.encode(recurrence))") }
         for exdate in reminder.exceptionDates {
             lines.append("EXDATE:\(ICSDateFormat.format(exdate, allDay: false))")

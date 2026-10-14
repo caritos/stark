@@ -11,8 +11,10 @@ public enum EventOutcome: String, Equatable, Codable, Sendable {
 public struct EventOutcomeRecord: Equatable, Codable, Sendable {
     public var date: Date
     public var outcome: EventOutcome
+    public var recordedAt: Date?
 
-    public init(date: Date, outcome: EventOutcome) {
+    public init(date: Date, outcome: EventOutcome, recordedAt: Date? = nil) {
+        self.recordedAt = recordedAt
         self.date = date
         self.outcome = outcome
     }
