@@ -164,6 +164,17 @@ struct EditItemView: View {
                 }
                 .listRowBackground(Colors.background)
 
+                if let history, !history.entries.isEmpty {
+                    Section("History") {
+                        ForEach(Array(historyRows(history).enumerated()), id: \.offset) { _, line in
+                            Text(line)
+                                .font(Fonts.mono(13))
+                                .foregroundStyle(Colors.textSecondary)
+                        }
+                    }
+                    .listRowBackground(Colors.background)
+                }
+
                 Section {
                     if let actions = eventActions {
                         if actions.showsAttended {
@@ -238,6 +249,35 @@ struct EditItemView: View {
     }
 
     // MARK: Derived state
+
+    /// Completion / attendance history for this item (recomputed from the store each render).
+    private var history: CompletionHistory? {
+        switch item.kind {
+        case .reminder(let reminder):
+            return CompletionHistory.forReminder(reminder, among: store.reminders, today: Date())
+        case .event(let event):
+            return CompletionHistory.forEvent(event, today: Date())
+        }
+    }
+
+    /// Plain-text formatting of StarkKit's history values.
+    private func historyRows(_ h: CompletionHistory) -> [String] {
+        var lines = ["Last 30 days: \(h.doneLast30)"]
+        lines.append(h.lateLast90 > 0 ? "Last 90 days: \(h.doneLast90) (\(h.lateLast90) late)"
+                                      : "Last 90 days: \(h.doneLast90)")
+        if let last = h.lastDone { lines.append("Last done: \(AgendaFormat.monthDay(last))") }
+        if let avg = h.averageGapDays { lines.append("Average gap: \(String(format: "%.1f", avg)) days") }
+        if let longest = h.longestGapDays { lines.append("Longest gap: \(longest) days") }
+        for e in h.entries.prefix(10) {
+            var line = "Due \(AgendaFormat.monthDay(e.due))"
+            if let done = e.done {
+                line += " · done \(AgendaFormat.monthDay(done))"
+                if e.daysLate > 0 { line += " (\(e.daysLate) \(e.daysLate == 1 ? "day" : "days") late)" }
+            }
+            lines.append(line)
+        }
+        return lines
+    }
 
     private var isEvent: Bool {
         if case .event = item.kind { return true }

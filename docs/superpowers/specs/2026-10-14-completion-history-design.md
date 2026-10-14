@@ -1,6 +1,6 @@
 # Completion history and carried-over misses (ios/)
 
-Date: 2026-10-14. Status: approved in chat, awaiting written-spec review.
+Date: 2026-10-14. Status: implemented.
 
 ## Intent
 

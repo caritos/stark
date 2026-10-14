@@ -16,6 +16,9 @@ struct AgendaRowView: View {
     /// A completion the user has started but that hasn't been committed yet (the 2.5s undo
     /// window, see `PendingCompletions`). It looks exactly like a completed reminder.
     var isPending = false
+    /// The real today, for the overdue row's "N days overdue" suffix. Nil (Search, Weekly Review)
+    /// shows no suffix.
+    var today: Date? = nil
 
     private static let markerSize: CGFloat = 16
 
@@ -170,8 +173,13 @@ struct AgendaRowView: View {
             return (AgendaFormat.eventTimeRange(start: item.occurrence, end: end), false)
         case .reminder:
             if item.isOverdue {
-                return (AgendaFormat.overdueLabel(item.occurrence), true)
+                var text = AgendaFormat.overdueLabel(item.occurrence)
+                if let today, let days = item.daysOverdue(today: today) {
+                    text += " · \(OverdueLabel.text(daysOverdue: days))"
+                }
+                return (text, true)
             }
+            if item.isCompleted, let note = item.completionNote { return (note, false) }
             guard !AgendaFormat.isMidnight(item.occurrence) else { return nil }
             return (AgendaFormat.time(item.occurrence), false)
         }

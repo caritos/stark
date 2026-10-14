@@ -198,7 +198,7 @@ struct AgendaView: View {
     /// One agenda item: the row's visuals with its tap targets laid over them.
     private func itemRow(_ item: AgendaItem, endsSection: Bool, divider: Bool) -> some View {
         let isPending = pending.isPending(item.id)
-        let rowView = AgendaRowView(item: item, isPending: isPending)
+        let rowView = AgendaRowView(item: item, isPending: isPending, today: today)
         let isReminder: Bool = {
             if case .reminder = item.kind { return true }
             return false
