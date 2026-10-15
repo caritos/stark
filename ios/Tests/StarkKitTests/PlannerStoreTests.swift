@@ -730,12 +730,13 @@ struct PlannerStoreTests {
         #expect(isoDays(master.exceptionDates).sorted() == ["2026-08-30", "2026-09-06", "2026-09-13", "2026-09-20"])
     }
 
-    @Test("completing or skipping TODAY's occurrence leaves the overdue row alone")
+    @Test("completing or skipping TODAY's occurrence completing closes earlier gaps, skipping leaves the overdue row")
     @MainActor
     func resolvingTodayDoesNotClearOverdue() throws {
         let (completeStore, _) = makeWeeklyStore()
         completeStore.completeReminder(id: "rem-w", on: dt("2026-09-20", hour: 9, minute: 30), today: fixedToday)
-        #expect(overdueDays(completeStore) == ["2026-08-30"])
+        // A tick closes every earlier gap in the series (they remain history), so no overdue row.
+        #expect(overdueDays(completeStore).isEmpty)
         let completeMaster = try #require(completeStore.reminders.first { $0.id == "rem-w" })
         #expect(completeMaster.exceptionDates.count == 1)
         #expect(completeStore.reminders.filter(\.isCompleted).count == 1)

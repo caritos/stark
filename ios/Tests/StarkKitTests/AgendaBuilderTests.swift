@@ -191,6 +191,21 @@ struct AgendaBuilderTests {
         #expect(open[0].daysOverdue(today: today) == 6)
     }
 
+    @Test("misses before the series' latest completion do not keep an overdue row open")
+    func tickClosesEarlierGaps() {
+        // missed Sep 14-17, ticked Sep 18, today Sep 20: Sep 19 is the only unresolved miss.
+        let r = Reminder(id: "d", title: "Walk", dueDate: d("2026-09-14"), recurrence: RecurrenceRule(frequency: .daily))
+        let done = Reminder(title: "Walk", dueDate: d("2026-09-18"), isCompleted: true, completedDate: d("2026-09-18"), seriesID: "d")
+        let open = build(reminders: [r, done]).filter { Calendar.current.isDate($0.displayDate, inSameDayAs: todayStart) && !$0.isCompleted }
+        #expect(open.count == 1)
+        #expect(iso(open[0].occurrence) == "2026-09-19")
+        // ticked yesterday: plain row for today, no overdue label.
+        let done2 = Reminder(title: "Walk", dueDate: d("2026-09-19"), isCompleted: true, completedDate: d("2026-09-19"), seriesID: "d")
+        let plain = build(reminders: [r, done, done2]).filter { Calendar.current.isDate($0.displayDate, inSameDayAs: todayStart) && !$0.isCompleted }
+        #expect(plain.count == 1)
+        #expect(!plain[0].isOverdue)
+    }
+
     @Test("a weekly reminder with several misses carries the oldest one")
     func weeklyCarriesFirstMiss() {
         let r = Reminder(id: "w", title: "Review", dueDate: d("2026-08-31"), recurrence: RecurrenceRule(frequency: .weekly))

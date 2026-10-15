@@ -109,6 +109,16 @@ public func buildAgendaItems(
 
     var items: [AgendaItem] = []
 
+    // A tick closes every earlier gap in its series (they stay visible as gaps in the history):
+    // only misses AFTER the series' latest completion keep the open row alive.
+    var lastDoneBySeries: [String: Date] = [:]
+    var lastDoneByTitle: [String: Date] = [:]
+    for r in reminders where r.isCompleted {
+        guard let due = r.dueDate ?? r.completedDate else { continue }
+        if let sid = r.seriesID { lastDoneBySeries[sid] = max(lastDoneBySeries[sid] ?? due, due) }
+        else { lastDoneByTitle[r.title] = max(lastDoneByTitle[r.title] ?? due, due) }
+    }
+
     for event in events {
         for occurrence in OccurrenceExpander.expand(event: event, in: displayRange) {
             items.append(AgendaItem(kind: .event(event), occurrence: occurrence, displayDate: occurrence, isOverdue: false))
@@ -140,7 +150,9 @@ public func buildAgendaItems(
         } else {
             // One open row per series, carrying the OLDEST unresolved miss so the row says how long
             // it has really been open. Daily included (a missed day is what the user wants to see).
-            overdueOccurrences = missed.min().map { [$0] } ?? []
+            let lastDone = lastDoneBySeries[reminder.id] ?? lastDoneByTitle[reminder.title]
+            let unresolved = missed.filter { lastDone == nil || calendar.startOfDay(for: $0) > calendar.startOfDay(for: lastDone!) }
+            overdueOccurrences = unresolved.min().map { [$0] } ?? []
         }
         // One open row per series: the missed occurrence (original date kept) stands in for
         // today's own occurrence, which `PlannerStore` exdates when the miss is resolved.
