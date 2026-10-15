@@ -5,7 +5,7 @@ import StarkKit
 /// Edit + detail sheet for one agenda row. Editable fields (title, date, all-day, end for timed
 /// events, repeat, repeat end, notes, location and URL for events, priority for reminders) are
 /// committed only by Save; the action buttons act immediately and dismiss. Reminders show Done /
-/// Undo / Skip This Occurrence / Delete; events show Attended / Didn't Attend / Clear / Remove
+/// Undo / Skip / Delete; events show Done / Skip / Undo / Remove
 /// This Occurrence / Open Link (for an http/https URL, does not dismiss) / Delete.
 struct EditItemView: View {
     @EnvironmentObject private var store: PlannerStore
@@ -180,13 +180,13 @@ struct EditItemView: View {
                 Section {
                     if let actions = eventActions {
                         if actions.showsAttended {
-                            Button("Attended") { markOutcome(.attended) }.foregroundStyle(Colors.accent)
+                            Button("Done") { markOutcome(.attended) }.foregroundStyle(Colors.accent)
                         }
                         if actions.showsDidntAttend {
-                            Button("Didn't Attend") { markOutcome(.skipped) }.foregroundStyle(Colors.accent)
+                            Button("Skip") { markOutcome(.skipped) }.foregroundStyle(Colors.accent)
                         }
                         if actions.showsClear {
-                            Button("Clear") { markOutcome(nil) }.foregroundStyle(Colors.accent)
+                            Button("Undo") { markOutcome(nil) }.foregroundStyle(Colors.accent)
                         }
                         if actions.showsRemoveOccurrence {
                             Button("Remove This Occurrence") { skipOccurrence() }.foregroundStyle(Colors.accent)
@@ -203,7 +203,7 @@ struct EditItemView: View {
                         Button("Undo") { markUndone() }.foregroundStyle(Colors.accent)
                     }
                     if showsSkip {
-                        Button("Skip This Occurrence") { skipOccurrence() }.foregroundStyle(Colors.accent)
+                        Button("Skip") { skipOccurrence() }.foregroundStyle(Colors.accent)
                     }
                     Button("Delete", role: .destructive) { showDeleteConfirm = true }
                 }
@@ -306,7 +306,7 @@ struct EditItemView: View {
         return false
     }
 
-    /// Attended / Didn't Attend / Clear / Remove This Occurrence, for events only.
+    /// Done / Skip / Undo / Remove This Occurrence, for events only.
     private var eventActions: EventOutcomeActions? {
         guard case .event = item.kind else { return nil }
         return EventOutcomeActions(outcome: item.outcome, isRecurring: item.isRecurring)
