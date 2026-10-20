@@ -755,7 +755,7 @@ struct PlannerStoreTests {
         start(store, around: fixedToday)
         store.addReminder(Reminder(id: "rem-s", title: "Walk", dueDate: dt("2026-09-13", hour: 9, minute: 30), recurrence: RecurrenceRule(frequency: .weekly)))
         #expect(overdueDays(store) == ["2026-09-13"])
-        #expect(upcomingDays(store).first == "2026-09-27")
+        #expect(upcomingDays(store).isEmpty)   // series is open: later occurrences are hidden (#107)
 
         store.completeReminder(id: "rem-s", on: dt("2026-09-13", hour: 9, minute: 30), today: fixedToday)
 

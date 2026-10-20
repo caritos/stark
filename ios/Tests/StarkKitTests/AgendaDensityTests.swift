@@ -120,16 +120,12 @@ struct AgendaDensityTests {
         #expect(result == [20: DayDensity(tasks: 2, events: 0)])
     }
 
-    @Test("a weekly reminder keeps only its latest miss (on today) plus its upcoming occurrences")
+    @Test("an open weekly reminder counts only on today; its upcoming occurrences are hidden (#107)")
     func weeklyReminderOverdue() {
         // Mondays from 2026-08-03: misses through 2026-09-14, then upcoming 09-21 and 09-28.
         let weekly = reminder("w", "2026-08-03", recurrence: RecurrenceRule(frequency: .weekly))
         let result = density(reminders: [weekly])
-        #expect(result == [
-            20: DayDensity(tasks: 1, events: 0),
-            21: DayDensity(tasks: 1, events: 0),
-            28: DayDensity(tasks: 1, events: 0),
-        ])
+        #expect(result == [20: DayDensity(tasks: 1, events: 0)])
     }
 
     // MARK: - Recurrence
