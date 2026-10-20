@@ -102,7 +102,12 @@ public func buildAgendaItems(
     let calendar = Calendar(identifier: .gregorian)
     let todayStart = calendar.startOfDay(for: today)
     let lookbackStart = calendar.date(byAdding: .day, value: -overdueLookbackDays, to: todayStart) ?? todayStart
-    let reminderRange = min(displayRange.lowerBound, lookbackStart)...displayRange.upperBound
+    let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) ?? todayStart
+    // Two bounded scans instead of one spanning the gap between today and a far-future range:
+    // lookback through today (is the series open?), then the part of the display range after today.
+    let openScan = lookbackStart...max(lookbackStart, tomorrowStart.addingTimeInterval(-1))
+    let futureScan: ClosedRange<Date>? = displayRange.upperBound >= tomorrowStart
+        ? max(displayRange.lowerBound, tomorrowStart)...displayRange.upperBound : nil
 
     var items: [AgendaItem] = []
 
@@ -133,7 +138,9 @@ public func buildAgendaItems(
         var missed: [Date] = []
         var todayRow: AgendaItem?
         var futureRows: [AgendaItem] = []
-        for occurrence in OccurrenceExpander.expand(reminder: reminder, in: reminderRange) {
+        let occurrences = OccurrenceExpander.expand(reminder: reminder, in: openScan)
+            + (futureScan.map { OccurrenceExpander.expand(reminder: reminder, in: $0) } ?? [])
+        for occurrence in occurrences {
             if calendar.startOfDay(for: occurrence) < todayStart {
                 missed.append(occurrence)
             } else if displayRange.contains(occurrence) {
