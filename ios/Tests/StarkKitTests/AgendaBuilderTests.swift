@@ -158,12 +158,8 @@ struct AgendaBuilderTests {
         #expect(overdue[0].displayDate == todayStart)
         #expect(overdue[0].isRecurring)
 
-        let upcoming = items.filter { !$0.isOverdue }
-        #expect(upcoming.map { iso($0.occurrence) } == [
-            "2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19",
-            "2026-10-26", "2026-11-02", "2026-11-09", "2026-11-16",
-        ])
-        #expect(upcoming.allSatisfy { $0.displayDate == $0.occurrence })
+        // The series is open, so none of its later occurrences are listed (issue #107).
+        #expect(items.filter { !$0.isOverdue }.isEmpty)
 
         // The later misses and today's occurrence are folded into the one open row.
         #expect(!items.contains { ["2026-09-07", "2026-09-14", "2026-09-20"].contains(iso($0.occurrence)) })
@@ -231,20 +227,38 @@ struct AgendaBuilderTests {
         let items = build(reminders: [reminder])
 
         #expect(items.filter(\.isOverdue).map { iso($0.occurrence) } == ["2026-06-25"])
-        #expect(items.filter { !$0.isOverdue }.map { iso($0.occurrence) } == ["2026-09-25", "2026-10-25"])
+        #expect(items.filter { !$0.isOverdue }.isEmpty)
     }
 
-    @Test("a daily recurring reminder yields one overdue row at its first miss, then upcoming days")
+    @Test("a daily recurring reminder yields one overdue row at its first miss and no upcoming days")
     func dailyOneOverdueRow() {
         let reminder = Reminder(id: "d", title: "Vitamins", dueDate: d("2026-09-15"), recurrence: RecurrenceRule(frequency: .daily))
 
         let items = build(reminders: [reminder])
 
         #expect(items.filter(\.isOverdue).map { iso($0.occurrence) } == ["2026-09-15"])
-        let upcoming = items.filter { !$0.isOverdue }
-        // Today's occurrence is folded into the overdue row; 2026-09-21 through 2026-11-19 remain.
-        #expect(iso(upcoming.first!.occurrence) == "2026-09-21")
-        #expect(upcoming.count == 60)
+        #expect(items.filter { !$0.isOverdue }.isEmpty)
+    }
+
+    @Test("issue #107: an open recurring reminder due today does not list tomorrow's occurrence")
+    func openTodayHidesFuture() {
+        let r = Reminder(id: "d", title: "Walk", dueDate: d("2026-09-20"), recurrence: RecurrenceRule(frequency: .daily))
+        let items = build(reminders: [r])
+        #expect(items.map { iso($0.occurrence) } == ["2026-09-20"])
+    }
+
+    @Test("issue #107: once today's occurrence is done the future occurrences are listed again")
+    func resolvedTodayShowsFuture() {
+        let r = Reminder(id: "d", title: "Walk", dueDate: d("2026-09-20"), recurrence: RecurrenceRule(frequency: .daily), exceptionDates: [d("2026-09-20")])
+        let items = build(reminders: [r]).filter { !$0.isCompleted }
+        #expect(iso(items.first!.occurrence) == "2026-09-21")
+        #expect(items.count == 60)
+    }
+
+    @Test("issue #107: a recurring reminder starting in the future is still listed")
+    func futureSeriesListed() {
+        let r = Reminder(id: "d", title: "Walk", dueDate: d("2026-09-22"), recurrence: RecurrenceRule(frequency: .daily))
+        #expect(build(reminders: [r]).count == 59)
     }
 
     @Test("a skipped or completed (exdated) missed occurrence is not overdue")

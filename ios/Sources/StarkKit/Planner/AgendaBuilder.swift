@@ -80,6 +80,8 @@ public struct AgendaItem: Identifiable, Equatable {
 ///   `occurrence`. A non-recurring reminder is pinned as-is; a recurring one (daily included)
 ///   shows ONE open row carrying its first (oldest) unresolved miss in the lookback, with today's
 ///   own occurrence folded into it (no separate today row while a miss is open).
+///   While a recurring reminder has an open row (a miss, or today's occurrence not yet done) its
+///   later occurrences are not listed at all (issue #107).
 ///   Occurrences already skipped/completed are excluded by `OccurrenceExpander`'s exception dates.
 ///
 /// "Overdue" is day-granular: an occurrence is overdue iff its day is before today's day.
@@ -88,13 +90,8 @@ public struct AgendaItem: Identifiable, Equatable {
 /// incomplete/event items (by `displayDate`), then completed items (by `displayDate`); ties
 /// break on `id`, making the order total and deterministic.
 ///
-/// Important: `today` is used for nothing but the overdue cut-off and the start of the overdue
-/// lookback scan. `densityCounts` (in `AgendaDensity.swift`) relies on this to skip the lookback
-/// for ranges wholly in the future, by passing `today: range.lowerBound` and
-/// `overdueLookbackDays: 0`. Anyone making `buildAgendaItems` consult `today` for anything else
-/// must revisit that shortcut (its equivalence tests are in `YearDensityTests`). The shortcut also
-/// requires `range.lowerBound` to be a start of day (true for `MonthGrid.range` and
-/// `YearGrid.range`).
+/// `today` also decides whether a recurring series is open (and so hides its later rows), so
+/// callers must pass the real today even for a range wholly in the future.
 public func buildAgendaItems(
     events: [Event],
     reminders: [Reminder],
@@ -135,12 +132,13 @@ public func buildAgendaItems(
 
         var missed: [Date] = []
         var todayRow: AgendaItem?
+        var futureRows: [AgendaItem] = []
         for occurrence in OccurrenceExpander.expand(reminder: reminder, in: reminderRange) {
             if calendar.startOfDay(for: occurrence) < todayStart {
                 missed.append(occurrence)
             } else if displayRange.contains(occurrence) {
                 let row = AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: occurrence, isOverdue: false)
-                if calendar.isDate(occurrence, inSameDayAs: todayStart) { todayRow = row } else { items.append(row) }
+                if calendar.isDate(occurrence, inSameDayAs: todayStart) { todayRow = row } else { futureRows.append(row) }
             }
         }
 
@@ -159,6 +157,10 @@ public func buildAgendaItems(
         if let todayRow, overdueOccurrences.isEmpty {
             items.append(todayRow)
         }
+        // A recurring reminder does not create its next occurrences while one is still open
+        // (missed, or due today and not done): they appear once the open one is resolved.
+        let seriesIsOpen = reminder.recurrence != nil && (todayRow != nil || !overdueOccurrences.isEmpty)
+        if !seriesIsOpen { items.append(contentsOf: futureRows) }
         for occurrence in overdueOccurrences {
             items.append(AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: todayStart, isOverdue: true))
         }
