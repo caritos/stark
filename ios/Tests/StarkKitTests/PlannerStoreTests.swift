@@ -704,7 +704,7 @@ struct PlannerStoreTests {
 
         #expect(overdueDays(store).isEmpty)
         // Later misses and today's occurrence were folded into the carried row and cleared with it.
-        #expect(upcomingDays(store).prefix(3) == ["2026-09-27", "2026-10-04", "2026-10-11"])
+        #expect(upcomingDays(store) == ["2026-09-27"])   // only the next occurrence (#107)
         let completed = store.reminders.filter(\.isCompleted)
         #expect(completed.count == 1)
         #expect(completed.first?.dueDate == overdue.occurrence)
@@ -723,7 +723,7 @@ struct PlannerStoreTests {
         store.skipReminder(id: "rem-w", on: overdue.occurrence, today: fixedToday)
 
         #expect(overdueDays(store).isEmpty)
-        #expect(upcomingDays(store).prefix(2) == ["2026-09-27", "2026-10-04"])
+        #expect(upcomingDays(store) == ["2026-09-27"])
         #expect(store.reminders.filter(\.isCompleted).isEmpty)
         #expect(store.reminders.count == 1)
         let master = try #require(store.reminders.first { $0.id == "rem-w" })
@@ -807,7 +807,7 @@ struct PlannerStoreTests {
         store.completeReminder(id: "rem-m", on: overdue.occurrence, today: fixedToday)
 
         #expect(overdueDays(store).isEmpty)
-        #expect(upcomingDays(store) == ["2026-09-25", "2026-10-25"])
+        #expect(upcomingDays(store) == ["2026-09-25"])
         #expect(store.reminders.filter(\.isCompleted).count == 1)
         let master = try #require(store.reminders.first { $0.id == "rem-m" })
         #expect(isoDays(master.exceptionDates).sorted() == ["2026-06-25", "2026-07-25", "2026-08-25"])
@@ -952,7 +952,7 @@ struct PlannerStoreTests {
         start(reloaded, around: fixedToday)
 
         #expect(overdueDays(reloaded).isEmpty)
-        #expect(upcomingDays(reloaded).prefix(2) == ["2026-09-27", "2026-10-04"])
+        #expect(upcomingDays(reloaded) == ["2026-09-27"])
         let master = try #require(reloaded.reminders.first { $0.id == "rem-w" })
         #expect(isoDays(master.exceptionDates).sorted() == ["2026-08-30", "2026-09-06", "2026-09-13", "2026-09-20"])
         #expect(reloaded.reminders.filter(\.isCompleted).count == 1)

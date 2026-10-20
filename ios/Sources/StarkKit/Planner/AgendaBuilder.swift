@@ -80,8 +80,8 @@ public struct AgendaItem: Identifiable, Equatable {
 ///   `occurrence`. A non-recurring reminder is pinned as-is; a recurring one (daily included)
 ///   shows ONE open row carrying its first (oldest) unresolved miss in the lookback, with today's
 ///   own occurrence folded into it (no separate today row while a miss is open).
-///   While a recurring reminder has an open row (a miss, or today's occurrence not yet done) its
-///   later occurrences are not listed at all (issue #107).
+///   A recurring reminder is listed ONCE: its open row (a miss, or today's occurrence not yet done),
+///   or, when nothing is open, only its next occurrence — never the run of later days (issue #107).
 ///   Occurrences already skipped/completed are excluded by `OccurrenceExpander`'s exception dates.
 ///
 /// "Overdue" is day-granular: an occurrence is overdue iff its day is before today's day.
@@ -167,7 +167,14 @@ public func buildAgendaItems(
         // A recurring reminder does not create its next occurrences while one is still open
         // (missed, or due today and not done): they appear once the open one is resolved.
         let seriesIsOpen = reminder.recurrence != nil && (todayRow != nil || !overdueOccurrences.isEmpty)
-        if !seriesIsOpen { items.append(contentsOf: futureRows) }
+        // Otherwise only the NEXT occurrence is listed, never the whole run of future days.
+        if !seriesIsOpen {
+            if reminder.recurrence != nil, let next = futureRows.min(by: { $0.occurrence < $1.occurrence }) {
+                items.append(next)
+            } else {
+                items.append(contentsOf: futureRows)
+            }
+        }
         for occurrence in overdueOccurrences {
             items.append(AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: todayStart, isOverdue: true))
         }

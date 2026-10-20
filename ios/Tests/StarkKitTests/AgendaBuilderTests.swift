@@ -247,18 +247,17 @@ struct AgendaBuilderTests {
         #expect(items.map { iso($0.occurrence) } == ["2026-09-20"])
     }
 
-    @Test("issue #107: once today's occurrence is done the future occurrences are listed again")
+    @Test("issue #107: once today's occurrence is done only the NEXT occurrence is listed")
     func resolvedTodayShowsFuture() {
         let r = Reminder(id: "d", title: "Walk", dueDate: d("2026-09-20"), recurrence: RecurrenceRule(frequency: .daily), exceptionDates: [d("2026-09-20")])
         let items = build(reminders: [r]).filter { !$0.isCompleted }
-        #expect(iso(items.first!.occurrence) == "2026-09-21")
-        #expect(items.count == 60)
+        #expect(items.map { iso($0.occurrence) } == ["2026-09-21"])
     }
 
     @Test("issue #107: a recurring reminder starting in the future is still listed")
     func futureSeriesListed() {
         let r = Reminder(id: "d", title: "Walk", dueDate: d("2026-09-22"), recurrence: RecurrenceRule(frequency: .daily))
-        #expect(build(reminders: [r]).count == 59)
+        #expect(build(reminders: [r]).map { iso($0.occurrence) } == ["2026-09-22"])
     }
 
     @Test("a skipped or completed (exdated) missed occurrence is not overdue")
