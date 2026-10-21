@@ -47,16 +47,8 @@ const CSS = `
   h2:first-child { margin-top: 0; }
   p { font-size: 14px; color: #888; line-height: 1.8; margin-bottom: 16px; }
   p strong { color: #F0F0F0; }
-  .badge {
-    display: inline-block;
-    border: 1px solid #333;
-    padding: 12px 20px;
-    font-size: 13px;
-    letter-spacing: 1px;
-    color: #888;
-    text-decoration: none;
-  }
-  .badge:hover { border-color: #E8461A; color: #F0F0F0; }
+  .badge { display: inline-block; line-height: 0; }
+  .badge img { height: 48px; width: auto; }
   .contact-block { border: 1px solid #333; padding: 20px 24px; margin-top: 12px; }
   .contact-block a { color: #E8461A; text-decoration: none; }
   .updated { font-size: 11px; color: #555; margin-top: 8px; letter-spacing: 1px; }
@@ -111,6 +103,8 @@ function layout(title: string, body: string, footerLinks: string): string {
 </html>`;
 }
 
+const APP_STORE_BADGE = `<a class="badge" href="https://apps.apple.com/app/id6772774783"><img src="/public/app-store-badge.svg" alt="Download on the App Store" width="144" height="48"></a>`;
+
 app.use('/public/*', serveStatic({ root: './' }));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -132,7 +126,7 @@ app.get('/', (c) => {
         Repeat anything daily, weekly, monthly or yearly, or with a custom rule. Search your whole
         history. Everything stays on your device — nothing is sent anywhere.
       </p>
-      <a class="badge" href="https://apps.apple.com/app/id6772774783">↓ DOWNLOAD ON THE APP STORE</a>
+      ${APP_STORE_BADGE}
     </main>
     <div class="screenshots">
       <img src="/public/screenshots/01-agenda.png" alt="Month calendar with today's reminders and events in one agenda">
@@ -240,6 +234,8 @@ app.get('/support', (c) => {
       <div class="contact-block">
         <a href="mailto:eladio@caritos.com">eladio@caritos.com</a>
       </div>
+      <h2>GET THE APP</h2>
+      ${APP_STORE_BADGE}
     </main>`,
     `<a href="/">HOME</a><a href="/faq">FAQ</a><a href="/privacy">PRIVACY POLICY</a><a href="/terms">TERMS OF SERVICE</a>`,
   );
@@ -277,6 +273,8 @@ app.get('/faq', (c) => {
 
       <p><strong>Does Stark work offline?</strong><br>
       Yes. Stark never needs a connection: everything is read from and written to your device.</p>
+
+      ${APP_STORE_BADGE}
     </main>`,
     `<a href="/">HOME</a><a href="/support">SUPPORT</a>`,
   );
