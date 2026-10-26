@@ -26,6 +26,49 @@ struct AgendaBuilderTests {
 
     private func iso(_ date: Date) -> String { DateMath.isoDate(from: date) }
 
+    // MARK: - Multi-day events
+
+    @Test("a multi-day all-day event has a row on every day it spans, inclusive of the last")
+    func multiDayAllDay() {
+        let trip = Event(id: "t", title: "Trip", start: cal.startOfDay(for: d("2026-09-25")),
+                         end: cal.startOfDay(for: d("2026-09-27")), isAllDay: true)
+
+        let items = build(events: [trip])
+
+        #expect(items.map { iso($0.displayDate) } == ["2026-09-25", "2026-09-26", "2026-09-27"])
+        #expect(Set(items.map(\.id)).count == 3)
+    }
+
+    @Test("a timed event ending on a later day spans too, keeping its time of day")
+    func multiDayTimed() {
+        let e = Event(id: "t", title: "Camp", start: dt("2026-09-25", hour: 9, minute: 0),
+                      end: dt("2026-09-26", hour: 17, minute: 0))
+
+        let items = build(events: [e])
+
+        #expect(items.map { iso($0.displayDate) } == ["2026-09-25", "2026-09-26"])
+        #expect(items[1].occurrence == dt("2026-09-26", hour: 9, minute: 0))
+    }
+
+    @Test("an event that started before the window still shows on its days inside it")
+    func multiDayStartsBeforeWindow() {
+        let start = cal.startOfDay(for: d("2026-09-01"))
+        let e = Event(id: "t", title: "Long", start: start,
+                      end: cal.startOfDay(for: d("2026-09-10")), isAllDay: true)
+        let items = build(events: [e])
+        #expect(items.first.map { iso($0.displayDate) } == "2026-09-06")
+        #expect(items.last.map { iso($0.displayDate) } == "2026-09-10")
+    }
+
+    @Test("a recurring multi-day event spans each occurrence")
+    func multiDayRecurring() {
+        let e = Event(id: "t", title: "Retreat", start: cal.startOfDay(for: d("2026-09-21")),
+                      end: cal.startOfDay(for: d("2026-09-22")), isAllDay: true,
+                      recurrence: RecurrenceRule(frequency: .weekly, count: 2))
+        let items = build(events: [e])
+        #expect(items.map { iso($0.displayDate) } == ["2026-09-21", "2026-09-22", "2026-09-28", "2026-09-29"])
+    }
+
     // MARK: - Normal rows
 
     @Test("a normal event and reminder inside the range appear at their own date, in order")

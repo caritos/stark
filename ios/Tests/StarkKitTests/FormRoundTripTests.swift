@@ -19,7 +19,7 @@ struct FormRoundTripTests {
         let date = event.start
         let endDate = EventSchedule.formEnd(for: event)
         let allDay = event.isAllDay
-        var updated = event.scheduled(start: date, end: EventSchedule.storedEnd(endDate, start: date), allDay: allDay)
+        var updated = event.scheduled(start: date, end: endDate, allDay: allDay)
         updated.title = event.title
         updated.recurrence = event.recurrence
         updated.notes = FormFields.trimmedOrNil(event.notes ?? "")
@@ -101,12 +101,12 @@ struct FormRoundTripTests {
 
     // MARK: The seeding helpers themselves
 
-    @Test("formEnd: an event's own end for a timed event, else Starts")
+    @Test("formEnd: an event's own end (all-day included), else Starts")
     func formEnd() {
         let end = noon.addingTimeInterval(3600)
         #expect(EventSchedule.formEnd(for: Event(title: "a", start: noon, end: end)) == end)
         #expect(EventSchedule.formEnd(for: Event(title: "b", start: noon)) == noon)
-        #expect(EventSchedule.formEnd(for: Event(title: "c", start: midnight, end: laterMidnight, isAllDay: true)) == midnight)
+        #expect(EventSchedule.formEnd(for: Event(title: "c", start: midnight, end: laterMidnight, isAllDay: true)) == laterMidnight)
     }
 
     @Test("isAllDay(reminder): false when undated or timed, true when date-only")

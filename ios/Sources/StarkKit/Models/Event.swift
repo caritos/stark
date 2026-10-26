@@ -81,16 +81,18 @@ public struct Event: Equatable, Codable, Identifiable, Sendable {
         return copy
     }
 
-    /// A copy scheduled the way the add/edit form describes it. An all-day item follows
-    /// `rescheduled(to:allDay:)` (`end` is ignored: it keeps its own end, shifted with the start,
-    /// or drops it when switching from timed). A timed item takes `start` and `end` (nil = no
-    /// end) exactly as given. Every other field is left untouched.
+    /// A copy scheduled the way the add/edit form describes it: `start` and `end` (nil = no end)
+    /// as given (an end not after the start is stored as none). An all-day item is stored at the
+    /// start of its day, and its `end` is its last day (inclusive; see `EventSchedule.storedEnd`). Every other field is left untouched.
     public func scheduled(start: Date, end: Date?, allDay: Bool) -> Event {
-        if allDay { return rescheduled(to: start, allDay: true) }
         var copy = self
-        copy.start = start
-        copy.end = end
-        copy.isAllDay = false
+        copy.isAllDay = allDay
+        if allDay {
+            copy.start = FormFields.normalizedStart(start, allDay: true)
+        } else {
+            copy.start = start
+        }
+        copy.end = end.flatMap { EventSchedule.storedEnd($0, start: start, allDay: allDay) }
         return copy
     }
 }

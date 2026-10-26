@@ -12,16 +12,19 @@ public enum EventSchedule {
         end.addingTimeInterval(newStart.timeIntervalSince(oldStart))
     }
 
-    /// The Ends picker's initial value when an event is opened for editing. An event without an
-    /// end, and an all-day event (switching from all-day to timed drops its end, see
-    /// `Event.scheduled`), seed Ends equal to Starts.
+    /// The Ends picker's initial value when an event is opened for editing: its end, or Starts
+    /// when it has none. For an all-day event the end is its (inclusive) last day.
     public static func formEnd(for event: Event) -> Date {
-        event.isAllDay ? event.start : (event.end ?? event.start)
+        event.end ?? event.start
     }
 
-    /// The end to store for a timed event: nil unless strictly after the start, so an existing
-    /// event that had no end is not given one just by opening and saving it.
-    public static func storedEnd(_ end: Date, start: Date) -> Date? {
-        end > start ? end : nil
+    /// The end to store: nil unless strictly after the start, so an existing event that had no
+    /// end is not given one just by opening and saving it. An all-day end is the start of its
+    /// last day, and counts only when that day is after the start's day.
+    public static func storedEnd(_ end: Date, start: Date, allDay: Bool = false) -> Date? {
+        guard allDay else { return end > start ? end : nil }
+        let calendar = Calendar(identifier: .gregorian)
+        let lastDay = calendar.startOfDay(for: end)
+        return lastDay > calendar.startOfDay(for: start) ? lastDay : nil
     }
 }

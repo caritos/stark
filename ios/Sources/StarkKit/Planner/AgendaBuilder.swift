@@ -122,8 +122,18 @@ public func buildAgendaItems(
     }
 
     for event in events {
-        for occurrence in OccurrenceExpander.expand(event: event, in: displayRange) {
-            items.append(AgendaItem(kind: .event(event), occurrence: occurrence, displayDate: occurrence, isOverdue: false))
+        // A multi-day event has a row on every day it spans (one per occurrence for a series):
+        // expand from `span` days early so an occurrence that began before the window still
+        // contributes its days inside it.
+        let span = spanDays(of: event, calendar: calendar)
+        let expandRange = span == 0 ? displayRange
+            : (calendar.date(byAdding: .day, value: -span, to: displayRange.lowerBound) ?? displayRange.lowerBound)...displayRange.upperBound
+        for occurrence in OccurrenceExpander.expand(event: event, in: expandRange) {
+            for k in 0...span {
+                let day = k == 0 ? occurrence : (calendar.date(byAdding: .day, value: k, to: occurrence) ?? occurrence)
+                guard displayRange.contains(day) else { continue }
+                items.append(AgendaItem(kind: .event(event), occurrence: day, displayDate: day, isOverdue: false))
+            }
         }
     }
 
@@ -198,6 +208,15 @@ public func buildAgendaItems(
         if lhs.key != rhs.key { return lhs.key < rhs.key }
         return lhs.id < rhs.id
     }.map(\.item)
+}
+
+/// How many days after its start day an event's occurrence runs (0 = a single day). Capped so a
+/// bad end date cannot explode the row count.
+private func spanDays(of event: Event, calendar: Calendar) -> Int {
+    guard let end = event.end else { return 0 }
+    let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: event.start),
+                                       to: calendar.startOfDay(for: end)).day ?? 0
+    return min(max(days, 0), 366)
 }
 
 /// An agenda item with its sort key precomputed (see `buildAgendaItems`).

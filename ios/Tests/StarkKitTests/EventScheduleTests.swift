@@ -51,19 +51,33 @@ struct EventScheduleTests {
         #expect(result.end == nil)
     }
 
-    @Test("an all-day schedule follows rescheduled(to:allDay:): drops a timed end, keeps an all-day one")
+    @Test("an all-day schedule takes the form's last day (inclusive) and drops a same-day end")
+    func allDayMultiDay() {
+        let start = cal.startOfDay(for: at("2026-09-20", 12))
+        let event = Event(id: "t", title: "Trip", start: start, isAllDay: true)
+        let multi = event.scheduled(start: start, end: at("2026-09-22", 15), allDay: true)
+        #expect(multi.end == cal.startOfDay(for: at("2026-09-22", 12)))
+        let single = event.scheduled(start: start, end: at("2026-09-20", 15), allDay: true)
+        #expect(single.end == nil)
+    }
+
+    @Test("an all-day event opens with Ends on its last day; storedEnd compares days")
+    func allDayForm() {
+        let start = cal.startOfDay(for: at("2026-09-20", 12))
+        let end = cal.startOfDay(for: at("2026-09-22", 12))
+        let event = Event(id: "t", title: "Trip", start: start, end: end, isAllDay: true)
+        #expect(EventSchedule.formEnd(for: event) == end)
+        #expect(EventSchedule.storedEnd(at("2026-09-22", 18), start: start, allDay: true) == end)
+        #expect(EventSchedule.storedEnd(at("2026-09-20", 18), start: start, allDay: true) == nil)
+    }
+
+    @Test("an all-day schedule drops a timed end")
     func allDaySchedule() {
         let timed = Event(id: "e", title: "Class", start: at("2026-09-20", 9), end: at("2026-09-20", 10))
         let toAllDay = timed.scheduled(start: at("2026-09-20", 9), end: at("2026-09-20", 10), allDay: true)
         #expect(toAllDay.isAllDay)
         #expect(toAllDay.end == nil)
 
-        let start = cal.startOfDay(for: at("2026-09-20", 12))
-        let end = cal.startOfDay(for: at("2026-09-22", 12))
-        let multiDay = Event(id: "t", title: "Trip", start: start, end: end, isAllDay: true)
-        let moved = multiDay.scheduled(start: cal.startOfDay(for: at("2026-09-21", 12)), end: nil, allDay: true)
-        #expect(moved.isAllDay)
-        #expect(moved.end == cal.startOfDay(for: at("2026-09-23", 12)))
     }
 
     @Test("every other field is preserved")

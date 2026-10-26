@@ -51,9 +51,9 @@ struct AddItemView: View {
                         // A repeat end never precedes the start's day.
                         repeatEnd = repeatEnd.clamped(toStartOn: newValue)
                     }
-                if kind == .event && !allDay {
+                if kind == .event {
                     DatePicker("Ends", selection: $endDate, in: date...,
-                               displayedComponents: [.date, .hourAndMinute])
+                               displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
                 }
                 Toggle("All day", isOn: $allDay)
 
@@ -144,7 +144,7 @@ struct AddItemView: View {
                 title: title,
                 notes: FormFields.trimmedOrNil(notes),
                 start: start,
-                end: allDay ? nil : EventSchedule.storedEnd(endDate, start: date),
+                end: EventSchedule.storedEnd(endDate, start: date, allDay: allDay),
                 isAllDay: allDay,
                 // No Location field on Add -- keeps the add form quick; it can still be set
                 // afterward via Edit.

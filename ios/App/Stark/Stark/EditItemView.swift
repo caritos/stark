@@ -105,9 +105,9 @@ struct EditItemView: View {
                             // A repeat end never precedes the start's day.
                             repeatEnd = repeatEnd.clamped(toStartOn: newValue)
                         }
-                    if isEvent && !allDay {
+                    if isEvent {
                         DatePicker("Ends", selection: $endDate, in: date...,
-                                   displayedComponents: [.date, .hourAndMinute])
+                                   displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
                     }
                     Toggle("All day", isOn: $allDay)
 
@@ -323,9 +323,9 @@ struct EditItemView: View {
     private func save() {
         switch item.kind {
         case .event(let event):
-            // `scheduled` takes the picked start/end for a timed event, and for an all-day one
-            // stores the start of the day and drops `end` when switching between all-day and timed.
-            var updated = event.scheduled(start: date, end: EventSchedule.storedEnd(endDate, start: date), allDay: allDay)
+            // `scheduled` stores the picked start/end (an all-day end is its last day) and drops an
+            // end that is not after the start.
+            var updated = event.scheduled(start: date, end: endDate, allDay: allDay)
             updated.title = trimmedTitle
             updated.recurrence = repeatEnd.applied(to: recurrence)
             updated.notes = FormFields.trimmedOrNil(notes)
