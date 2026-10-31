@@ -88,7 +88,8 @@ struct AgendaView: View {
                         Group {
                         switch row {
                         case .header(let day, let compact):
-                            headerRow(day: day, todayStart: todayStart, compact: compact)
+                            headerRow(day: day, todayStart: todayStart, compact: compact,
+                                      items: sections.first { $0.day == day }?.items ?? [])
                         case .empty(_, let divider):
                             Text("No events")
                                 .font(.subheadline)
@@ -170,7 +171,7 @@ struct AgendaView: View {
     /// be compact, so every other row states the old minimum explicitly to keep its layout.
     private static let rowMinHeight: CGFloat = 52
 
-    private func headerRow(day: Date, todayStart: Date, compact: Bool) -> some View {
+    private func headerRow(day: Date, todayStart: Date, compact: Bool, items: [AgendaItem]) -> some View {
         let isToday = day == todayStart
         let tomorrow = Self.calendar.date(byAdding: .day, value: 1, to: todayStart)
         let word: String
@@ -181,15 +182,31 @@ struct AgendaView: View {
         } else {
             word = AgendaFormat.weekdayName(day).uppercased()
         }
-        return (Text(word).fontWeight(.bold) + Text("  \(AgendaFormat.shortDate(day))"))
+        let title = (Text(word).fontWeight(.bold) + Text("  \(AgendaFormat.shortDate(day))"))
             .font(Fonts.mono(11))
             .tracking(2)
             .foregroundStyle(isToday ? Colors.accent : Colors.textSecondary)
-            .padding(.horizontal, Spacing.md)
-            .padding(.top, Spacing.md)
-            .padding(.bottom, Spacing.xs)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: compact ? nil : Self.rowMinHeight)
+        return HStack(spacing: 0) {
+            title
+            Spacer(minLength: 0)
+            // Export today as plain text (issue #114), next to the TODAY line.
+            if isToday {
+                ShareLink(item: DayExport.text(day: day, items: items, calendar: Self.calendar)) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Colors.accent)
+                        .frame(width: 44, height: 32)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Export today")
+            }
+        }
+        .padding(.leading, Spacing.md)
+        .padding(.trailing, isToday ? Spacing.xs : Spacing.md)
+        .padding(.top, Spacing.md)
+        .padding(.bottom, Spacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(minHeight: compact ? nil : Self.rowMinHeight)
         .listRowSeparator(.hidden)
         .listRowBackground(Colors.background)
         .listRowInsets(EdgeInsets())
