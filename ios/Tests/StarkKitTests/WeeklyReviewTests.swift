@@ -191,4 +191,31 @@ struct WeeklyReviewTests {
         #expect(s.countsLabel == "1 done · 1 open")
         #expect(s.attendedLabel == "Events attended: 0")
     }
+
+    // MARK: - Shareable text (issue #111)
+
+    @Test("the share text is plain, dated and ordered: header, counts, then both lists")
+    func shareText() {
+        let done = Reminder(id: "d", title: "Pay rent", dueDate: dt("2026-09-21"), isCompleted: true, completedDate: dt("2026-09-21"))
+        let open = Reminder(id: "o", title: "Call dentist", dueDate: dt("2026-09-24"))
+        let s = summary(reminders: [open, done], week: "2026-09-20", now: "2026-09-27")
+        #expect(s.shareText() == """
+        Weekly Review: 2026-09-20 to 2026-09-26
+        1 done · 1 open
+        Events attended: 0
+
+        Completed
+        - 2026-09-21 Pay rent
+
+        Still open
+        - 2026-09-24 Call dentist
+        """)
+    }
+
+    @Test("an empty list says so instead of leaving a bare heading")
+    func shareTextEmpty() {
+        let s = summary(week: "2026-09-20", now: "2026-09-27")
+        #expect(s.shareText().contains("Completed\n- (none)"))
+        #expect(s.shareText().contains("Still open\n- (none)"))
+    }
 }

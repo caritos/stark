@@ -1,12 +1,14 @@
 // ios/App/Stark/Stark/SettingsView.swift
 import SwiftUI
 
-/// A Keyboard toggle (iPhone only) plus About. Storage is just the local Documents directory;
+/// A Keyboard toggle (iPhone only), the Weekly Review (moved here from the floating buttons,
+/// issue #111) plus About. Storage is just the local Documents directory;
 /// there is no iCloud toggle or file picker, unlike the deprecated Expo app's Settings screen.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var showFAQ = false
+    @State private var showReview = false
     @AppStorage(SigilKeyboardSetting.key) private var sigilKeyboardBar = SigilKeyboardSetting.defaultValue
 
     // Read from the bundle, not hardcoded, so these can never drift from the actual build
@@ -38,6 +40,14 @@ struct SettingsView: View {
                 }
                 .listRowBackground(Colors.background)
                 #endif
+
+                Section {
+                    Button("Weekly Review") { showReview = true }
+                        .foregroundStyle(Colors.accent)
+                } header: {
+                    Text("Review")
+                }
+                .listRowBackground(Colors.background)
 
                 Section {
                     Button {
@@ -84,6 +94,7 @@ struct SettingsView: View {
                 SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
             }
             .sheet(isPresented: $showFAQ) { FAQView() }
+            .sheet(isPresented: $showReview) { WeeklyReviewView() }
         }
         .tint(Colors.accent)
         .preferredColorScheme(.dark)

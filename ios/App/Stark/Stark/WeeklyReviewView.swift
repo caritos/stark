@@ -40,6 +40,16 @@ struct WeeklyReviewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
+                // Plain text of the week (issue #111), for pasting into a note or another tool.
+                ToolbarItem(placement: .primaryAction) {
+                    ShareLink(item: review.shareText()) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Colors.text)
+                            .frame(width: 40, height: 40)
+                    }
+                    .accessibilityLabel("Share weekly review")
+                }
             }
             .sheet(item: $selectedItem) { item in EditItemView(item: item) }
         }

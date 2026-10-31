@@ -20,7 +20,6 @@ struct ContentView: View {
     @State private var showAdd = false
     @State private var showSearch = false
     @State private var showSettings = false
-    @State private var showReview = false
     @State private var selectedItem: AgendaItem?
     @State private var selectedDate: Date
     @State private var scrollRequest: ScrollRequest?
@@ -122,7 +121,6 @@ struct ContentView: View {
         .overlay(alignment: .bottomTrailing) {
             HStack(spacing: Spacing.sm) {
                 settingsButton
-                reviewButton
                 searchButton
                 addButton
             }
@@ -137,7 +135,6 @@ struct ContentView: View {
         .sheet(isPresented: $showAdd) { AddItemView() }
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
-        .sheet(isPresented: $showReview) { WeeklyReviewView() }
         .sheet(item: $selectedItem) { item in EditItemView(item: item) }
         .task {
             // Load the wider window (includes the overdue lookback), not the display window.
@@ -209,21 +206,6 @@ struct ContentView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Settings")
-    }
-
-    /// Same square/flat/accent style as the other floating buttons; opens the Weekly Review sheet.
-    private var reviewButton: some View {
-        Button {
-            showReview = true
-        } label: {
-            Image(systemName: "checklist")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Colors.background)
-                .frame(width: 56, height: 56)
-                .background(Colors.accent)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Weekly Review")
     }
 
     /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone

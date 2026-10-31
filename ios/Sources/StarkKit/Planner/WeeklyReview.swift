@@ -32,6 +32,30 @@ public struct WeeklyReview: Equatable {
     /// e.g. "Events attended: 2".
     public var attendedLabel: String { "Events attended: \(attendedEventCount)" }
 
+    /// The review as plain text, for pasting into a note or another tool (issue #111): ISO dates so
+    /// it parses cleanly, the same counts as the screen, then the completed and still-open lists
+    /// (titles only, by occurrence date).
+    public func shareText(calendar: Calendar = Calendar(identifier: .gregorian)) -> String {
+        func day(_ date: Date) -> String {
+            let c = calendar.dateComponents([.year, .month, .day], from: date)
+            return DateMath.isoDate(year: c.year!, month0: c.month! - 1, day: c.day!)
+        }
+        func lines(_ items: [AgendaItem]) -> String {
+            items.isEmpty ? "- (none)" : items.map { "- \(day($0.occurrence)) \($0.title)" }.joined(separator: "\n")
+        }
+        return """
+        Weekly Review: \(day(weekStart)) to \(day(range.upperBound))
+        \(countsLabel)
+        \(attendedLabel)
+
+        Completed
+        \(lines(completed))
+
+        Still open
+        \(lines(open))
+        """
+    }
+
     /// The week to open on: last week on a Monday (reviewing the week just ended), otherwise the
     /// current one. Returned as the start of that week's Sunday.
     public static func defaultWeekStart(today: Date, calendar: Calendar = Calendar(identifier: .gregorian)) -> Date {
