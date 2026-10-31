@@ -283,4 +283,20 @@ struct OccurrenceExpanderTests {
         #expect(dates.contains(lastIntendedOccurrence))
         #expect(dates.count == 5)
     }
+
+    @Test("lastDayOfMonth lands on the real last day of every month, leap February included (issue #112)")
+    func lastDayOfMonthPreset() {
+        let dates = OccurrenceExpander.occurrences(anchor: d("2027-01-31"), rule: .lastDayOfMonth, exceptionDates: [], in: range("2027-01-01", "2028-03-31"))
+        let days = dates.map { DateMath.isoDate(from: $0) }
+        #expect(days.prefix(4) == ["2027-01-31", "2027-02-28", "2027-03-31", "2027-04-30"])
+        #expect(days.contains("2028-02-29"))
+        #expect(days.count == 15)
+    }
+
+    @Test("lastDayOfMonth round-trips through RRULE and reads as a last day")
+    func lastDayOfMonthCodec() {
+        let encoded = RRuleCodec.encode(.lastDayOfMonth)
+        #expect(encoded.contains("BYMONTHDAY=-1"))
+        #expect(RRuleCodec.decode(encoded) == .lastDayOfMonth)
+    }
 }

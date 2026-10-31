@@ -8,6 +8,7 @@ enum RepeatPreset: String, CaseIterable, Identifiable {
     case everyWeek = "Every Week"
     case every2Weeks = "Every 2 Weeks"
     case everyMonth = "Every Month"
+    case lastDayOfMonth = "Last Day of Month"
     case everyYear = "Every Year"
     case custom = "Custom"
 
@@ -20,6 +21,7 @@ enum RepeatPreset: String, CaseIterable, Identifiable {
         case .everyWeek: return RecurrenceRule(frequency: .weekly)
         case .every2Weeks: return RecurrenceRule(frequency: .weekly, interval: 2)
         case .everyMonth: return RecurrenceRule(frequency: .monthly)
+        case .lastDayOfMonth: return .lastDayOfMonth
         case .everyYear: return RecurrenceRule(frequency: .yearly)
         case .custom: return nil
         }
@@ -64,7 +66,7 @@ struct RepeatPickerView: View {
         .navigationTitle("Repeat")
     }
 
-    /// True when `recurrence` is set but matches none of the five concrete presets - i.e. it's
+    /// True when `recurrence` is set but matches none of the concrete presets - i.e. it's
     /// a genuinely custom rule, which previously showed no checkmark at all (looking like
     /// nothing was selected, even though a real recurrence was active).
     private var isCustomRuleActive: Bool {

@@ -74,3 +74,12 @@ extension RecurrenceRule {
         }
     }
 }
+
+extension RecurrenceRule {
+    /// "Every month on the last day": the real last day of each month (28/29/30/31), not a fixed
+    /// day number (issue #112). Encodes as `BYMONTHDAY=-1`.
+    public static let lastDayOfMonth = RecurrenceRule(
+        frequency: .monthly,
+        byPositionalDay: [PositionalDay(position: .last, dayType: .anyDay)]
+    )
+}
