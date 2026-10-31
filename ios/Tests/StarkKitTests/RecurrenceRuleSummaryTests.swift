@@ -53,4 +53,10 @@ struct RecurrenceRuleSummaryTests {
         let rule = RecurrenceRule(frequency: .monthly, byMonthDay: [11, 12, 13, 21])
         #expect(rule.summary == "Every month on the 11th, 12th, 13th, 21st")
     }
+
+    @Test("a last-day rule reads as 'the last day' (issue #112)")
+    func lastDaySummary() {
+        #expect(RecurrenceRule(frequency: .yearly, byMonthDay: [-1], byMonth: [.october]).summary == "Every year in October on the last day")
+        #expect(RecurrenceRule(frequency: .monthly, byMonthDay: [-1, 15]).summary == "Every month on the 15th, last day")
+    }
 }

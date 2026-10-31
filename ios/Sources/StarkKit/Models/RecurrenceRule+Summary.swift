@@ -25,7 +25,9 @@ extension RecurrenceRule {
                 let descriptions = byPositionalDay.map(Self.positionalDayDescription)
                 result += " on the \(descriptions.joined(separator: ", "))"
             } else if let byMonthDay, !byMonthDay.isEmpty {
-                let ordinals = byMonthDay.sorted().map(Self.ordinal)
+                // -1 means "the last day of the month" (issue #112); it reads last.
+                let ordinals = byMonthDay.filter { $0 > 0 }.sorted().map(Self.ordinal)
+                    + (byMonthDay.contains { $0 < 0 } ? ["last day"] : [])
                 result += " on the \(ordinals.joined(separator: ", "))"
             }
         }
@@ -73,13 +75,4 @@ extension RecurrenceRule {
         default: return "\(n)th"
         }
     }
-}
-
-extension RecurrenceRule {
-    /// "Every month on the last day": the real last day of each month (28/29/30/31), not a fixed
-    /// day number (issue #112). Encodes as `BYMONTHDAY=-1`.
-    public static let lastDayOfMonth = RecurrenceRule(
-        frequency: .monthly,
-        byPositionalDay: [PositionalDay(position: .last, dayType: .anyDay)]
-    )
 }

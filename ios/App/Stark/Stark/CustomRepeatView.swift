@@ -23,8 +23,11 @@ struct CustomRepeatView: View {
         _unit = State(initialValue: existing?.frequency ?? .daily)
         _byDay = State(initialValue: Set(existing?.byDay ?? []))
         _byMonth = State(initialValue: Set(existing?.byMonth ?? []))
-        _byMonthDay = State(initialValue: existing?.byMonthDay)
-        _byPositionalDay = State(initialValue: existing?.byPositionalDay)
+        // A lone "last day" (BYMONTHDAY=-1) decodes as a positional "Last / Day" entry; show it
+        // where the user sets it, under On Days (issue #112). Same rule either way.
+        let lastDayOnly = existing?.byPositionalDay == [PositionalDay(position: .last, dayType: .anyDay)]
+        _byMonthDay = State(initialValue: lastDayOnly ? [-1] : existing?.byMonthDay)
+        _byPositionalDay = State(initialValue: lastDayOnly ? nil : existing?.byPositionalDay)
     }
 
     var body: some View {
@@ -195,7 +198,8 @@ struct CustomRepeatView: View {
 
     private var onDaysSummary: String {
         guard let byMonthDay, !byMonthDay.isEmpty else { return "None" }
-        return byMonthDay.map(String.init).joined(separator: ", ")
+        return (byMonthDay.filter { $0 > 0 }.sorted().map(String.init) + (byMonthDay.contains { $0 < 0 } ? ["Last"] : []))
+            .joined(separator: ", ")
     }
 
     private var onWeekSummary: String {

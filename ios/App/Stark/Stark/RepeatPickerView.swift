@@ -8,7 +8,6 @@ enum RepeatPreset: String, CaseIterable, Identifiable {
     case everyWeek = "Every Week"
     case every2Weeks = "Every 2 Weeks"
     case everyMonth = "Every Month"
-    case lastDayOfMonth = "Last Day of Month"
     case everyYear = "Every Year"
     case custom = "Custom"
 
@@ -21,7 +20,6 @@ enum RepeatPreset: String, CaseIterable, Identifiable {
         case .everyWeek: return RecurrenceRule(frequency: .weekly)
         case .every2Weeks: return RecurrenceRule(frequency: .weekly, interval: 2)
         case .everyMonth: return RecurrenceRule(frequency: .monthly)
-        case .lastDayOfMonth: return .lastDayOfMonth
         case .everyYear: return RecurrenceRule(frequency: .yearly)
         case .custom: return nil
         }

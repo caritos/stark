@@ -5,21 +5,28 @@ struct OnDaysPickerView: View {
 
     var body: some View {
         List {
+            // The real last day of whichever month it is (28-31), stored as -1 (issue #112).
+            // Combines with numbered days ("the 15th and the last day").
+            row(label: "Last day of the month", value: -1)
             ForEach(1...31, id: \.self) { day in
-                Button {
-                    toggle(day)
-                } label: {
-                    HStack {
-                        Text("\(day)").foregroundStyle(Colors.text)
-                        Spacer()
-                        if selectedDays.contains(day) {
-                            Image(systemName: "checkmark").foregroundStyle(Colors.accent)
-                        }
-                    }
-                }
+                row(label: "\(day)", value: day)
             }
         }
         .navigationTitle("On Days")
+    }
+
+    private func row(label: String, value: Int) -> some View {
+        Button {
+            toggle(value)
+        } label: {
+            HStack {
+                Text(label).foregroundStyle(Colors.text)
+                Spacer()
+                if selectedDays.contains(value) {
+                    Image(systemName: "checkmark").foregroundStyle(Colors.accent)
+                }
+            }
+        }
     }
 
     private func toggle(_ day: Int) {

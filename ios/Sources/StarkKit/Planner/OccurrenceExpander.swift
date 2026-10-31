@@ -176,7 +176,8 @@ public enum OccurrenceExpander {
             return positionalDays.contains { resolvePositionalDay($0, year: year, month0: month0) == candidateDay }
         }
         if let byMonthDay = rule.byMonthDay, !byMonthDay.isEmpty {
-            return byMonthDay.contains { min($0, daysInMonth) == candidateDay }
+            // A negative value counts back from the end (-1 = the last day, whatever the month's length).
+            return byMonthDay.contains { ($0 < 0 ? daysInMonth + 1 + $0 : min($0, daysInMonth)) == candidateDay }
         }
         let anchorDay = calendar.component(.day, from: anchor)
         return candidateDay == min(anchorDay, daysInMonth)

@@ -284,19 +284,33 @@ struct OccurrenceExpanderTests {
         #expect(dates.count == 5)
     }
 
-    @Test("lastDayOfMonth lands on the real last day of every month, leap February included (issue #112)")
-    func lastDayOfMonthPreset() {
-        let dates = OccurrenceExpander.occurrences(anchor: d("2027-01-31"), rule: .lastDayOfMonth, exceptionDates: [], in: range("2027-01-01", "2028-03-31"))
+    @Test("byMonthDay -1 is the real last day of each month, leap February included (issue #112)")
+    func lastDayOfMonth() {
+        let rule = RecurrenceRule(frequency: .monthly, byMonthDay: [-1])
+        let dates = OccurrenceExpander.occurrences(anchor: d("2027-01-31"), rule: rule, exceptionDates: [], in: range("2027-01-01", "2028-03-31"))
         let days = dates.map { DateMath.isoDate(from: $0) }
         #expect(days.prefix(4) == ["2027-01-31", "2027-02-28", "2027-03-31", "2027-04-30"])
         #expect(days.contains("2028-02-29"))
         #expect(days.count == 15)
     }
 
-    @Test("lastDayOfMonth round-trips through RRULE and reads as a last day")
-    func lastDayOfMonthCodec() {
-        let encoded = RRuleCodec.encode(.lastDayOfMonth)
-        #expect(encoded.contains("BYMONTHDAY=-1"))
-        #expect(RRuleCodec.decode(encoded) == .lastDayOfMonth)
+    @Test("yearly in October on the last day: Halloween every year (issue #112)")
+    func halloween() {
+        let rule = RecurrenceRule(frequency: .yearly, byMonthDay: [-1], byMonth: [.october])
+        let dates = OccurrenceExpander.occurrences(anchor: d("2026-10-31"), rule: rule, exceptionDates: [], in: range("2026-01-01", "2028-12-31"))
+        #expect(dates.map { DateMath.isoDate(from: $0) } == ["2026-10-31", "2027-10-31", "2028-10-31"])
+    }
+
+    @Test("the 15th and the last day of the month together")
+    func fifteenthAndLast() {
+        let rule = RecurrenceRule(frequency: .monthly, byMonthDay: [15, -1])
+        let dates = OccurrenceExpander.occurrences(anchor: d("2027-02-15"), rule: rule, exceptionDates: [], in: range("2027-02-01", "2027-03-31"))
+        #expect(dates.map { DateMath.isoDate(from: $0) } == ["2027-02-15", "2027-02-28", "2027-03-15", "2027-03-31"])
+    }
+
+    @Test("a last-day rule round-trips through RRULE")
+    func lastDayCodec() {
+        let rule = RecurrenceRule(frequency: .yearly, byMonthDay: [15, -1], byMonth: [.october])
+        #expect(RRuleCodec.decode(RRuleCodec.encode(rule)) == rule)
     }
 }
