@@ -4,17 +4,17 @@ import StarkKit
 
 /// Fixed-height, Sunday-first month grid, always 6 rows x 7 columns. The cells before day 1 and
 /// after the month's last day show the neighbouring months' real dates, dimmed
-/// (`Colors.textSecondary`), tinted by how busy they are; tapping one selects it and scrolls the
+/// (`Colors.textSecondary`), with their busyness lines; tapping one selects it and scrolls the
 /// agenda, but the grid stays on the visible month (only the chevrons page). Today is a filled
 /// accent square (on whichever cell it falls, in the month or not), the selected day (when it
 /// isn't today) an outlined one.
 ///
-/// Each day number's square is tinted by how busy the day is (issue #110, replacing the old
-/// markers under the number): three strengths by `DayDensity.level` (1 / 2-3 / 4+ items), purple
-/// (`Colors.eventDot`) when the day has any event, accent for tasks only, as in `YearView`. The
+/// Under each day number sit two 1 pt lines (issue #110, replacing the old dot markers): purple
+/// (`Colors.eventDot`) for events, accent for tasks, each as wide as its own load (a third, two
+/// thirds or all of the number's width for 1 / 2-3 / 4+ items) and absent when there are none. The
 /// counts come from `gridDensity`, i.e. from the same `buildAgendaItems` the agenda uses, so the
-/// grid can't disagree with the list. Today's filled square and the selected day's outline win
-/// over the tint.
+/// grid can't disagree with the list. The block keeps its height on an empty day, and sits below
+/// the number's square so the lines stay visible on today's filled cell.
 ///
 /// In `.week` mode (the collapsed state) the grid is one row: the Sunday-first week of
 /// `selectedDate`, drawn with the same cells. The title is the selected day's month and the
@@ -61,7 +61,7 @@ struct MonthGridView: View {
     let scrollPagingDate: GridPagingRequest?
 
     /// The number's square plus a little air.
-    private static let rowHeight: CGFloat = 34
+    private static let rowHeight: CGFloat = 38
     private static let cellSize: CGFloat = 30
     private static let tintLow = 0.15
     private static let tintMedium = 0.30
@@ -76,7 +76,7 @@ struct MonthGridView: View {
         let todayIso = DateMath.isoDate(from: today)
         let selectedIso = DateMath.isoDate(from: selectedDate)
         // Only a snapshot computed for the month on screen is used, so paging never flashes the
-        // previous month's tint on the new month's days while the new ones are computed.
+        // previous month's lines on the new month's days while the new ones are computed.
         let visibleDensity = density?.month == visibleMonth ? density?.days ?? [:] : [:]
         let isWeek = mode == .week
         let cells = isWeek ? MonthGrid.weekRow(containing: selectedDate) : MonthGrid.days(for: visibleMonth)
@@ -242,10 +242,9 @@ struct MonthGridView: View {
                             Rectangle().fill(Colors.accent)
                         } else if isSelected {
                             Rectangle().strokeBorder(Colors.accent, lineWidth: 1)
-                        } else if let opacity = Self.tintOpacity(level: counts.level) {
-                            Rectangle().fill((counts.events > 0 ? Colors.eventDot : Colors.accent).opacity(opacity))
                         }
                     }
+                busyBar(for: counts)
             }
             .frame(maxWidth: .infinity, minHeight: Self.rowHeight)
             .contentShape(Rectangle())
@@ -258,13 +257,22 @@ struct MonthGridView: View {
         ))
     }
 
-    private static func tintOpacity(level: Int) -> Double? {
-        switch level {
-        case 1: return tintLow
-        case 2: return tintMedium
-        case 3...: return tintHigh
-        default: return nil
+    /// Two very thin lines under the number: purple for events on top, accent for tasks below.
+    /// Each one's width is its own load (a third, two thirds or the full width of the number's
+    /// square for 1 / 2-3 / 4+ items) and it is absent when there are none. The block always has
+    /// the same height so rows don't shift.
+    private func busyBar(for counts: DayDensity) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            busyLine(count: counts.events, color: Colors.eventDot)
+            busyLine(count: counts.tasks, color: Colors.accent)
         }
+        .frame(width: Self.cellSize, height: 3, alignment: .topLeading)
+        .padding(.top, 2)
+    }
+
+    private func busyLine(count: Int, color: Color) -> some View {
+        let fraction = count == 0 ? 0.0 : count == 1 ? 1.0 / 3.0 : count < 4 ? 2.0 / 3.0 : 1.0
+        return Rectangle().fill(color).frame(width: Self.cellSize * fraction, height: 1)
     }
 
     private var monthTitle: String {
