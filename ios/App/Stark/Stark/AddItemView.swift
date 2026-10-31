@@ -35,11 +35,6 @@ struct AddItemView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker("Type", selection: $kind) {
-                    ForEach(Kind.allCases, id: \.self) { Text($0.rawValue) }
-                }
-                .pickerStyle(.segmented)
-
                 TextField("Title", text: $title)
                     .focused($focusedField, equals: .title)
                 TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
@@ -112,7 +107,16 @@ struct AddItemView: View {
             }
             .sigilKeyboardBar(isVisible: focusedField == .title || focusedField == .notes,
                               onTap: insertSigil)
+            // Big, high-contrast two-way switch pinned above the form (issue #109): the stock
+            // segmented control was small, grey-on-grey and sat inside the form's rounded card.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                KindSwitch(kind: $kind)
+                    .padding(.horizontal, Spacing.md)
+                    .padding(.vertical, Spacing.sm)
+                    .background(Colors.background)
+            }
             .navigationTitle("Add \(kind.rawValue)")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 SquareToolbarButton(systemImage: "plus", label: "Add", placement: .confirmationAction,
                                     isProminent: true,
@@ -161,5 +165,32 @@ struct AddItemView: View {
             ))
         }
         dismiss()
+    }
+}
+
+/// Event / Reminder switch: two flat 48 pt squares side by side, the chosen one filled with the
+/// accent, the other outlined. Square and flat like the rest of the app (no rounded segments).
+private struct KindSwitch: View {
+    @Binding var kind: AddItemView.Kind
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(AddItemView.Kind.allCases, id: \.self) { option in
+                let selected = option == kind
+                Button {
+                    kind = option
+                } label: {
+                    Text(option.rawValue)
+                        .font(Fonts.mono(15, weight: .semibold))
+                        .foregroundStyle(selected ? Colors.background : Colors.text)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .background(selected ? Colors.accent : Color.clear)
+                        .overlay(Rectangle().strokeBorder(selected ? Colors.accent : Colors.checkboxBorder, lineWidth: 1))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
     }
 }
