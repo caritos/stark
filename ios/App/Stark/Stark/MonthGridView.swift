@@ -4,16 +4,23 @@ import StarkKit
 
 /// Fixed-height, Sunday-first month grid, always 6 rows x 7 columns. The cells before day 1 and
 /// after the month's last day show the neighbouring months' real dates, dimmed
-/// (`Colors.textSecondary`); tapping one selects it and scrolls the
+/// (`Colors.textSecondary`), tinted by how busy they are; tapping one selects it and scrolls the
 /// agenda, but the grid stays on the visible month (only the chevrons page). Today is a filled
 /// accent square (on whichever cell it falls, in the month or not), the selected day (when it
 /// isn't today) an outlined one.
+///
+/// Each day number's square is tinted by how busy the day is (issue #110, replacing the old
+/// markers under the number): three strengths by `DayDensity.level` (1 / 2-3 / 4+ items), purple
+/// (`Colors.eventDot`) when the day has any event, accent for tasks only, as in `YearView`. The
+/// counts come from `gridDensity`, i.e. from the same `buildAgendaItems` the agenda uses, so the
+/// grid can't disagree with the list. Today's filled square and the selected day's outline win
+/// over the tint.
 ///
 /// In `.week` mode (the collapsed state) the grid is one row: the Sunday-first week of
 /// `selectedDate`, drawn with the same cells. The title is the selected day's month and the
 /// chevrons step the selection by a week (through `onSelectDate`, so the agenda follows) instead
 /// of paging months. `visibleMonth` follows the selected day's month while in week mode and when
-/// returning to month, so the store's loaded months always cover the
+/// returning to month, so the density snapshot and the store's loaded months always cover the
 /// week on screen (the week lies inside its month's 6-row grid). In `.month` mode a plain
 /// selection (a tap) never changes `visibleMonth` — but `scrollPagingDate` does (issue #101),
 /// since scrolling the agenda is deliberately allowed to page the month grid even though tapping
@@ -29,6 +36,11 @@ struct GridPagingRequest: Equatable {
 struct MonthGridView: View {
     @EnvironmentObject private var store: PlannerStore
     @State private var visibleMonth = YearMonth(date: Date())
+    /// The last computed density, tagged with the month it belongs to. Recomputed only when its
+    /// inputs change (see `DensityInputs`), never in `body`: `body` re-runs on unrelated updates
+    /// (a pending-completion tick, a sheet opening) and the computation walks every recurring
+    /// event and reminder.
+    @State private var density: DensitySnapshot?
     /// Passed in (not read from `Date()` here) so the highlight moves when the day changes.
     let today: Date
     /// `.week` shows one row, anything else the full month grid (`.year` is passed too, while the
@@ -51,6 +63,9 @@ struct MonthGridView: View {
     /// The number's square plus a little air.
     private static let rowHeight: CGFloat = 34
     private static let cellSize: CGFloat = 30
+    private static let tintLow = 0.15
+    private static let tintMedium = 0.30
+    private static let tintHigh = 0.50
     /// The grid is always 6 full rows (42 cells), which keeps the grid and the agenda below it
     /// from resizing as the user pages between months.
     private static let maxRows = MonthGrid.dayCount / 7
@@ -60,6 +75,9 @@ struct MonthGridView: View {
     var body: some View {
         let todayIso = DateMath.isoDate(from: today)
         let selectedIso = DateMath.isoDate(from: selectedDate)
+        // Only a snapshot computed for the month on screen is used, so paging never flashes the
+        // previous month's tint on the new month's days while the new ones are computed.
+        let visibleDensity = density?.month == visibleMonth ? density?.days ?? [:] : [:]
         let isWeek = mode == .week
         let cells = isWeek ? MonthGrid.weekRow(containing: selectedDate) : MonthGrid.days(for: visibleMonth)
 
@@ -82,7 +100,8 @@ struct MonthGridView: View {
                     dayCell(
                         day: day,
                         isToday: day.iso == todayIso,
-                        isSelected: day.iso == selectedIso
+                        isSelected: day.iso == selectedIso,
+                        counts: visibleDensity[day.iso] ?? .none
                     )
                 }
             }
@@ -96,6 +115,23 @@ struct MonthGridView: View {
         .padding(.bottom, Spacing.sm)
         .background(Colors.background)
         .task { loadVisibleMonths() }
+        // Recompute when (and only when) the month, today, or the store's items change. Equal
+        // arrays share a buffer, so the comparison SwiftUI makes on every `body` is cheap until
+        // the store really republishes. The work runs off the main actor, and a stale result
+        // (the id changed while it ran) is dropped.
+        .task(id: densityInputs) {
+            let inputs = densityInputs
+            let events = inputs.events
+            let reminders = inputs.reminders
+            let today = inputs.today
+            let month = inputs.month
+            let (year, month0) = (month.year, month.month0)
+            let days = await Task.detached(priority: .userInitiated) {
+                gridDensity(events: events, reminders: reminders, month: YearMonth(year: year, month0: month0), today: today)
+            }.value
+            guard !Task.isCancelled else { return }
+            density = DensitySnapshot(month: month, days: days)
+        }
         // The day rolled over: if the grid was showing the old today's month, show the new one's.
         // (Not in week mode: there `visibleMonth` follows the selected day, not today.)
         .onChange(of: today) { oldToday, newToday in
@@ -131,6 +167,25 @@ struct MonthGridView: View {
     /// can be in the previous or next month's file).
     private func loadVisibleMonths() {
         store.loadMonths(covering: MonthGrid.range(for: visibleMonth))
+    }
+
+    /// Everything the density depends on. It is the `.task(id:)`, so the density is recomputed
+    /// exactly when one of these changes.
+    private struct DensityInputs: Equatable {
+        let month: YearMonth
+        let today: Date
+        let events: [Event]
+        let reminders: [Reminder]
+    }
+
+    private struct DensitySnapshot {
+        let month: YearMonth
+        /// Keyed by ISO date (`yyyy-MM-dd`), covering every cell of the month's grid.
+        let days: [String: DayDensity]
+    }
+
+    private var densityInputs: DensityInputs {
+        DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders)
     }
 
     private var header: some View {
@@ -171,7 +226,7 @@ struct MonthGridView: View {
         .accessibilityLabel(label)
     }
 
-    private func dayCell(day: GridDay, isToday: Bool, isSelected: Bool) -> some View {
+    private func dayCell(day: GridDay, isToday: Bool, isSelected: Bool, counts: DayDensity) -> some View {
         Button {
             // A neighbouring month's cell selects that date and scrolls the agenda; the grid
             // stays on the visible month (only the chevrons page).
@@ -187,6 +242,8 @@ struct MonthGridView: View {
                             Rectangle().fill(Colors.accent)
                         } else if isSelected {
                             Rectangle().strokeBorder(Colors.accent, lineWidth: 1)
+                        } else if let opacity = Self.tintOpacity(level: counts.level) {
+                            Rectangle().fill((counts.events > 0 ? Colors.eventDot : Colors.accent).opacity(opacity))
                         }
                     }
             }
@@ -195,9 +252,19 @@ struct MonthGridView: View {
         }
         .buttonStyle(.plain)
         // In-month cells read "15" (unchanged); a neighbouring month's cell names its month.
-        .accessibilityLabel(
-            (day.isInMonth ? "\(day.day)" : AgendaFormat.monthDay(day.date)) + (isToday ? ", today" : "")
-        )
+        .accessibilityLabel(counts.accessibilityLabel(
+            title: day.isInMonth ? "\(day.day)" : AgendaFormat.monthDay(day.date),
+            isToday: isToday
+        ))
+    }
+
+    private static func tintOpacity(level: Int) -> Double? {
+        switch level {
+        case 1: return tintLow
+        case 2: return tintMedium
+        case 3...: return tintHigh
+        default: return nil
+        }
     }
 
     private var monthTitle: String {
