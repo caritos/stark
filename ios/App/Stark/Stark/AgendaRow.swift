@@ -56,6 +56,11 @@ struct AgendaRowView: View {
                         .font(Fonts.mono(12))
                         .foregroundStyle(timeLine.isAccent ? Colors.accent : Colors.textSecondary)
                 }
+                if let secondary = planLines?.secondary {
+                    Text(secondary)
+                        .font(Fonts.mono(11))
+                        .foregroundStyle(Colors.textSecondary)
+                }
                 HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
                     if showsPriorityMarks {
                         Text(item.priority.marks)
@@ -139,7 +144,10 @@ struct AgendaRowView: View {
     /// (hidden) visuals show.
     var accessibilitySummary: String {
         var parts: [String] = []
-        if let timeLine { parts.append(timeLine.text) }
+        if let range = item.plannedRange {
+            parts.append("planned \(AgendaFormat.time(range.lowerBound)) to \(AgendaFormat.time(range.upperBound))")
+            if let secondary = planLines?.secondary { parts.append(secondary) }
+        } else if let timeLine { parts.append(timeLine.text) }
         parts.append(item.title)
         if let milestone = item.milestone {
             parts.append(milestone.kind == .birthday ? "birthday" : "anniversary")
@@ -163,7 +171,25 @@ struct AgendaRowView: View {
         return location
     }
 
+    /// The overdue label for an overdue reminder row, as the unplanned row shows it.
+    private var overdueText: String? {
+        guard case .reminder = item.kind, item.isOverdue else { return nil }
+        var text = AgendaFormat.overdueLabel(item.occurrence)
+        if let today, let days = item.daysOverdue(today: today) {
+            text += " · \(OverdueLabel.text(daysOverdue: days))"
+        }
+        return text
+    }
+
+    /// A planned row's range line and its secondary "due" line; nil for an unplanned row.
+    private var planLines: PlanRowText.Lines? {
+        guard let range = item.plannedRange, case .reminder = item.kind else { return nil }
+        return PlanRowText.make(occurrence: item.occurrence, overdueText: overdueText,
+                                range: range, time: AgendaFormat.time)
+    }
+
     private var timeLine: (text: String, isAccent: Bool)? {
+        if let planLines { return (planLines.primary, false) }
         switch item.kind {
         case .event(let event):
             if event.isAllDay { return ("All day", false) }

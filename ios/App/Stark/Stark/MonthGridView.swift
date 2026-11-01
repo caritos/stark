@@ -123,11 +123,12 @@ struct MonthGridView: View {
             let inputs = densityInputs
             let events = inputs.events
             let reminders = inputs.reminders
+            let plans = inputs.plans
             let today = inputs.today
             let month = inputs.month
             let (year, month0) = (month.year, month.month0)
             let days = await Task.detached(priority: .userInitiated) {
-                gridDensity(events: events, reminders: reminders, month: YearMonth(year: year, month0: month0), today: today)
+                gridDensity(events: events, reminders: reminders, month: YearMonth(year: year, month0: month0), today: today, plans: plans)
             }.value
             guard !Task.isCancelled else { return }
             density = DensitySnapshot(month: month, days: days)
@@ -176,6 +177,7 @@ struct MonthGridView: View {
         let today: Date
         let events: [Event]
         let reminders: [Reminder]
+        let plans: [PlanBlock]
     }
 
     private struct DensitySnapshot {
@@ -185,7 +187,7 @@ struct MonthGridView: View {
     }
 
     private var densityInputs: DensityInputs {
-        DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders)
+        DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders, plans: store.plans)
     }
 
     private var header: some View {

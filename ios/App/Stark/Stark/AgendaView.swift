@@ -288,7 +288,8 @@ struct AgendaView: View {
             // The real today, not the anchor: overdue logic must not move with the window.
             today: now
         )
-        return groupAgendaByDay(items, in: range, calendar: Self.calendar)
+        let planned = applyPlans(items, plans: store.plans, today: now, calendar: Self.calendar)
+        return groupAgendaByDay(planned, in: range, calendar: Self.calendar)
     }
 
     private func makeRows(_ sections: [AgendaDay], todayStart: Date) -> [ListRow] {

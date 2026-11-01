@@ -92,10 +92,11 @@ struct YearView: View {
             let inputs = densityInputs
             let events = inputs.events
             let reminders = inputs.reminders
+            let plans = inputs.plans
             let today = inputs.today
             let year = inputs.year
             let days = await Task.detached(priority: .userInitiated) {
-                yearDensity(events: events, reminders: reminders, year: year, today: today)
+                yearDensity(events: events, reminders: reminders, year: year, today: today, plans: plans)
             }.value
             guard !Task.isCancelled else { return }
             density = DensitySnapshot(year: year, days: days)
@@ -109,6 +110,7 @@ struct YearView: View {
         let today: Date
         let events: [Event]
         let reminders: [Reminder]
+        let plans: [PlanBlock]
     }
 
     private struct DensitySnapshot {
@@ -118,7 +120,7 @@ struct YearView: View {
     }
 
     private var densityInputs: DensityInputs {
-        DensityInputs(year: year, today: today, events: store.events, reminders: store.reminders)
+        DensityInputs(year: year, today: today, events: store.events, reminders: store.reminders, plans: store.plans)
     }
 
     private var header: some View {
