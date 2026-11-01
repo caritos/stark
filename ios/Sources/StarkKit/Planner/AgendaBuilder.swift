@@ -13,7 +13,9 @@ public struct AgendaItem: Identifiable, Equatable {
     public let occurrence: Date
     /// Where the row sits in the list. Equal to `occurrence` unless the row is overdue-pinned.
     public let displayDate: Date
-    /// True when `displayDate` is start-of-today and `occurrence` is the missed date.
+    /// True when `occurrence` is a missed date and the row stands for it. A normal overdue row has
+    /// `displayDate` at start-of-today; a planned copy of an overdue row (`plan != nil`) keeps
+    /// `isOverdue == true` but its `displayDate` is `plan.start`, which can be a later day.
     public let isOverdue: Bool
     /// Timeboxing: the plan block this row was placed by (`applyPlans`), or nil for a normal row.
     /// A planned row's `displayDate` is the plan's start.

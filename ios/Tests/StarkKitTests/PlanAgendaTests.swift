@@ -138,4 +138,53 @@ struct PlanAgendaTests {
         #expect(!items.isEmpty)
         #expect(applyPlans(items, plans: [], today: today) == items)
     }
+
+    @Test("a plan on a carried miss disappears once the miss is resolved")
+    func planOnCarriedMissGoneAfterCompletion() {
+        let daily = RecurrenceRule(frequency: .daily)
+        let firstMiss = dt("2026-09-17", hour: 9, minute: 0)
+        var master = Reminder(id: "r", title: "Stretch", dueDate: firstMiss, recurrence: daily)
+        let plan = PlanBlock(id: "p1", reminderID: "r", occurrence: firstMiss,
+                             start: dt("2026-09-21", hour: 8, minute: 0), minutes: 15)
+
+        let before = applyPlans(build(reminders: [master]), plans: [plan], today: today)
+        #expect(before.contains { $0.plan == plan })
+
+        // Mirror PlannerStore.completeReminder: exdate the miss and every later miss up to today,
+        // and add a completed one-off copy for the resolved occurrence.
+        let after = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: firstMiss))!
+        let todayEnd = cal.date(byAdding: .day, value: 1, to: todayStart)!.addingTimeInterval(-1)
+        let later = OccurrenceExpander.expand(reminder: master, in: after...todayEnd)
+        #expect(!later.isEmpty)
+        master.exceptionDates.append(firstMiss)
+        master.exceptionDates.append(contentsOf: later)
+        var copy = master
+        copy.id = "copy"
+        copy.recurrence = nil
+        copy.exceptionDates = []
+        copy.isCompleted = true
+        copy.completedDate = firstMiss
+        copy.dueDate = firstMiss
+        copy.seriesID = "r"
+
+        let resolved = applyPlans(build(reminders: [master, copy]), plans: [plan], today: today)
+        #expect(resolved.allSatisfy { $0.plan == nil })
+    }
+
+    @Test("an overdue row planned for today sorts at its planned time among the incomplete rows")
+    func overdueRowPlannedTodaySortsByPlannedTime() {
+        let missedAt = dt("2026-09-19", hour: 9, minute: 0)
+        let overdue = Reminder(id: "r", title: "Overdue", dueDate: missedAt)
+        let early = Reminder(id: "early", title: "Early", dueDate: dt("2026-09-20", hour: 8, minute: 0))
+        let late = Reminder(id: "late", title: "Late", dueDate: dt("2026-09-20", hour: 17, minute: 0))
+        let plan = PlanBlock(id: "p1", reminderID: "r", occurrence: missedAt,
+                             start: dt("2026-09-20", hour: 12, minute: 0), minutes: 30)
+
+        let result = applyPlans(build(reminders: [overdue, early, late]), plans: [plan], today: today)
+
+        #expect(result.map(\.title) == ["Early", "Overdue", "Late"])
+        #expect(result[1].isOverdue)
+        #expect(result[1].plan == plan)
+        #expect(result[1].displayDate == dt("2026-09-20", hour: 12, minute: 0))
+    }
 }

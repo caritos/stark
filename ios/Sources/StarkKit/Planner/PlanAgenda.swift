@@ -14,6 +14,9 @@ import Foundation
 ///   and a planned copy is ADDED on the plan's day, keeping `occurrence` and `isOverdue` so the
 ///   "due Sep 19" label survives.
 ///
+/// Duplicates: if several plans exist for one occurrence, only the first in `plans` order is
+/// used (the others are ignored); the store / `PlanDraft` must prevent duplicates.
+///
 /// The plan never changes the reminder itself. The result is re-sorted with the agenda's own
 /// order (`sortAgendaItems`); planned rows sort among that day's incomplete rows at their planned
 /// time. When no plan matches (including an empty `plans`), `items` is returned unchanged.

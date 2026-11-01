@@ -100,15 +100,17 @@ public func dayDensity(
 /// The grid's cell dates come from `DateMath`, which is hard-wired to `TimeZone.current`, and
 /// `buildAgendaItems` and `OccurrenceExpander` also expand in the process's current time zone, so
 /// the injected `calendar` must share the current time zone (the default does); a calendar in a
-/// different zone would shift the range by a day.
+/// different zone would shift the range by a day. `plans` are applied as in the agenda
+/// (`applyPlans`): a task planned for another day counts on both days.
 public func gridDensity(
     events: [Event],
     reminders: [Reminder],
     month: YearMonth,
     today: Date = Date(),
-    calendar: Calendar = Calendar(identifier: .gregorian)
+    calendar: Calendar = Calendar(identifier: .gregorian),
+    plans: [PlanBlock] = []
 ) -> [String: DayDensity] {
-    densityCounts(events: events, reminders: reminders, range: MonthGrid.range(for: month, calendar: calendar), today: today, calendar: calendar)
+    densityCounts(events: events, reminders: reminders, range: MonthGrid.range(for: month, calendar: calendar), today: today, calendar: calendar, plans: plans)
 }
 
 /// The counting rule shared by the grid and the year: per-day task/event counts for every row
@@ -121,10 +123,14 @@ private func densityCounts(
     reminders: [Reminder],
     range: ClosedRange<Date>,
     today: Date,
-    calendar: Calendar
+    calendar: Calendar,
+    plans: [PlanBlock] = []
 ) -> [String: DayDensity] {
     var result: [String: DayDensity] = [:]
-    let items = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
+    // Timeboxing: a planned task counts like the agenda shows it, so one planned for another day
+    // counts on both its normal row's day and the planned day.
+    let items = applyPlans(buildAgendaItems(events: events, reminders: reminders, in: range, today: today),
+                           plans: plans, today: today, calendar: calendar)
     for item in items {
         // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
         // the range; they belong to a cell that is not in this range.
@@ -155,13 +161,14 @@ public enum YearGrid {
 /// Per-day task/event counts for a whole calendar year, keyed by ISO date (`yyyy-MM-dd`), only
 /// days of that year with something on them. Same rules as `gridDensity` (built on
 /// `buildAgendaItems`; an overdue reminder counts on today's day, and only when today is inside
-/// the year). The same time-zone contract applies.
+/// the year). The same time-zone contract applies. `plans` are applied as in the agenda (`applyPlans`).
 public func yearDensity(
     events: [Event],
     reminders: [Reminder],
     year: Int,
     today: Date = Date(),
-    calendar: Calendar = Calendar(identifier: .gregorian)
+    calendar: Calendar = Calendar(identifier: .gregorian),
+    plans: [PlanBlock] = []
 ) -> [String: DayDensity] {
-    densityCounts(events: events, reminders: reminders, range: YearGrid.range(year: year, calendar: calendar), today: today, calendar: calendar)
+    densityCounts(events: events, reminders: reminders, range: YearGrid.range(year: year, calendar: calendar), today: today, calendar: calendar, plans: plans)
 }
