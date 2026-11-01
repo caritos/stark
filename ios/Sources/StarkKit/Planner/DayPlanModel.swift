@@ -38,8 +38,10 @@ public struct DayPlanModel {
 
         func isOnDay(_ date: Date) -> Bool { calendar.isDate(date, inSameDayAs: dayStart) }
 
+        // An occurrence the user marked Skip (didn't attend) takes no time, so it is neither on the
+        // timeline nor in the banner and its slot reads as free (issue #117). Attended ones stay.
         let eventItems = built.filter {
-            if case .event = $0.kind { return isOnDay($0.displayDate) } else { return false }
+            if case .event = $0.kind { return isOnDay($0.displayDate) && $0.outcome != .skipped } else { return false }
         }
         var bannerSeen = Set<String>()
         let allDayEvents = eventItems.filter { item in

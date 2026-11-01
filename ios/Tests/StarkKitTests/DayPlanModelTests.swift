@@ -172,6 +172,28 @@ struct DayPlanModelTests {
         #expect(model.day == day)
     }
 
+    @Test func skippedEventIsNotOnTheTimelineOrBanner() {
+        let skippedAt = at(2026, 11, 3, 9)
+        let skipped = Event(id: "skipped", title: "Church", start: skippedAt, end: at(2026, 11, 3, 10),
+                            outcomes: [EventOutcomeRecord(date: skippedAt, outcome: .skipped)])
+        let attended = Event(id: "attended", title: "Church 2", start: at(2026, 11, 3, 11), end: at(2026, 11, 3, 12),
+                             outcomes: [EventOutcomeRecord(date: at(2026, 11, 3, 11), outcome: .attended)])
+        let skippedAllDay = Event(id: "skippedAllDay", title: "Fair", start: at(2026, 11, 3), isAllDay: true,
+                                  outcomes: [EventOutcomeRecord(date: at(2026, 11, 3), outcome: .skipped)])
+        let plain = Event(id: "plain", title: "Standup", start: at(2026, 11, 3, 13), end: at(2026, 11, 3, 14))
+        let model = make(events: [skipped, attended, skippedAllDay, plain], reminders: [])
+        #expect(eventIDs(model.events) == ["plain", "attended"])
+        #expect(model.allDayEvents.isEmpty)
+    }
+
+    @Test func skippingOneOccurrenceKeepsTheOtherDaysOfASeries() {
+        let weekly = Event(id: "weekly", title: "Practice", start: at(2026, 11, 3, 9), end: at(2026, 11, 3, 10),
+                           recurrence: RecurrenceRule(frequency: .daily),
+                           outcomes: [EventOutcomeRecord(date: at(2026, 11, 3, 9), outcome: .skipped)])
+        #expect(eventIDs(make(events: [weekly], reminders: [], day: at(2026, 11, 3)).events).isEmpty)
+        #expect(eventIDs(make(events: [weekly], reminders: [], day: at(2026, 11, 4)).events) == ["weekly"])
+    }
+
     func eventIDs(_ items: [AgendaItem]) -> [String] {
         items.compactMap { if case .event(let e) = $0.kind { return e.id } else { return nil } }
     }
