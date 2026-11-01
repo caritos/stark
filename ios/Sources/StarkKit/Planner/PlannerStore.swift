@@ -103,6 +103,14 @@ public final class PlannerStore: ObservableObject {
             monthPlans[month] = result.plans
             warnings.append(contentsOf: result.warnings.map { "\(month.fileName): \($0)" })
             loadedMonths.insert(month)
+            // A plan's task may live in a month nothing else loads (a one-off due far away):
+            // load it too, so the planned task is in memory for the agenda. `month` is already
+            // in `loadedMonths`, so this cannot recurse back into it; a month that fails sets
+            // `error` and stays unloaded (retryable) like any other.
+            let taskMonths = Set(result.plans.map { YearMonth(date: $0.occurrence) })
+            for taskMonth in taskMonths.sorted() where !loadedMonths.contains(taskMonth) {
+                loadMonth(taskMonth)
+            }
         } catch {
             // Do NOT mark as loaded and do NOT set an empty result — a real read failure
             // must stay retryable and must never be silently treated as "this month is empty".

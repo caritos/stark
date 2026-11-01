@@ -60,4 +60,18 @@ struct PlanDensityTests {
         #expect(yearDensity(events: events, reminders: reminders, year: 2026, today: today, plans: [])
                 == yearDensity(events: events, reminders: reminders, year: 2026, today: today))
     }
+
+    @Test("a far-dated one-off planned in the grid counts on the planned day")
+    func farOneOffCountsOnPlannedDay() {
+        let due = dt("2026-12-09", hour: 9)
+        let far = Reminder(id: "far", title: "Far", dueDate: due)
+        let plan = PlanBlock(id: "p", reminderID: "far", occurrence: due, start: dt("2026-09-21", hour: 14), minutes: 30)
+        let grid = gridDensity(events: [], reminders: [far], month: month, today: today, plans: [plan])
+        #expect(grid["2026-09-21"] == DayDensity(tasks: 1, events: 0))
+        #expect(grid.count == 1)
+        let year = yearDensity(events: [], reminders: [far], year: 2026, today: today, plans: [plan])
+        #expect(year["2026-09-21"] == DayDensity(tasks: 1, events: 0))
+        #expect(year["2026-12-09"] == DayDensity(tasks: 1, events: 0))
+        #expect(year.count == 2)
+    }
 }

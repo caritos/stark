@@ -187,4 +187,66 @@ struct PlanAgendaTests {
         #expect(result[1].plan == plan)
         #expect(result[1].displayDate == dt("2026-09-20", hour: 12, minute: 0))
     }
+
+    // MARK: Tasks planned from outside the agenda window
+
+    private func farPlan(_ reminderID: String, occurrence: Date) -> PlanBlock {
+        PlanBlock(id: "pf", reminderID: reminderID, occurrence: occurrence,
+                  start: dt("2026-09-21", hour: 14, minute: 0), minutes: 30)
+    }
+
+    @Test("a far-future one-off planned for tomorrow shows on tomorrow")
+    func farFutureOneOffIsSynthesized() {
+        let due = dt("2026-12-09", hour: 9, minute: 0) // +80 days
+        let far = Reminder(id: "far", title: "Far", dueDate: due)
+        let plan = farPlan("far", occurrence: due)
+        let items = build(reminders: [far])
+        #expect(items.isEmpty)
+        let result = applyPlans(items, plans: [plan], today: today, reminders: [far])
+        #expect(result.count == 1)
+        #expect(result.first?.plan == plan)
+        #expect(result.first?.occurrence == due)
+        #expect(result.first?.displayDate == plan.start)
+        #expect(result.first?.isOverdue == false)
+    }
+
+    @Test("a one-off overdue by more than 90 days planned for tomorrow shows as overdue")
+    func longOverdueOneOffIsSynthesized() {
+        let due = dt("2026-05-01", hour: 9, minute: 0)
+        let old = Reminder(id: "old", title: "Old", dueDate: due)
+        let plan = farPlan("old", occurrence: due)
+        let items = build(reminders: [old])
+        #expect(items.isEmpty)
+        let result = applyPlans(items, plans: [plan], today: today, reminders: [old])
+        #expect(result.count == 1)
+        #expect(result.first?.isOverdue == true)
+        #expect(result.first?.occurrence == due)
+        #expect(result.first?.plan == plan)
+    }
+
+    @Test("completed, recurring, mismatched or missing reminders are not synthesized")
+    func onlyOpenMatchingOneOffsAreSynthesized() {
+        let due = dt("2026-12-09", hour: 9, minute: 0)
+        let done = Reminder(id: "done", title: "Done", dueDate: due, isCompleted: true, completedDate: due)
+        let series = Reminder(id: "series", title: "Series", dueDate: due, recurrence: RecurrenceRule(frequency: .weekly))
+        let moved = Reminder(id: "moved", title: "Moved", dueDate: dt("2026-12-10", hour: 9, minute: 0))
+        let plans = [
+            PlanBlock(id: "a", reminderID: "done", occurrence: due, start: dt("2026-09-21", hour: 9, minute: 0), minutes: 30),
+            PlanBlock(id: "b", reminderID: "series", occurrence: due, start: dt("2026-09-21", hour: 10, minute: 0), minutes: 30),
+            PlanBlock(id: "c", reminderID: "moved", occurrence: due, start: dt("2026-09-21", hour: 11, minute: 0), minutes: 30),
+            PlanBlock(id: "d", reminderID: "missing", occurrence: due, start: dt("2026-09-21", hour: 12, minute: 0), minutes: 30),
+        ]
+        let items = build(reminders: [done, moved])
+        let result = applyPlans(items, plans: plans, today: today, reminders: [done, series, moved])
+        #expect(result.allSatisfy { $0.plan == nil })
+        #expect(result == items)
+    }
+
+    @Test("a lapsed plan for a far one-off is not synthesized")
+    func lapsedFarPlanIgnored() {
+        let due = dt("2026-12-09", hour: 9, minute: 0)
+        let far = Reminder(id: "far", title: "Far", dueDate: due)
+        let plan = PlanBlock(id: "p", reminderID: "far", occurrence: due, start: dt("2026-09-19", hour: 9, minute: 0), minutes: 30)
+        #expect(applyPlans([], plans: [plan], today: today, reminders: [far]).isEmpty)
+    }
 }

@@ -288,7 +288,8 @@ struct AgendaView: View {
             // The real today, not the anchor: overdue logic must not move with the window.
             today: now
         )
-        let planned = applyPlans(items, plans: store.plans, today: now, calendar: Self.calendar)
+        let planned = applyPlans(items, plans: store.plans, today: now, reminders: store.reminders,
+                                 calendar: Self.calendar)
         return groupAgendaByDay(planned, in: range, calendar: Self.calendar)
     }
 

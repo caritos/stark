@@ -128,9 +128,10 @@ private func densityCounts(
 ) -> [String: DayDensity] {
     var result: [String: DayDensity] = [:]
     // Timeboxing: a planned task counts like the agenda shows it, so one planned for another day
-    // counts on both its normal row's day and the planned day.
+    // counts on both its normal row's day and the planned day. `reminders` lets a one-off due
+    // outside `range` still count on its planned day.
     let items = applyPlans(buildAgendaItems(events: events, reminders: reminders, in: range, today: today),
-                           plans: plans, today: today, calendar: calendar)
+                           plans: plans, today: today, reminders: reminders, calendar: calendar)
     for item in items {
         // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
         // the range; they belong to a cell that is not in this range.

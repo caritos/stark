@@ -165,4 +165,35 @@ struct PlannerStorePlansTests {
         store.replacePlans(on: day, with: draft.blocksToSave)
         #expect(Set(store.plans(on: day).map(\.id)) == [tickedBlock.id, unloadedBlock.id])
     }
+
+    @Test("loading a month loads the month of each plan's task")
+    @MainActor
+    func loadingPlansLoadsTheirTasksMonth() throws {
+        let (store, file, _) = makeStore()
+        let day = DateMath.date(from: "2026-11-02")
+        let due = DateMath.date(from: "2027-03-15")
+        let far = Reminder(id: "far", title: "Far", dueDate: due)
+        try file.saveMonth(YearMonth(date: due), events: [], reminders: [far])
+        try file.saveMonth(YearMonth(date: day), events: [], reminders: [],
+                           plans: [PlanBlock(reminderID: "far", occurrence: due, start: day, minutes: 30)])
+        start(store, around: day)
+        #expect(!AgendaWindow.loadRange(around: day).contains(due))
+        #expect(store.reminders.map(\.id) == ["far"])
+        #expect(store.error == nil)
+    }
+
+    @Test("an unreadable task month leaves the plan's month loaded and sets error")
+    @MainActor
+    func unreadableTaskMonthSetsError() throws {
+        let (store, file, root) = makeStore()
+        let day = DateMath.date(from: "2026-11-02")
+        let due = DateMath.date(from: "2027-03-15")
+        let block = PlanBlock(reminderID: "far", occurrence: due, start: day, minutes: 30)
+        try file.saveMonth(YearMonth(date: day), events: [], reminders: [], plans: [block])
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("docs/2027-03.ics"),
+                                                withIntermediateDirectories: true)
+        start(store, around: day)
+        #expect(store.plans == [block])
+        #expect(store.error != nil)
+    }
 }
