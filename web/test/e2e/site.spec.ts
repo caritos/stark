@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 
 // Stark's marketing site: a static site for an iOS app with no accounts. These checks pin what
 // the port from the old Bun site must keep (App Store link, contact address, icons, screenshots,
-// the trailing-slash redirect, a phone-width layout) and that no page leads to the starter's /app/.
+// the trailing-slash redirect, a phone-width layout), that no page links to /app/ and that the
+// starter's React app is gone: /app/ is the ordinary 404 page (2026-11-01).
 
 const pages = ["/", "/faq", "/privacy", "/terms", "/support"];
 
@@ -64,4 +65,17 @@ test("at phone width no page scrolls sideways; the screenshot strip scrolls insi
   const [scrollW, clientW] = await strip.evaluate((el) => [el.scrollWidth, el.clientWidth]);
   expect(scrollW).toBeGreaterThan(clientW);
   await context.close();
+});
+
+test("the starter's React app is gone: /app, /app/ and anything below are the 404 page", async ({ page, request }) => {
+  const nope = await (await request.get("/nope")).text();
+  for (const path of ["/app", "/app/", "/app/login", "/app/notes/1", "/app/assets/index.js"]) {
+    const res = await request.get(path, { maxRedirects: 0 });
+    expect(res.status(), path).toBe(404);
+    expect(await res.text(), path).toBe(nope);
+  }
+  const nav = await page.goto("/app/");
+  expect(nav?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in" })).toHaveCount(0);
 });

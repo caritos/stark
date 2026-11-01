@@ -3,7 +3,6 @@ import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { TEST_EMAIL, TEST_PASSWORD } from "./support";
 
 const webDir = path.resolve(import.meta.dirname, "..", "..");
 const apiDir = path.join(webDir, "api");
@@ -70,8 +69,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     const bin = path.join(tmp, "stark");
     // The Go binary embeds a copy of web/public; refresh it (also when E2E_SKIP_BUILD=1).
     run("bash", [path.join(webDir, "scripts", "sync-public.sh")], webDir);
-    // E2E_SKIP_BUILD=1 reuses the existing frontend build; the Go binary is
-    // always rebuilt (cached, fast) because it lives in the temp dir.
+    // pnpm build syncs web/public and removes any React build (Stark embeds none). E2E_SKIP_BUILD=1
+    // skips it; the Go binary is always rebuilt (cached, fast) because it lives in the temp dir.
     if (process.env.E2E_SKIP_BUILD !== "1") run("pnpm", ["build"], webDir);
     const id = buildId();
     run(
@@ -98,7 +97,6 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       ADDR: `127.0.0.1:${port}`,
       PUBLIC_ORIGIN: base,
     };
-    run(bin, ["user", "create", TEST_EMAIL], tmp, `${TEST_PASSWORD}\n`, env);
 
     child = spawn(bin, ["serve"], { cwd: tmp, env, stdio: ["ignore", "pipe", "pipe"] });
     let log = "";
