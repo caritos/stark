@@ -6,6 +6,8 @@ import Combine
 public final class PlannerStore: ObservableObject {
     @Published public private(set) var events: [Event] = []
     @Published public private(set) var reminders: [Reminder] = []
+    /// Timeboxing plan blocks from every loaded month (bucketed by the month of `start`).
+    @Published public private(set) var plans: [PlanBlock] = []
     @Published public var error: String?
     /// Non-fatal parse warnings accumulated across every file read this session (a skipped
     /// malformed `VEVENT`/`VTODO` block, prefixed with the file name it came from), so a
@@ -19,6 +21,7 @@ public final class PlannerStore: ObservableObject {
     private var recurringReminders: [Reminder] = []
     private var monthEvents: [YearMonth: [Event]] = [:]
     private var monthReminders: [YearMonth: [Reminder]] = [:]
+    private var monthPlans: [YearMonth: [PlanBlock]] = [:]
 
     public init(file: PlannerFile) {
         self.file = file
@@ -97,6 +100,7 @@ public final class PlannerStore: ObservableObject {
             let result = try file.loadMonth(month)
             monthEvents[month] = result.events
             monthReminders[month] = result.reminders
+            monthPlans[month] = result.plans
             warnings.append(contentsOf: result.warnings.map { "\(month.fileName): \($0)" })
             loadedMonths.insert(month)
         } catch {
@@ -158,7 +162,38 @@ public final class PlannerStore: ObservableObject {
             monthReminders[month]?.removeAll { $0.id == id }
             persistMonth(month)
         }
+        removePlans { $0.reminderID == id }
         rebuild()
+    }
+
+    /// The plan blocks whose `start` falls on `day`, in stored order.
+    public func plans(on day: Date) -> [PlanBlock] {
+        plans.filter { Calendar.current.isDate($0.start, inSameDayAs: day) }
+    }
+
+    /// Replaces every block starting on `day` with `blocks` and persists the affected month(s).
+    /// Plans never touch a reminder's own due date, recurrence or exception dates.
+    public func replacePlans(on day: Date, with blocks: [PlanBlock]) {
+        let dayMonth = YearMonth(date: day)
+        loadMonth(dayMonth)
+        var touched: Set<YearMonth> = [dayMonth]
+        monthPlans[dayMonth]?.removeAll { Calendar.current.isDate($0.start, inSameDayAs: day) }
+        for block in blocks {
+            let month = YearMonth(date: block.start)
+            loadMonth(month)
+            monthPlans[month, default: []].append(block)
+            touched.insert(month)
+        }
+        for month in touched.sorted() { persistMonth(month) }
+        rebuild()
+    }
+
+    private func removePlans(where shouldRemove: (PlanBlock) -> Bool) {
+        for month in loadedMonths {
+            guard let blocks = monthPlans[month], blocks.contains(where: shouldRemove) else { continue }
+            monthPlans[month]?.removeAll(where: shouldRemove)
+            persistMonth(month)
+        }
     }
 
     /// Replaces the event with the same `id` wherever it currently lives, then places the
@@ -411,6 +446,7 @@ public final class PlannerStore: ObservableObject {
         // chronological across months, in each month's own parse/append order within it.
         events = recurringEvents + monthEvents.keys.sorted().flatMap { monthEvents[$0] ?? [] }
         reminders = recurringReminders + monthReminders.keys.sorted().flatMap { monthReminders[$0] ?? [] }
+        plans = monthPlans.keys.sorted().flatMap { monthPlans[$0] ?? [] }
     }
 
     private enum StoreLocation: Hashable {
@@ -438,14 +474,15 @@ public final class PlannerStore: ObservableObject {
     private func persistMonth(_ month: YearMonth) {
         let events = monthEvents[month] ?? []
         let reminders = monthReminders[month] ?? []
+        let plans = monthPlans[month] ?? []
         do {
             // A month that has lost its last event/reminder (deleted, or moved elsewhere by
             // updateEvent/updateReminder) gets its file removed entirely, not overwritten with an
             // empty stub.
-            if events.isEmpty && reminders.isEmpty {
+            if events.isEmpty && reminders.isEmpty && plans.isEmpty {
                 try file.deleteMonth(month)
             } else {
-                try file.saveMonth(month, events: events, reminders: reminders)
+                try file.saveMonth(month, events: events, reminders: reminders, plans: plans)
             }
         } catch {
             self.error = "Couldn't save changes: \(error.localizedDescription)"

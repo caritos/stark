@@ -55,8 +55,8 @@ public final class PlannerFile {
         try save(fileName: "recurring.ics", events: events, reminders: reminders)
     }
 
-    public func saveMonth(_ month: YearMonth, events: [Event], reminders: [Reminder]) throws {
-        try save(fileName: month.fileName, events: events, reminders: reminders)
+    public func saveMonth(_ month: YearMonth, events: [Event], reminders: [Reminder], plans: [PlanBlock] = []) throws {
+        try save(fileName: month.fileName, events: events, reminders: reminders, plans: plans)
     }
 
     /// Every month file that exists in `directory`, discovered by filename pattern
@@ -94,8 +94,8 @@ public final class PlannerFile {
         clearPendingWrite(fileName: month.fileName)
     }
 
-    private func save(fileName: String, events: [Event], reminders: [Reminder]) throws {
-        let content = ICSSerializer.serialize(events: events, reminders: reminders)
+    private func save(fileName: String, events: [Event], reminders: [Reminder], plans: [PlanBlock] = []) throws {
+        let content = ICSSerializer.serialize(events: events, reminders: reminders, plans: plans)
         do {
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
             try content.write(to: directory.appendingPathComponent(fileName), atomically: true, encoding: .utf8)
