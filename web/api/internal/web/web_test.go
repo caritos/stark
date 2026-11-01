@@ -548,3 +548,33 @@ func TestNestedStaticAssetsAreServedUnmodifiedWithTheBuildID(t *testing.T) {
 		t.Errorf("newHandler does not use version.BuildID")
 	}
 }
+
+// A public page asked for with a trailing slash ("/terms/", typed by habit or added by a link)
+// is a 301 to the slash-free page, keeping the query. The Location is relative (a path), so
+// behind a TLS-terminating proxy the browser keeps the https scheme it used. Anything that is
+// not a page with a slash added is not redirected.
+func TestPageWithTrailingSlashRedirects(t *testing.T) {
+	h := NewHandler(builtApp)
+	for _, tc := range []struct{ target, want string }{
+		{"/terms/", "/terms"},
+		{"/faq/", "/faq"},
+		{"/privacy/", "/privacy"},
+		{"/support/?ref=x", "/support?ref=x"},
+	} {
+		rec := get(h, http.MethodGet, tc.target)
+		if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != tc.want {
+			t.Errorf("GET %s = %d Location %q, want 301 %q", tc.target, rec.Code, rec.Header().Get("Location"), tc.want)
+		}
+	}
+	if rec := get(h, http.MethodHead, "/terms/"); rec.Code != http.StatusMovedPermanently {
+		t.Errorf("HEAD /terms/ = %d, want 301", rec.Code)
+	}
+	for _, p := range []string{"/nope/", "/static/style.css/", "//"} {
+		if rec := get(h, http.MethodGet, p); rec.Code != http.StatusNotFound {
+			t.Errorf("GET %s = %d, want 404", p, rec.Code)
+		}
+	}
+	if rec := get(h, http.MethodGet, "/"); rec.Code != http.StatusOK {
+		t.Errorf("GET / = %d, want 200", rec.Code)
+	}
+}

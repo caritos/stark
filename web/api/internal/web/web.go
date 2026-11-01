@@ -231,6 +231,17 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/app/", http.StatusMovedPermanently)
 	case strings.HasPrefix(p, "/app/"):
 		h.serveApp(w, r, strings.TrimPrefix(p, "/app/"))
+	case len(p) > 2 && strings.HasSuffix(p, "/") && h.isPage(strings.TrimSuffix(p, "/")):
+		// "/terms/" -> "/terms". The Location is a path, never an absolute URL: behind the
+		// TLS-terminating proxy the request scheme is plain http, and a relative redirect lets
+		// the browser keep the scheme and host it actually used.
+		target := strings.TrimSuffix(p, "/")
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		w.Header().Set("Location", target)
+		w.Header().Set("Content-Length", "0")
+		w.WriteHeader(http.StatusMovedPermanently)
 	default:
 		if a, ok := h.pages[p]; ok {
 			serve(w, r, http.StatusOK, a, cacheRevalidate)
@@ -240,6 +251,12 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.notFoundPage(w, r)
 		}
 	}
+}
+
+// isPage reports whether p is a public page route other than "/".
+func (h *handler) isPage(p string) bool {
+	_, ok := h.pages[p]
+	return ok && p != "/"
 }
 
 func (h *handler) serveApp(w http.ResponseWriter, r *http.Request, rel string) {
