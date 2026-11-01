@@ -104,13 +104,13 @@ shared/                       ← platform-agnostic business logic
 └── tests/
 
 web/                          ← stark.caritos.com: Go + React app from lotus (see web/CLAUDE.md)
-├── public/pages/*.html       ← /, /faq, /privacy, /terms, /support (static HTML, the source of truth)
-├── public/static/            ← style.css, favicons, App Store badge, screenshots/ (served at /static/)
-├── api/                      ← Go module: cmd/stark, internal/*, embed/ (generated, gitignored)
-├── src/                      ← the starter's React app at /app/ (unlinked; Stark has no accounts)
-├── deploy/                   ← stark.service, stark-backup.{service,timer}, .env.example (port 8030)
-├── docs/                     ← deploy.md, https.md, backups.md, testing.md
-└── scripts/deploy-app.sh     ← deploy to the DreamHost VPS (wraps scripts/deploy.sh)
+├── web/public/pages/*.html   ← /, /faq, /privacy, /terms, /support (static HTML, the source of truth)
+├── web/public/static/        ← style.css, favicons, App Store badge, screenshots/ (served at /static/)
+├── web/api/                  ← Go module: cmd/stark, internal/*, embed/ (generated, gitignored)
+├── web/src/                  ← the starter's React app at /app/ (unlinked; Stark has no accounts)
+├── web/deploy/               ← stark.service, stark-backup.service/.timer, web/deploy/.env.example (ADDR port 8030)
+├── web/docs/                 ← deploy.md, https.md, backups.md, testing.md
+└── web/scripts/deploy-app.sh ← deploy to the DreamHost VPS (wraps web/scripts/deploy.sh)
 
 mobile/                       ← Expo Router iOS app — DEPRECATED (2026-09-22); see top of this file
 ├── modules/expo-icloud-file/ ← local native module: bookmark-based pickFolder/readFile/writeFile for iCloud Drive storage (see ios/ExpoIcloudFile.m)
