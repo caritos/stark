@@ -11,7 +11,11 @@ import StarkKit
 ///   Tasks due that day at a set time (`DayPlanModel.timed`) are accent outlines at their due
 ///   time; plan blocks are filled accent blocks with a resize grip on their bottom edge
 ///   (press the bottom edge, then drag).
-/// - A tray along the bottom holds the open tasks with no block yet (`DayPlanModel.tray`).
+///   Completed tasks' blocks stay as dimmed, struck-through DONE blocks (`DayPlanModel.doneBlocks`):
+///   read-only, but nothing can be placed over them (`PlanDraft.done`).
+/// - A tray along the bottom holds the open tasks with no block yet, in three panes, PAST,
+///   TODAY (or TOMORROW) and FUTURE (`DayPlanModel.trayPast`/`trayToday`/`trayFuture`),
+///   switched by the tab row or by swiping sideways (a paged `TabView`). It opens on the middle.
 ///
 /// Every change goes into a `PlanDraft` (StarkKit), which owns the rules (15 minute snapping,
 /// no overlap between blocks, nothing crossing midnight); nothing is written until the check
@@ -39,6 +43,8 @@ struct PlannerView: View {
     @State private var model: DayPlanModel?
     @State private var confirmDiscard = false
     @State private var timePick: TimePick?
+    /// The tray pane on screen; the planner opens on the planned day's own pane.
+    @State private var pane: TrayPane = .today
 
     // Drag state (blocks and timed tasks).
     @State private var lift: Lift?
@@ -58,7 +64,8 @@ struct PlannerView: View {
     private static let slotMinutes = PlanLayout.snapMinutes
     private static var slotHeight: CGFloat { hourHeight * CGFloat(slotMinutes) / 60 }
     private static let gutter: CGFloat = 60
-    private static let trayHeight: CGFloat = 130
+    /// Room for the tab row, the hint, two rows of chips and the page dots.
+    private static let trayHeight: CGFloat = 250
     private static let edgeZone: CGFloat = 48
     /// How far up from a block's bottom edge a press starts a resize instead of a move.
     private static let gripZone: CGFloat = 12
@@ -85,11 +92,19 @@ struct PlannerView: View {
             .toolbarBackground(Colors.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    (Text(dayWord).fontWeight(.bold) + Text("  \(Self.titleFormatter.string(from: day).uppercased())"))
-                        .font(Fonts.mono(12))
-                        .tracking(2)
-                        .foregroundStyle(Colors.text)
-                        .accessibilityAddTraits(.isHeader)
+                    VStack(spacing: 1) {
+                        (Text(dayWord).fontWeight(.bold) + Text("  \(Self.titleFormatter.string(from: day).uppercased())"))
+                            .font(Fonts.mono(12))
+                            .tracking(2)
+                            .foregroundStyle(Colors.text)
+                            .accessibilityAddTraits(.isHeader)
+                        if let summary = DayPlanModel.summary(done: model?.doneCount ?? 0, planned: draft?.blocks.count ?? 0) {
+                            Text(summary)
+                                .font(Fonts.mono(9))
+                                .tracking(1.5)
+                                .foregroundStyle(Colors.textSecondary)
+                        }
+                    }
                 }
                 SquareToolbarButton(systemImage: "checkmark", label: "Save plan", placement: .confirmationAction,
                                     isProminent: true, isDisabled: draft == nil) { save() }
@@ -143,7 +158,8 @@ struct PlannerView: View {
 
     private func rebuildModel() {
         guard let draft else { return }
-        model = makeModel(blocks: draft.blocks)
+        // Everything the save would write, so the done blocks stay in the rebuilt model.
+        model = makeModel(blocks: draft.blocksToSave)
     }
 
     private var dayWord: String {
@@ -266,6 +282,10 @@ struct PlannerView: View {
             .frame(width: width)
 
             if let model {
+                ForEach(model.doneBlocks) { done in
+                    doneBlock(done, width: taskWidth)
+                        .offset(x: taskX, y: y(for: done.block.start))
+                }
                 ForEach(model.events) { item in
                     eventBlock(item)
                         .frame(width: eventWidth, height: eventHeight(item))
@@ -458,6 +478,45 @@ struct PlannerView: View {
         .accessibilityAction(named: "Remove from plan") { draft?.remove(id: block.id) }
     }
 
+    /// A completed task's block: dimmed, checked and struck through. Read-only: no grip, no
+    /// remove button, no tap or drag (it takes no touches at all), but `PlanDraft` keeps every
+    /// other block off its slot.
+    private func doneBlock(_ done: DayPlanModel.DoneBlock, width: CGFloat) -> some View {
+        let block = done.block
+        let blockHeight = height(minutes: Double(block.minutes))
+        let range = "\(AgendaFormat.time(block.start))–\(AgendaFormat.time(block.end))"
+        let title = Text(done.title)
+            .font(Fonts.mono(11))
+            .strikethrough(true, color: Colors.textSecondary)
+            .foregroundStyle(Colors.textSecondary)
+        return HStack(alignment: .top, spacing: Spacing.xs) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Colors.accent.opacity(0.8))
+                .padding(.top, 3)
+            if block.minutes < 30 {
+                title.lineLimit(1)
+            } else {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(range)
+                        .font(Fonts.mono(9))
+                        .foregroundStyle(Colors.textSecondary.opacity(0.8))
+                    title.lineLimit(block.minutes >= 45 ? 2 : 1)
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .padding(.horizontal, Spacing.xs)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(width: width, height: max(blockHeight - 1, 1))
+        .background(Colors.accent.opacity(0.12))
+        .overlay { Rectangle().strokeBorder(Colors.accent.opacity(0.4), lineWidth: 1) }
+        .clipped()
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("done: \(done.title), \(range)")
+    }
+
     // MARK: Lift and drag (blocks, timed tasks)
 
     /// Where a lifted item is drawn, from the finger's current position and the scroll offset
@@ -606,17 +665,80 @@ struct PlannerView: View {
 
     // MARK: Tray
 
+    /// True while a plan block is lifted: dropping it on the tray removes it.
+    private var liftingBlock: Bool {
+        guard let id = lift?.id else { return false }
+        return draft?.blocks.contains { $0.id == id } == true
+    }
+
+    /// Tabs, then the three panes in a paged `TabView` (swipe sideways, or tap a tab), then
+    /// page dots. The pager's horizontal pan and a chip's system drag (a long press) do not
+    /// compete: a quick sideways swipe pages, a press-and-hold lifts the chip.
     private var tray: some View {
-        let items = model?.tray ?? []
+        VStack(spacing: 0) {
+            trayTabs
+            TabView(selection: $pane) {
+                ForEach(TrayPane.allCases, id: \.self) { pane in
+                    trayPane(pane).tag(pane)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            trayDots
+        }
+        .frame(height: Self.trayHeight)
+        .frame(maxWidth: .infinity)
+        .background(Colors.background)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { trayFrame = $0 }
+    }
+
+    private func count(_ pane: TrayPane) -> Int {
+        model.map { pane.items(in: $0).count } ?? 0
+    }
+
+    private var trayTabs: some View {
+        HStack(spacing: 0) {
+            ForEach(TrayPane.allCases, id: \.self) { tab in
+                let selected = tab == pane
+                Button {
+                    withAnimation(.easeOut(duration: 0.2)) { pane = tab }
+                } label: {
+                    VStack(spacing: Spacing.xs) {
+                        (Text(tab.label(dayWord: dayWord))
+                            .foregroundColor(selected ? Colors.text : Colors.textSecondary)
+                         + Text(" \(count(tab))")
+                            .foregroundColor(selected ? Colors.accent : Colors.textSecondary.opacity(0.6)))
+                            .font(Fonts.mono(10, weight: .semibold))
+                            .tracking(1.5)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Rectangle()
+                            .fill(selected ? Colors.accent : Color.clear)
+                            .frame(height: 2)
+                    }
+                    .padding(.top, Spacing.sm)
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.accessibilityLabel(dayWord: dayWord, count: count(tab)))
+                .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
+            }
+        }
+        .padding(.horizontal, Spacing.md)
+        .overlay(alignment: .bottom) { Rectangle().fill(Colors.separator).frame(height: 1) }
+    }
+
+    private func trayPane(_ pane: TrayPane) -> some View {
+        let items = model.map { pane.items(in: $0) } ?? []
         return VStack(alignment: .leading, spacing: Spacing.xs) {
-            Text(items.isEmpty ? "TRAY" : "TRAY  \(items.count)")
-                .font(Fonts.mono(10, weight: .semibold))
-                .tracking(2)
-                .foregroundStyle(lift != nil && model?.blocks.contains { $0.id == lift?.id } == true
-                                 ? Colors.accent : Colors.textSecondary)
-                .accessibilityAddTraits(.isHeader)
+            Text(liftingBlock ? "DROP HERE TO REMOVE FROM PLAN" : pane.hint(dayWord: dayWord))
+                .font(Fonts.mono(9))
+                .tracking(1.5)
+                .foregroundStyle(liftingBlock ? Colors.accent : Colors.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             if items.isEmpty {
-                Text(model == nil ? "Loading…" : "Nothing left to plan")
+                Text(model == nil ? "Loading…" : "Nothing here")
                     .font(Fonts.mono(12))
                     .foregroundStyle(Colors.textSecondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -633,10 +755,19 @@ struct PlannerView: View {
         }
         .padding(.horizontal, Spacing.md)
         .padding(.top, Spacing.sm)
-        .frame(height: Self.trayHeight)
-        .frame(maxWidth: .infinity)
-        .background(Colors.background)
-        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { trayFrame = $0 }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var trayDots: some View {
+        HStack(spacing: Spacing.sm) {
+            ForEach(TrayPane.allCases, id: \.self) { dot in
+                Rectangle()
+                    .fill(dot == pane ? Colors.accent : Colors.separator)
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .frame(height: 20)
+        .accessibilityHidden(true)
     }
 
     private func trayChip(_ item: AgendaItem) -> some View {
