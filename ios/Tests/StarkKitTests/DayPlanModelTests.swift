@@ -256,4 +256,72 @@ struct DayPlanModelTests {
         #expect(reminderIDs(model.tray) == ["ancient", "older", "newer", "soon", "later", "far"])
         #expect(reminderIDs(model.timed) == ["am", "pm"])
     }
+
+    // MARK: Tray panes (PAST | TODAY | FUTURE)
+
+    @Test func panesWhenPlanningTomorrow() {
+        let dueToday = Reminder(id: "dueToday", title: "Pay rent", dueDate: at(2026, 11, 2))
+        let recent = Reminder(id: "recent", title: "Call bank", dueDate: at(2026, 10, 30, 9))
+        let older = Reminder(id: "older", title: "Return book", dueDate: at(2026, 10, 20, 9))
+        let ancient = Reminder(id: "ancient", title: "Old", dueDate: at(2026, 3, 1))
+        let water = Reminder(id: "water", title: "Water plants", dueDate: at(2026, 11, 3))
+        let groceries = Reminder(id: "groceries", title: "Groceries", dueDate: at(2026, 11, 3))
+        let timed = Reminder(id: "timed", title: "Dentist prep", dueDate: at(2026, 11, 3, 15))
+        let later = Reminder(id: "later", title: "Renew passport", dueDate: at(2026, 11, 24, 14))
+        let soon = Reminder(id: "soon", title: "Book flights", dueDate: at(2026, 11, 4))
+        let far = Reminder(id: "far", title: "Far", dueDate: at(2027, 6, 1))
+        let model = make(reminders: [far, later, soon, timed, groceries, water, ancient, older, recent, dueToday])
+        // A task due today is before the planned day (tomorrow): PAST, newest first.
+        #expect(reminderIDs(model.trayPast) == ["dueToday", "recent", "older", "ancient"])
+        // Same occurrence: by title.
+        #expect(reminderIDs(model.trayToday) == ["groceries", "water"])
+        #expect(reminderIDs(model.trayFuture) == ["soon", "later", "far"])
+        #expect(reminderIDs(model.timed) == ["timed"])
+        // `tray` is still every pane's item, nothing more, nothing less.
+        #expect(Set(reminderIDs(model.tray)) == Set(reminderIDs(model.trayPast + model.trayToday + model.trayFuture)))
+        #expect(model.tray.count == 9)
+    }
+
+    @Test func panesWhenPlanningToday() {
+        let dueToday = Reminder(id: "dueToday", title: "Pay rent", dueDate: at(2026, 11, 2))
+        let recent = Reminder(id: "recent", title: "Call bank", dueDate: at(2026, 10, 30, 9))
+        let tomorrow = Reminder(id: "tomorrow", title: "Groceries", dueDate: at(2026, 11, 3))
+        let model = make(reminders: [tomorrow, recent, dueToday], day: at(2026, 11, 2))
+        #expect(reminderIDs(model.trayPast) == ["recent"])
+        #expect(reminderIDs(model.trayToday) == ["dueToday"])
+        #expect(reminderIDs(model.trayFuture) == ["tomorrow"])
+    }
+
+    @Test func todayPaneOrdersByTimeThenTitle() {
+        // Tasks due on the day at a set time are on the timeline, so TODAY's are date-only and
+        // their equal occurrence falls back to the title.
+        let a = Reminder(id: "a", title: "Zebra", dueDate: at(2026, 11, 2))
+        let b = Reminder(id: "b", title: "Apple", dueDate: at(2026, 11, 2))
+        let model = make(reminders: [a, b], day: at(2026, 11, 2))
+        #expect(reminderIDs(model.trayToday) == ["b", "a"])
+    }
+
+    @Test func overduePinnedRowUsesItsMissedOccurrence() {
+        // Daily from Oct 30 08:00: the open row carries the Oct 30 miss, pinned to today's
+        // section. Planning today, it is PAST (missed date), not TODAY (pinned display date).
+        let daily = Reminder(id: "daily", title: "Stretch", dueDate: at(2026, 10, 30, 8),
+                             recurrence: RecurrenceRule(frequency: .daily))
+        let model = make(reminders: [daily], day: at(2026, 11, 2))
+        #expect(reminderIDs(model.trayPast) == ["daily"])
+        #expect(model.trayPast.first?.occurrence == at(2026, 10, 30, 8))
+        #expect(model.trayToday.isEmpty)
+        #expect(model.trayFuture.isEmpty)
+    }
+
+    @Test func emptyPanes() {
+        let none = make(reminders: [])
+        #expect(none.trayPast.isEmpty && none.trayToday.isEmpty && none.trayFuture.isEmpty && none.tray.isEmpty)
+        let onlyFuture = make(reminders: [Reminder(id: "f", title: "F", dueDate: at(2026, 11, 20))])
+        #expect(onlyFuture.trayPast.isEmpty)
+        #expect(onlyFuture.trayToday.isEmpty)
+        #expect(reminderIDs(onlyFuture.trayFuture) == ["f"])
+        // A lapsed day has no tray at all.
+        let lapsed = make(reminders: [Reminder(id: "o", title: "O", dueDate: at(2026, 10, 1))], day: at(2026, 11, 1))
+        #expect(lapsed.trayPast.isEmpty && lapsed.trayToday.isEmpty && lapsed.trayFuture.isEmpty)
+    }
 }

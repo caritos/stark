@@ -11,6 +11,13 @@ public struct DayPlanModel {
     /// `displayDate` pinned to start-of-today; one-offs due outside the load range (far past or
     /// far future) keep their own due date as `displayDate`, even when overdue.
     public let tray: [AgendaItem]
+    /// The tray split by each item's own `occurrence` (its missed date for an overdue row, never
+    /// the pinned display date) against `day`, by calendar day: before `day`, newest first.
+    public let trayPast: [AgendaItem]
+    /// Tray items whose occurrence is on `day`, by occurrence then title.
+    public let trayToday: [AgendaItem]
+    /// Tray items whose occurrence is after `day`, soonest first.
+    public let trayFuture: [AgendaItem]
     /// Open reminder rows due on `day` at a set time (not overdue, not 00:00) with no block.
     public let timed: [AgendaItem]
     /// Event rows on `day` that are all-day or multi-day (`isBannerEvent`), one per event, shown
@@ -21,6 +28,26 @@ public struct DayPlanModel {
     /// Plans starting on `day` whose reminder occurrence is still open. Others (deleted task,
     /// cleared carried miss, lapsed day) are left out here, not deleted from the store.
     public let blocks: [PlanBlock]
+
+    init(day: Date, tray: [AgendaItem], timed: [AgendaItem], allDayEvents: [AgendaItem],
+         events: [AgendaItem], blocks: [PlanBlock], calendar: Calendar = Calendar(identifier: .gregorian)) {
+        self.day = day
+        self.tray = tray
+        self.timed = timed
+        self.allDayEvents = allDayEvents
+        self.events = events
+        self.blocks = blocks
+        let dayStart = calendar.startOfDay(for: day)
+        func occurrenceDay(_ item: AgendaItem) -> Date { calendar.startOfDay(for: item.occurrence) }
+        func ascending(_ lhs: AgendaItem, _ rhs: AgendaItem) -> Bool {
+            (lhs.occurrence, lhs.title, lhs.id) < (rhs.occurrence, rhs.title, rhs.id)
+        }
+        trayPast = tray.filter { occurrenceDay($0) < dayStart }.sorted {
+            ($1.occurrence, $0.title, $0.id) < ($0.occurrence, $1.title, $1.id)
+        }
+        trayToday = tray.filter { occurrenceDay($0) == dayStart }.sorted(by: ascending)
+        trayFuture = tray.filter { occurrenceDay($0) > dayStart }.sorted(by: ascending)
+    }
 
     /// - Reminder rows come from `buildAgendaItems` over `AgendaWindow.loadRange(around: day)`
     ///   (so a recurring series contributes only its single open row, or its next occurrence),
@@ -59,7 +86,7 @@ public struct DayPlanModel {
         }
 
         guard dayStart >= calendar.startOfDay(for: today) else {
-            return DayPlanModel(day: day, tray: [], timed: [], allDayEvents: allDayEvents, events: timedEvents, blocks: [])
+            return DayPlanModel(day: day, tray: [], timed: [], allDayEvents: allDayEvents, events: timedEvents, blocks: [], calendar: calendar)
         }
 
         // Every open reminder row (the agenda's, plus one-offs outside its window).
@@ -109,7 +136,7 @@ public struct DayPlanModel {
             }
 
         return DayPlanModel(day: day, tray: tray, timed: timed, allDayEvents: allDayEvents,
-                            events: timedEvents, blocks: blocks)
+                            events: timedEvents, blocks: blocks, calendar: calendar)
     }
 
     /// Banner, not timeline: an all-day event, or a multi-day one, i.e. its end falls on a later
