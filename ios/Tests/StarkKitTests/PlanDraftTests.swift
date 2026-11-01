@@ -165,3 +165,66 @@ struct PlanDraftTests {
         #expect(draft.blocksToSave.isEmpty)
     }
 }
+
+// MARK: Done blocks (read-only obstacles)
+
+struct PlanDraftDoneBlockTests {
+    let cal = Calendar(identifier: .gregorian)
+
+    func at(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ min: Int = 0) -> Date {
+        cal.date(from: DateComponents(year: y, month: m, day: d, hour: h, minute: min))!
+    }
+    var today: Date { at(2026, 11, 2, 10) }
+    var day: Date { at(2026, 11, 2) }
+
+    let open = Reminder(id: "a", title: "A", dueDate: Calendar(identifier: .gregorian)
+        .date(from: DateComponents(year: 2026, month: 10, day: 30, hour: 9))!)
+    var done: Reminder {
+        Reminder(id: "d", title: "Done", dueDate: at(2026, 11, 2), isCompleted: true, completedDate: at(2026, 11, 2))
+    }
+    /// The done block sits at 09:00-10:00.
+    var doneBlock: PlanBlock {
+        PlanBlock(id: "done", reminderID: "d", occurrence: at(2026, 11, 2), start: at(2026, 11, 2, 9), minutes: 60)
+    }
+
+    func model(plans: [PlanBlock]) -> DayPlanModel {
+        DayPlanModel.make(day: day, events: [], reminders: [open, done], plans: plans, today: today)
+    }
+    func item(_ model: DayPlanModel) -> AgendaItem { model.tray.first { $0.title == "A" }! }
+
+    @Test func doneBlockIsReadOnlyAndKeptOnSave() {
+        let m = model(plans: [doneBlock])
+        var draft = PlanDraft(model: m, saved: [doneBlock])
+        #expect(draft.blocks.isEmpty)
+        #expect(draft.done.map(\.id) == ["done"])
+        #expect(draft.hasChanges == false)
+        let movedDone = draft.move(id: "done", to: at(2026, 11, 2, 14))
+        #expect(movedDone == false)
+        draft.resize(id: "done", toMinutes: 15)
+        draft.remove(id: "done")
+        #expect(draft.hasChanges == false)
+        #expect(draft.blocksToSave == [doneBlock])
+        // Kept even when the caller did not pass the saved entries.
+        #expect(PlanDraft(model: m).blocksToSave == [doneBlock])
+    }
+
+    @Test func doneBlockBlocksPlacement() {
+        let m = model(plans: [doneBlock])
+        var draft = PlanDraft(model: m, saved: [doneBlock])
+        // Dropped at 09:15 over the done block: shifted to the nearest free slot (08:30).
+        let ok1 = draft.place(item(m), at: at(2026, 11, 2, 9, 15))
+        #expect(ok1)
+        let placed = draft.blocks[0]
+        #expect(placed.start == at(2026, 11, 2, 8, 30))
+        // Moving onto it is shifted too (10:00 is nearer to 09:45 than 08:30 is).
+        let ok2 = draft.move(id: placed.id, to: at(2026, 11, 2, 9, 45))
+        #expect(ok2)
+        #expect(draft.blocks[0].start == at(2026, 11, 2, 10))
+        // Growing an 08:00 block stops at the done block's start.
+        let ok3 = draft.move(id: placed.id, to: at(2026, 11, 2, 8))
+        #expect(ok3)
+        draft.resize(id: placed.id, toMinutes: 180)
+        #expect(draft.blocks[0].minutes == 60)
+        #expect(Set(draft.blocksToSave.map(\.id)) == ["done", placed.id])
+    }
+}

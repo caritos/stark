@@ -324,4 +324,62 @@ struct DayPlanModelTests {
         let lapsed = make(reminders: [Reminder(id: "o", title: "O", dueDate: at(2026, 10, 1))], day: at(2026, 11, 1))
         #expect(lapsed.trayPast.isEmpty && lapsed.trayToday.isEmpty && lapsed.trayFuture.isEmpty)
     }
+
+    // MARK: Done blocks (completed planned tasks stay on the timeline)
+
+    @Test func completedPlannedTasksAreDoneBlocks() {
+        let planToday = at(2026, 11, 2)
+        // A one-off completed in place.
+        let oneOff = Reminder(id: "oneOff", title: "Write report", dueDate: at(2026, 11, 2, 9), isCompleted: true,
+                              completedDate: at(2026, 11, 2, 9))
+        // A recurring occurrence: the master is exdated and a completed copy carries seriesID.
+        let daily = Reminder(id: "daily", title: "Stretch", dueDate: at(2026, 10, 30, 8),
+                             recurrence: RecurrenceRule(frequency: .daily),
+                             exceptionDates: [at(2026, 10, 30, 8), at(2026, 10, 31, 8), at(2026, 11, 1, 8), at(2026, 11, 2, 8)])
+        let copy = Reminder(id: "copy", title: "Stretch", dueDate: at(2026, 11, 2, 8), isCompleted: true,
+                            completedDate: at(2026, 11, 2, 8), seriesID: "daily")
+        // An earlier completed copy of the same series must not match today's plan twice.
+        let oldCopy = Reminder(id: "oldCopy", title: "Stretch", dueDate: at(2026, 10, 31, 8), isCompleted: true,
+                               completedDate: at(2026, 10, 31, 8), seriesID: "daily")
+        let open = Reminder(id: "open", title: "Open", dueDate: at(2026, 10, 30, 9))
+        let pOneOff = PlanBlock(id: "pOneOff", reminderID: "oneOff", occurrence: at(2026, 11, 2, 9), start: at(2026, 11, 2, 13), minutes: 30)
+        let pDaily = PlanBlock(id: "pDaily", reminderID: "daily", occurrence: at(2026, 11, 2, 8), start: at(2026, 11, 2, 9), minutes: 45)
+        let pOpen = PlanBlock(id: "pOpen", reminderID: "open", occurrence: at(2026, 10, 30, 9), start: at(2026, 11, 2, 11), minutes: 30)
+        let model = make(reminders: [oneOff, daily, copy, oldCopy, open], plans: [pOneOff, pDaily, pOpen, pDaily], day: planToday)
+        #expect(model.doneBlocks.map(\.block.id) == ["pDaily", "pOneOff"])
+        #expect(model.doneBlocks.map(\.title) == ["Stretch", "Write report"])
+        #expect(model.doneCount == 2)
+        #expect(model.blocks.map(\.id) == ["pOpen"])
+    }
+
+    @Test func notDoneBlocks() {
+        let planToday = at(2026, 11, 2)
+        let done = Reminder(id: "done", title: "Done", dueDate: at(2026, 11, 2), isCompleted: true, completedDate: at(2026, 11, 2))
+        let unplanned = Reminder(id: "unplanned", title: "No plan", dueDate: at(2026, 11, 2), isCompleted: true,
+                                 completedDate: at(2026, 11, 2))
+        // A plan for the same task on another day is not a done block of this day.
+        let otherDay = PlanBlock(id: "otherDay", reminderID: "done", occurrence: at(2026, 11, 2), start: at(2026, 11, 3, 9), minutes: 30)
+        // A plan whose task was deleted.
+        let orphan = PlanBlock(id: "orphan", reminderID: "deleted", occurrence: at(2026, 11, 2), start: at(2026, 11, 2, 9), minutes: 30)
+        // A series plan whose completed copy is for a different occurrence day.
+        let copy = Reminder(id: "copy", title: "Stretch", dueDate: at(2026, 11, 1, 8), isCompleted: true,
+                            completedDate: at(2026, 11, 1, 8), seriesID: "series")
+        let seriesPlan = PlanBlock(id: "seriesPlan", reminderID: "series", occurrence: at(2026, 11, 2, 8), start: at(2026, 11, 2, 10), minutes: 30)
+        let model = make(reminders: [done, unplanned, copy], plans: [otherDay, orphan, seriesPlan], day: planToday)
+        #expect(model.doneBlocks.isEmpty)
+        #expect(model.doneCount == 0)
+    }
+
+    @Test func lapsedDayHasNoDoneBlocks() {
+        let done = Reminder(id: "done", title: "Done", dueDate: at(2026, 11, 1), isCompleted: true, completedDate: at(2026, 11, 1))
+        let plan = PlanBlock(id: "p", reminderID: "done", occurrence: at(2026, 11, 1), start: at(2026, 11, 1, 9), minutes: 30)
+        #expect(make(reminders: [done], plans: [plan], day: at(2026, 11, 1)).doneBlocks.isEmpty)
+    }
+
+    @Test func summaryText() {
+        #expect(DayPlanModel.summary(done: 3, planned: 2) == "3 DONE - 2 PLANNED")
+        #expect(DayPlanModel.summary(done: 1, planned: 0) == "1 DONE")
+        #expect(DayPlanModel.summary(done: 0, planned: 2) == nil)
+        #expect(DayPlanModel.summary(done: 0, planned: 0) == nil)
+    }
 }

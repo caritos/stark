@@ -8,8 +8,13 @@ public struct PlanDraft {
     public private(set) var blocks: [PlanBlock]
     /// Saved blocks on this day that the model leaves out (a completed task's entry, kept as the
     /// record, or one for a task whose month is not loaded). Never shown, never edited, never
-    /// considered for overlap, and always written back on save so a save never deletes them.
+    /// considered for overlap (except the done
+    /// blocks, see `done`), and always written back on save so a save never deletes them.
     public let retained: [PlanBlock]
+    /// The model's done blocks (completed tasks' plans on this day): shown read-only, never
+    /// moved, resized or removed, kept on save (they are among `retained`), and obstacles: no
+    /// block is placed, moved or grown over one.
+    public let done: [PlanBlock]
     private let initial: [PlanBlock]
     private let day: Date
     private let calendar = Calendar(identifier: .gregorian)
@@ -22,7 +27,18 @@ public struct PlanDraft {
         self.day = model.day
         let shown = Set(model.blocks.map(\.id))
         let calendar = Calendar(identifier: .gregorian)
-        self.retained = saved.filter { !shown.contains($0.id) && calendar.isDate($0.start, inSameDayAs: model.day) }
+        let kept = saved.filter { !shown.contains($0.id) && calendar.isDate($0.start, inSameDayAs: model.day) }
+        let done = model.doneBlocks.map(\.block)
+        let keptIDs = Set(kept.map(\.id))
+        self.done = done
+        // A done block is always written back, even when the caller left out `saved`.
+        self.retained = kept + done.filter { !keptIDs.contains($0.id) }
+    }
+
+    /// What a placed, moved or resized block must not overlap: the other open blocks and the
+    /// done blocks (retained entries for unloaded tasks are not shown, so they do not count).
+    private func obstacles(excluding id: String? = nil) -> [PlanBlock] {
+        blocks.filter { $0.id != id } + done
     }
 
     /// Everything to persist for the day: the edited blocks plus the retained ones.
@@ -52,7 +68,7 @@ public struct PlanDraft {
         }
         let block = PlanBlock(reminderID: reminder.id, occurrence: item.occurrence,
                               start: start, minutes: PlanLayout.defaultMinutes)
-        guard let placed = PlanLayout.place(block, among: blocks, day: day) else { return false }
+        guard let placed = PlanLayout.place(block, among: obstacles(), day: day) else { return false }
         blocks.append(placed)
         return true
     }
@@ -62,16 +78,14 @@ public struct PlanDraft {
         guard let index = blocks.firstIndex(where: { $0.id == id }) else { return false }
         var moving = blocks[index]
         moving.start = start
-        let others = blocks.filter { $0.id != id }
-        guard let placed = PlanLayout.place(moving, among: others, day: day) else { return false }
+        guard let placed = PlanLayout.place(moving, among: obstacles(excluding: id), day: day) else { return false }
         blocks[index] = placed
         return true
     }
 
     public mutating func resize(id: String, toMinutes: Int) {
         guard let index = blocks.firstIndex(where: { $0.id == id }) else { return }
-        let others = blocks.filter { $0.id != id }
-        blocks[index] = PlanLayout.resized(blocks[index], toMinutes: toMinutes, among: others, day: day)
+        blocks[index] = PlanLayout.resized(blocks[index], toMinutes: toMinutes, among: obstacles(excluding: id), day: day)
     }
 
     public mutating func remove(id: String) {

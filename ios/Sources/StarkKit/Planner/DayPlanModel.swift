@@ -28,10 +28,36 @@ public struct DayPlanModel {
     /// Plans starting on `day` whose reminder occurrence is still open. Others (deleted task,
     /// cleared carried miss, lapsed day) are left out here, not deleted from the store.
     public let blocks: [PlanBlock]
+    /// Plans starting on `day` whose task has been completed, by start: they stay on the
+    /// timeline as read-only DONE blocks. A one-off matches by id (completed in place); a
+    /// recurring occurrence matches its completed copy (`seriesID` = the plan's reminder id, due
+    /// on the plan's occurrence day). Empty for a lapsed day.
+    public let doneBlocks: [DoneBlock]
+    public var doneCount: Int { doneBlocks.count }
+
+    /// A plan block whose task is done, with the task's title.
+    public struct DoneBlock: Equatable, Identifiable, Sendable {
+        public let block: PlanBlock
+        public let title: String
+        public var id: String { block.id }
+        public init(block: PlanBlock, title: String) {
+            self.block = block
+            self.title = title
+        }
+    }
+
+    /// The planner header's count line, e.g. "3 DONE - 2 PLANNED" (a 0 part is left out);
+    /// nil when nothing is done.
+    public static func summary(done: Int, planned: Int) -> String? {
+        guard done > 0 else { return nil }
+        return planned > 0 ? "\(done) DONE - \(planned) PLANNED" : "\(done) DONE"
+    }
 
     init(day: Date, tray: [AgendaItem], timed: [AgendaItem], allDayEvents: [AgendaItem],
-         events: [AgendaItem], blocks: [PlanBlock], calendar: Calendar = Calendar(identifier: .gregorian)) {
+         events: [AgendaItem], blocks: [PlanBlock], doneBlocks: [DoneBlock] = [],
+         calendar: Calendar = Calendar(identifier: .gregorian)) {
         self.day = day
+        self.doneBlocks = doneBlocks
         self.tray = tray
         self.timed = timed
         self.allDayEvents = allDayEvents
@@ -135,8 +161,25 @@ public struct DayPlanModel {
                 return (lhs.occurrence, lhs.id) < (rhs.occurrence, rhs.id)
             }
 
+        // Completed tasks' plans on this day (never one already shown as an open block).
+        let blockIDs = Set(blocks.map(\.id))
+        var doneSeen = Set<String>()
+        let doneBlocks = plans
+            .filter { isOnDay($0.start) && !blockIDs.contains($0.id) }
+            .sorted { ($0.start, $0.id) < ($1.start, $1.id) }
+            .compactMap { plan -> DoneBlock? in
+                let match = reminders.first { r in
+                    guard r.isCompleted else { return false }
+                    if r.id == plan.reminderID { return true }
+                    guard r.seriesID == plan.reminderID, let due = r.dueDate ?? r.completedDate else { return false }
+                    return calendar.isDate(due, inSameDayAs: plan.occurrence)
+                }
+                guard let match, doneSeen.insert(plan.id).inserted else { return nil }
+                return DoneBlock(block: plan, title: match.title)
+            }
+
         return DayPlanModel(day: day, tray: tray, timed: timed, allDayEvents: allDayEvents,
-                            events: timedEvents, blocks: blocks, calendar: calendar)
+                            events: timedEvents, blocks: blocks, doneBlocks: doneBlocks, calendar: calendar)
     }
 
     /// Banner, not timeline: an all-day event, or a multi-day one, i.e. its end falls on a later
