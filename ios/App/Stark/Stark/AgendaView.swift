@@ -35,6 +35,8 @@ struct AgendaView: View {
     /// see `scrollSuppressUntil`. `var`, not `let`: a `let` with an inline default is excluded
     /// from the synthesized memberwise init entirely, so the parameter would not exist.
     var onDayInView: (Date) -> Void = { _ in }
+    /// Opens the day planner for a day (the Today and Tomorrow headers' plan button).
+    var onPlan: (Date) -> Void = { _ in }
 
     /// False until the list has been scrolled to today once real data has arrived. The display
     /// window includes the previous 14 days, and the store loads asynchronously after the first
@@ -176,12 +178,14 @@ struct AgendaView: View {
         let tomorrow = Self.calendar.date(byAdding: .day, value: 1, to: todayStart)
         let isYesterday = day == Self.calendar.date(byAdding: .day, value: -1, to: todayStart)
         let canExport = isToday || isYesterday
+        let isTomorrow = day == tomorrow
+        let canPlan = isToday || isTomorrow
         let word: String
         if isToday {
             word = "TODAY"
         } else if isYesterday {
             word = "YESTERDAY"
-        } else if day == tomorrow {
+        } else if isTomorrow {
             word = "TOMORROW"
         } else {
             word = AgendaFormat.weekdayName(day).uppercased()
@@ -193,6 +197,18 @@ struct AgendaView: View {
         return HStack(spacing: 0) {
             title
             Spacer(minLength: 0)
+            // Plan today or tomorrow (timeboxing): opens the full-screen planner.
+            if canPlan {
+                Button { onPlan(day) } label: {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Colors.accent)
+                        .frame(width: 44, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isToday ? "Plan today" : "Plan tomorrow")
+            }
             // Export today or yesterday as plain text (issue #114), next to the header.
             if canExport {
                 ShareLink(item: DayExport.text(day: day, items: items, calendar: Self.calendar)) {
@@ -206,7 +222,7 @@ struct AgendaView: View {
             }
         }
         .padding(.leading, Spacing.md)
-        .padding(.trailing, canExport ? Spacing.xs : Spacing.md)
+        .padding(.trailing, canExport || canPlan ? Spacing.xs : Spacing.md)
         .padding(.top, Spacing.md)
         .padding(.bottom, Spacing.xs)
         .frame(maxWidth: .infinity, alignment: .leading)

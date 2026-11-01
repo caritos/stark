@@ -37,6 +37,8 @@ struct ContentView: View {
     /// `GridPagingRequest` every time (even for a repeated date) so scroll always wins over an
     /// independent chevron browse — see `GridPagingRequest`'s doc comment in `MonthGridView.swift`.
     @State private var scrollPagingDate: GridPagingRequest?
+    /// The day the planner (timeboxing) is open for, presented full screen; nil when closed.
+    @State private var planRequest: PlanRequest?
 
     init() {
         // One instant for all three, so a launch right at midnight can't split them across days.
@@ -94,7 +96,8 @@ struct ContentView: View {
                     Rectangle()
                         .fill(Colors.separator)
                         .frame(height: 1)
-                    AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 }, onDayInView: dayScrolledIntoView)
+                    AgendaView(today: today, anchor: agendaAnchor, scrollRequest: scrollRequest, onSelect: { selectedItem = $0 }, onDayInView: dayScrolledIntoView,
+                               onPlan: { planRequest = PlanRequest(day: $0) })
                 }
                 // Hidden (not removed) in year mode: tearing the agenda down would lose its
                 // scroll position and, on coming back, scroll to today instead of the day
@@ -136,6 +139,7 @@ struct ContentView: View {
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(item: $selectedItem) { item in EditItemView(item: item) }
+        .fullScreenCover(item: $planRequest) { request in PlannerView(day: request.day, today: today) }
         .task {
             // Load the wider window (includes the overdue lookback), not the display window.
             let range = AgendaWindow.loadRange(around: Date())
@@ -260,4 +264,10 @@ struct ContentView: View {
         selectedDate = date
         scrollRequest = ScrollRequest(date: date)
     }
+}
+
+/// Which day the planner was opened for (`.fullScreenCover(item:)` needs an `Identifiable`).
+private struct PlanRequest: Identifiable {
+    let day: Date
+    var id: Date { day }
 }
