@@ -19,11 +19,13 @@ import StarkKit
 ///
 /// Gestures: a tray chip is dragged with system drag and drop (`.draggable` onto the
 /// timeline's `.dropDestination`). A block or a timed task is lifted with a short press and
-/// then dragged (`DragGesture`, so a plain swipe over it still scrolls the timeline); dropping
-/// a block on the tray removes it, and dragging near the timeline's top or bottom edge scrolls
-/// it. The same press-then-drag on a block's bottom edge resizes it. VoiceOver cannot drag, so every chip and block also has actions
-/// ("Add to plan", "Move", "Remove from plan", longer/shorter) and a tap opens the same time
-/// picker.
+/// then dragged: a UIKit long-press recognizer on iOS 18+, a SwiftUI `LongPressGesture`
+/// sequenced before a `DragGesture` on iOS 17 (see `liftable`), so a plain swipe over it
+/// still scrolls the timeline. Dropping a block on the tray removes it (a timed task dropped
+/// there stays put), and dragging near the timeline's top or bottom edge scrolls it. The same
+/// press-then-drag on a block's bottom edge resizes it. VoiceOver cannot drag, so every chip
+/// and block also has actions ("Add to plan", "Move", "Remove from plan", longer/shorter) and
+/// a tap opens the same time picker.
 struct PlannerView: View {
     let day: Date
     /// The real today, handed down by `ContentView` (views never read `Date()` themselves).
@@ -46,6 +48,10 @@ struct PlannerView: View {
     @State private var trayFrame: CGRect = .zero
     @State private var autoScroll: Task<Void, Never>?
     @State private var dropTargeted = false
+    /// iOS 17 only: true while a SwiftUI lift gesture is in progress. SwiftUI never calls
+    /// `.onEnded` for a cancelled gesture (an alert, Control Center), but it always resets this,
+    /// so its reset is where a cancelled lift is cleaned up.
+    @GestureState private var liftGestureActive = false
 
     private static let calendar = Calendar(identifier: .gregorian)
     static let hourHeight: CGFloat = 60
@@ -110,6 +116,15 @@ struct PlannerView: View {
         .onChange(of: draft?.blocks) { _, _ in rebuildModel() }
         .onChange(of: store.reminders) { _, _ in rebuildModel() }
         .onChange(of: store.events) { _, _ in rebuildModel() }
+        .onChange(of: liftGestureActive) { _, active in
+            guard !active else { return }
+            // Deferred one turn so a normal release's `.onEnded` (which commits and cleans up)
+            // has run first, whatever order SwiftUI uses; after a cancel this is the only
+            // cleanup. `endLift` is idempotent and never commits or plays a haptic.
+            DispatchQueue.main.async {
+                if !liftGestureActive { endLift() }
+            }
+        }
     }
 
     // MARK: Model
@@ -261,7 +276,11 @@ struct PlannerView: View {
                         .offset(x: taskX, y: liftedY(id: item.id) ?? y(for: item.displayDate))
                         .zIndex(lift?.id == item.id ? 2 : 1)
                 }
-                ForEach(model.blocks) { block in
+                // Straight from the draft (not the model, which is rebuilt in an `onChange` one
+                // pass later), so a drop lands in the same frame the lift ends and `place`'s
+                // animation applies to what is on screen. The draft starts from `model.blocks`,
+                // so it holds only blocks of still-open tasks.
+                ForEach(draft?.blocks ?? model.blocks) { block in
                     planBlock(block, width: taskWidth)
                         .offset(x: taskX, y: liftedY(id: block.id) ?? y(for: block.start))
                         .zIndex(lift?.id == block.id ? 2 : 1)
@@ -349,8 +368,11 @@ struct PlannerView: View {
         .opacity(lift?.id == item.id ? 0.8 : 1)
         .contentShape(Rectangle())
         .onTapGesture { timePick = .place(item, initial: item.displayDate) }
-        let target = LiftTarget(id: item.id, top: y(for: item.displayDate), onDrop: { start, _ in
-            place(item, at: start)
+        let target = LiftTarget(id: item.id, top: y(for: item.displayDate), onDrop: { start, overTray in
+            // Not a block, so there is nothing to remove: a drop over the tray leaves it where
+            // it was (and is not a refusal).
+            guard !overTray else { return true }
+            return place(item, at: start)
         })
         return liftable(visual, target)
         .accessibilityElement(children: .ignore)
@@ -431,8 +453,8 @@ struct PlannerView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(title), planned \(range)")
         .accessibilityAction(named: "Move") { timePick = .move(block.id, initial: block.start) }
-        .accessibilityAction(named: "Make longer") { draft?.resize(id: block.id, toMinutes: block.minutes + PlanLayout.snapMinutes) }
-        .accessibilityAction(named: "Make shorter") { draft?.resize(id: block.id, toMinutes: block.minutes - PlanLayout.snapMinutes) }
+        .accessibilityAction(named: "Make longer") { resizeBlock(id: block.id, toMinutes: block.minutes + PlanLayout.snapMinutes) }
+        .accessibilityAction(named: "Make shorter") { resizeBlock(id: block.id, toMinutes: block.minutes - PlanLayout.snapMinutes) }
         .accessibilityAction(named: "Remove from plan") { draft?.remove(id: block.id) }
     }
 
@@ -478,6 +500,7 @@ struct PlannerView: View {
                 content.gesture(
                     LongPressGesture(minimumDuration: 0.25)
                         .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+                        .updating($liftGestureActive) { _, active, _ in active = true }
                         .onChanged { value in
                             guard case .second(true, let drag?) = value else { return }
                             if lift?.id == target.id || resize?.id == target.id {
@@ -521,7 +544,7 @@ struct PlannerView: View {
         defer { endLift() }
         guard !cancelled else { return }
         if let current = resize, current.id == target.id {
-            draft?.resize(id: target.id, toMinutes: Int(Double(current.minutes).rounded()))
+            resizeBlock(id: target.id, toMinutes: Int(Double(current.minutes).rounded()))
             return
         }
         guard let lift, lift.id == target.id else { return }
@@ -537,6 +560,10 @@ struct PlannerView: View {
         autoScroll = nil
     }
 
+    private static func inBottomZone(_ y: CGFloat, viewport: CGRect) -> Bool {
+        y > viewport.maxY - edgeZone && y <= viewport.maxY
+    }
+
     /// Scrolls the timeline a quarter hour at a time while a lifted item is held within
     /// `edgeZone` of its top or bottom edge. Stops when the finger leaves the zone or drops.
     private func updateAutoScroll(globalY: CGFloat?, proxy: ScrollViewProxy) {
@@ -545,23 +572,29 @@ struct PlannerView: View {
         }
         let direction: Int
         if globalY < viewportFrame.minY + Self.edgeZone { direction = -1 }
-        else if globalY > viewportFrame.maxY - Self.edgeZone && globalY < viewportFrame.maxY + Self.edgeZone { direction = 1 }
+        // The bottom zone ends at the timeline's own bottom edge: below it is the tray, where a
+        // hovering block is about to be dropped (removed), not scrolled.
+        else if Self.inBottomZone(globalY, viewport: viewportFrame) { direction = 1 }
         else { direction = 0 }
         guard direction != 0 else { autoScroll?.cancel(); autoScroll = nil; return }
         guard autoScroll == nil else { return }
         autoScroll = Task { @MainActor in
             while !Task.isCancelled, let current = lift?.globalY {
                 let up = current < viewportFrame.minY + Self.edgeZone
-                let down = current > viewportFrame.maxY - Self.edgeZone && current < viewportFrame.maxY + Self.edgeZone
+                let down = Self.inBottomZone(current, viewport: viewportFrame)
                 guard up || down else { break }
                 let visibleTop = viewportFrame.minY - contentMinY
                 let topSlot = Int((visibleTop / Self.slotHeight).rounded())
-                let visibleSlots = Int(viewportFrame.height / Self.slotHeight)
                 if up {
                     guard topSlot > 0 else { break }
                     withAnimation(.linear(duration: 0.08)) { proxy.scrollTo(Self.slotID(topSlot - 1), anchor: .top) }
                 } else {
-                    let bottomSlot = topSlot + visibleSlots
+                    // The first slot not wholly visible below: anchoring its bottom edge to the
+                    // viewport's always moves at least one slot. (`topSlot + visibleSlots`
+                    // could land on the slot already at the bottom when the viewport is not a
+                    // whole number of slots tall, and the scroll then stalled; seen in the
+                    // simulator.)
+                    let bottomSlot = Int(((visibleTop + viewportFrame.height) / Self.slotHeight).rounded(.up))
                     guard bottomSlot < slotCount else { break }
                     withAnimation(.linear(duration: 0.08)) { proxy.scrollTo(Self.slotID(bottomSlot), anchor: .bottom) }
                 }
@@ -679,6 +712,16 @@ struct PlannerView: View {
         case .move(let id, _):
             if draft?.move(id: id, to: start) != true { refuse() }
         }
+    }
+
+    /// Resizes a block; when `PlanDraft` had to clamp the length (the next block or midnight),
+    /// plays the same refusal haptic as a refused move. Shrinking to the 15 minute minimum is
+    /// not a refusal.
+    private func resizeBlock(id: String, toMinutes requested: Int) {
+        let step = PlanLayout.snapMinutes
+        let wanted = max(PlanLayout.minMinutes, Int((Double(requested) / Double(step)).rounded()) * step)
+        draft?.resize(id: id, toMinutes: requested)
+        if let result = draft?.blocks.first(where: { $0.id == id }), result.minutes != wanted { refuse() }
     }
 
     /// A refused place or move leaves the draft unchanged; this is the only feedback.
