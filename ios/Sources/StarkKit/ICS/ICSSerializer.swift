@@ -44,10 +44,23 @@ public enum ICSSerializer {
         return lines.joined(separator: "\r\n")
     }
 
-    public static func serialize(events: [Event], reminders: [Reminder]) -> String {
+    public static func serialize(plan: PlanBlock) -> String {
+        [
+            "BEGIN:X-STARK-PLAN",
+            "UID:\(plan.id.filter { !$0.isNewline })",
+            "X-STARK-PLAN-REMINDER:\(plan.reminderID.filter { !$0.isNewline })",
+            "X-STARK-PLAN-OCCURRENCE:\(ICSDateFormat.format(plan.occurrence, allDay: false))",
+            "DTSTART:\(ICSDateFormat.format(plan.start, allDay: false))",
+            "X-STARK-PLAN-MINUTES:\(plan.minutes)",
+            "END:X-STARK-PLAN",
+        ].joined(separator: "\r\n")
+    }
+
+    public static func serialize(events: [Event], reminders: [Reminder], plans: [PlanBlock] = []) -> String {
         var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Stark//EN"]
         lines.append(contentsOf: events.map(serialize(event:)))
         lines.append(contentsOf: reminders.map(serialize(reminder:)))
+        lines.append(contentsOf: plans.map(serialize(plan:)))
         lines.append("END:VCALENDAR")
         return lines.joined(separator: "\r\n") + "\r\n"
     }

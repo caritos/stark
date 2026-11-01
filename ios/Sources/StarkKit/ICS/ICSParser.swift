@@ -4,11 +4,13 @@ public struct ICSParseResult {
     public let events: [Event]
     public let reminders: [Reminder]
     public let warnings: [String]
+    public let plans: [PlanBlock]
 
-    public init(events: [Event], reminders: [Reminder], warnings: [String]) {
+    public init(events: [Event], reminders: [Reminder], warnings: [String], plans: [PlanBlock] = []) {
         self.events = events
         self.reminders = reminders
         self.warnings = warnings
+        self.plans = plans
     }
 }
 
@@ -21,20 +23,27 @@ public enum ICSParser {
 
         var events: [Event] = []
         var reminders: [Reminder] = []
+        var plans: [PlanBlock] = []
         var warnings: [String] = []
         var currentBlock: [String]?
         var currentKind: String?
 
         for line in lines {
-            if line == "BEGIN:VEVENT" || line == "BEGIN:VTODO" {
+            if line == "BEGIN:VEVENT" || line == "BEGIN:VTODO" || line == "BEGIN:X-STARK-PLAN" {
                 currentBlock = []
-                currentKind = line == "BEGIN:VEVENT" ? "VEVENT" : "VTODO"
+                currentKind = line == "BEGIN:VEVENT" ? "VEVENT" : (line == "BEGIN:VTODO" ? "VTODO" : "PLAN")
                 continue
             }
-            if line == "END:VEVENT" || line == "END:VTODO" {
+            if line == "END:VEVENT" || line == "END:VTODO" || line == "END:X-STARK-PLAN" {
                 defer { currentBlock = nil; currentKind = nil }
                 guard let block = currentBlock, let kind = currentKind else { continue }
-                if kind == "VEVENT" {
+                if kind == "PLAN" {
+                    if let plan = parsePlan(block) {
+                        plans.append(plan)
+                    } else {
+                        warnings.append("skipped malformed X-STARK-PLAN block")
+                    }
+                } else if kind == "VEVENT" {
                     if let event = parseEvent(block) {
                         events.append(event)
                     } else {
@@ -52,7 +61,16 @@ public enum ICSParser {
             currentBlock?.append(line)
         }
 
-        return ICSParseResult(events: events, reminders: reminders, warnings: warnings)
+        return ICSParseResult(events: events, reminders: reminders, warnings: warnings, plans: plans)
+    }
+
+    private static func parsePlan(_ block: [String]) -> PlanBlock? {
+        let props = properties(block)
+        guard let id = props["UID"], let reminderID = props["X-STARK-PLAN-REMINDER"],
+              let occurrence = props["X-STARK-PLAN-OCCURRENCE"].flatMap({ ICSDateFormat.parse($0)?.date }),
+              let start = props["DTSTART"].flatMap({ ICSDateFormat.parse($0)?.date }),
+              let minutes = props["X-STARK-PLAN-MINUTES"].flatMap(Int.init), minutes > 0 else { return nil }
+        return PlanBlock(id: id, reminderID: reminderID, occurrence: occurrence, start: start, minutes: minutes)
     }
 
     private static func properties(_ block: [String]) -> [String: String] {
