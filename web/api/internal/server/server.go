@@ -62,7 +62,7 @@ func New(cfg config.Config, deps Deps) http.Handler {
 		}
 		mux.Handle("/api/", auth.Middleware(deps.Auth)(auth.Require(private)))
 	}
-	// Everything the API does not claim: public pages, /static/*, /app/*, 404.
+	// Everything the API does not claim: public pages, /static/*, 404 (also for /app/*: no React app).
 	mux.Handle("/", web.Handler())
 
 	return Wrap(cfg, deps.Logger, mux)

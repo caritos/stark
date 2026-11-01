@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/caritos/stark/internal/apptest"
-	"github.com/caritos/stark/internal/web"
 )
 
 // covers: getHealth
@@ -36,7 +35,7 @@ func TestHealthzReportsVersion(t *testing.T) {
 var buildIDRe = regexp.MustCompile(`^[0-9]{8}-([0-9a-f]{7}|unknown|[0-9a-z]+)(-dirty)?$`)
 
 // Every HTML page the app serves shows "Build <id>" in its footer, and the id is the one
-// /healthz reports. /app/ is skipped locally when the React app is not built (CI fails).
+// /healthz reports. /app/ is the 404 page (Stark ships no React app), so it has the footer too.
 func TestEveryPageFooterShowsTheHealthzBuildID(t *testing.T) {
 	integration(t)
 	a := apptest.NewServer(t)
@@ -51,11 +50,7 @@ func TestEveryPageFooterShowsTheHealthzBuildID(t *testing.T) {
 		t.Fatalf("healthz build_id = %q", health.BuildID)
 	}
 	want := "Build " + health.BuildID
-	paths := []string{"/", "/faq", "/privacy", "/terms", "/support", "/nope"}
-	if os.Getenv("CI") != "" || web.AppBuilt() {
-		builtIndex(t) // fails under CI when the app is missing
-		paths = append(paths, "/app/", "/app/notes/1")
-	}
+	paths := []string{"/", "/faq", "/privacy", "/terms", "/support", "/nope", "/app/", "/app/notes/1"}
 	for _, path := range paths {
 		_, _, body := req(t, a.Client, http.MethodGet, a.URL+path, nil, nil)
 		if !strings.Contains(string(body), want) {

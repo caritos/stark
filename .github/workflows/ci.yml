@@ -35,8 +35,8 @@ jobs:
       # go:embed cannot reach outside web/api, so the Go packages embed a copy of web/public.
       - name: Sync web/public into the embed folder
         run: bash web/scripts/sync-public.sh
-      # The embed tests run in every tier and fail (rather than skip) when CI is set
-      # and the app is not built, so build it first.
+      # pnpm build syncs web/public into the embed directory and removes any React build
+      # (Stark embeds none; tests/embed_test.go fails if web/api/embed/spa is embedded).
       - name: Build the frontend and populate the embed directory
         working-directory: web
         run: pnpm build

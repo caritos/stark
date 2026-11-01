@@ -2,6 +2,7 @@ package tests
 
 import (
 	"html"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
+	uiembed "github.com/caritos/stark/embed"
 	"github.com/caritos/stark/internal/apptest"
 	"github.com/caritos/stark/internal/db/migrations"
 	"github.com/caritos/stark/internal/version"
-	"github.com/caritos/stark/internal/web"
 )
 
 // These tests are about the embeds, so they must not skip under -short.
@@ -55,26 +56,21 @@ func TestEmbeddedMigrationsPresent(t *testing.T) {
 	}
 }
 
-// builtIndex returns the on-disk React build's index.html. Locally it skips when
-// the app has not been built; with CI set (as CI services do) a missing build is
-// a failure, so the check can never be skipped silently there.
-func builtIndex(t *testing.T) []byte {
-	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "embed", "spa", "index.html"))
-	if err != nil {
-		msg := "React app not built (embed/spa/index.html missing); run `make build` first"
-		if os.Getenv("CI") != "" {
-			t.Fatal(msg + " (CI is set, so this is a failure, not a skip)")
-		}
-		t.Skip(msg)
+// Stark ships no React app (2026-11-01): the binary must not embed a spa/ tree (a stale Vite build in
+// web/api/embed/spa would be compiled in by the all:* pattern), and the real server answers /app,
+// /app/ and anything under it with the same 404 page as /nope.
+func TestNoReactAppEmbeddedAndAppIs404(t *testing.T) {
+	if _, err := fs.Stat(uiembed.FS, "spa"); err == nil {
+		t.Fatal("the binary embeds web/api/embed/spa (a React build); Stark ships none: run `pnpm build` in web/ (it removes it) or delete web/api/embed/spa")
 	}
-	return b
-}
-
-// withBuildID is the on-disk index.html as the server serves it: the only difference is
-// the build id written over __BUILD_ID__.
-func withBuildID(index []byte) string {
-	return strings.ReplaceAll(string(index), "__BUILD_ID__", html.EscapeString(version.BuildID))
+	a := apptest.NewServer(t)
+	_, _, nope := req(t, a.Client, http.MethodGet, a.URL+"/nope", nil, nil)
+	for _, p := range []string{"/app", "/app/", "/app/index.html", "/app/notes/1", "/app/assets/index.js"} {
+		st, _, body := req(t, a.Client, http.MethodGet, a.URL+p, nil, nil)
+		if st != http.StatusNotFound || string(body) != string(nope) {
+			t.Errorf("GET %s = %d, same body as /nope: %v; want the 404 page", p, st, string(body) == string(nope))
+		}
+	}
 }
 
 // The frontend files live in web/public; the binary embeds the synced copy under
@@ -95,48 +91,5 @@ func TestEmbeddedPublicFilesMatchWebPublic(t *testing.T) {
 	want := strings.ReplaceAll(string(src), "@@BUILD_ID@@", html.EscapeString(version.BuildID))
 	if st, _, body := req(t, a.Client, http.MethodGet, a.URL+"/privacy", nil, nil); st != http.StatusOK || string(body) != want {
 		t.Fatalf("GET /privacy = %d, equals web/public/pages/privacy.html plus build id: %v (run web/scripts/sync-public.sh)", st, string(body) == want)
-	}
-}
-
-func TestEmbeddedAppPresentWhenBuilt(t *testing.T) {
-	index := builtIndex(t)
-	if !web.AppBuilt() {
-		t.Fatal("index.html exists on disk but web.AppBuilt() is false: the embed is stale or missing")
-	}
-	a := apptest.NewServer(t)
-	st, _, body := req(t, a.Client, http.MethodGet, a.URL+"/app/", nil, nil)
-	if st != http.StatusOK || string(body) != withBuildID(index) {
-		t.Fatalf("GET /app/ = %d, served index matches disk (plus build id): %v", st, string(body) == withBuildID(index))
-	}
-}
-
-// The /app/ mount serves only the React build (embed/spa). Pages and static files sit beside it
-// in the embed tree and must not be reachable through it, and the build must not copy them in
-// (Vite's publicDir defaults to web/public).
-func TestAppMountServesOnlyTheReactBuild(t *testing.T) {
-	index := builtIndex(t)
-	for _, leaked := range []string{"pages", "static"} {
-		if _, err := os.Stat(filepath.Join("..", "embed", "spa", leaked)); err == nil {
-			t.Errorf("embed/spa/%s exists: the React build copied web/public into its output (set publicDir: false)", leaked)
-		}
-	}
-	a := apptest.NewServer(t)
-	for _, p := range []string{"/app/pages/privacy.html", "/app/static/style.css", "/app/embed.go"} {
-		st, _, body := req(t, a.Client, http.MethodGet, a.URL+p, nil, nil)
-		if st != http.StatusOK || string(body) != withBuildID(index) {
-			t.Errorf("GET %s = %d, want the SPA index (not the file itself): index served %v", p, st, string(body) == withBuildID(index))
-		}
-	}
-}
-
-func TestAppDeepLinkServesIndexAndMissingAssetIs404(t *testing.T) {
-	index := builtIndex(t)
-	a := apptest.NewServer(t)
-	st, _, body := req(t, a.Client, http.MethodGet, a.URL+"/app/missing/deep/link", nil, nil)
-	if st != http.StatusOK || string(body) != withBuildID(index) {
-		t.Fatalf("deep link = %d, serves index: %v", st, string(body) == withBuildID(index))
-	}
-	if st, _, _ := req(t, a.Client, http.MethodGet, a.URL+"/app/assets/nope.js", nil, nil); st != http.StatusNotFound {
-		t.Fatalf("missing asset = %d, want 404", st)
 	}
 }
