@@ -1,0 +1,820 @@
+// ios/App/Stark/Stark/PlannerView.swift
+import SwiftUI
+import UIKit
+import StarkKit
+
+/// The day planner (timeboxing): a full-screen editor for today's or tomorrow's plan.
+///
+/// - A vertically scrolling timeline (60 pt per hour, one row per real hour of the day, so a
+///   23- or 25-hour DST day is drawn as it is). Events are dimmed purple blocks in a narrow
+///   left column and never move; all-day and multi-day events sit in a banner above it.
+///   Tasks due that day at a set time (`DayPlanModel.timed`) are accent outlines at their due
+///   time; plan blocks are filled accent blocks with a resize grip on their bottom edge
+///   (press the bottom edge, then drag).
+/// - A tray along the bottom holds the open tasks with no block yet (`DayPlanModel.tray`).
+///
+/// Every change goes into a `PlanDraft` (StarkKit), which owns the rules (15 minute snapping,
+/// no overlap between blocks, nothing crossing midnight); nothing is written until the check
+/// button calls `store.replacePlans(on:with:)`. The view only converts positions to times.
+///
+/// Gestures: a tray chip is dragged with system drag and drop (`.draggable` onto the
+/// timeline's `.dropDestination`). A block or a timed task is lifted with a short press and
+/// then dragged (`DragGesture`, so a plain swipe over it still scrolls the timeline); dropping
+/// a block on the tray removes it, and dragging near the timeline's top or bottom edge scrolls
+/// it. The same press-then-drag on a block's bottom edge resizes it. VoiceOver cannot drag, so every chip and block also has actions
+/// ("Add to plan", "Move", "Remove from plan", longer/shorter) and a tap opens the same time
+/// picker.
+struct PlannerView: View {
+    let day: Date
+    /// The real today, handed down by `ContentView` (views never read `Date()` themselves).
+    let today: Date
+
+    @EnvironmentObject private var store: PlannerStore
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var draft: PlanDraft?
+    /// The model is rebuilt only when the draft or the store changes, never per drag frame.
+    @State private var model: DayPlanModel?
+    @State private var confirmDiscard = false
+    @State private var timePick: TimePick?
+
+    // Drag state (blocks and timed tasks).
+    @State private var lift: Lift?
+    @State private var resize: Resize?
+    @State private var contentMinY: CGFloat = 0
+    @State private var viewportFrame: CGRect = .zero
+    @State private var trayFrame: CGRect = .zero
+    @State private var autoScroll: Task<Void, Never>?
+    @State private var dropTargeted = false
+
+    private static let calendar = Calendar(identifier: .gregorian)
+    static let hourHeight: CGFloat = 60
+    private static let slotMinutes = PlanLayout.snapMinutes
+    private static var slotHeight: CGFloat { hourHeight * CGFloat(slotMinutes) / 60 }
+    private static let gutter: CGFloat = 60
+    private static let trayHeight: CGFloat = 130
+    private static let edgeZone: CGFloat = 48
+    /// How far up from a block's bottom edge a press starts a resize instead of a move.
+    private static let gripZone: CGFloat = 12
+
+    private var dayStart: Date { Self.calendar.startOfDay(for: day) }
+    private var dayEnd: Date { Self.calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart.addingTimeInterval(86_400) }
+    /// Quarter-hour slots in this calendar day (96 normally, 92 or 100 on a DST change day).
+    private var slotCount: Int { Int(dayEnd.timeIntervalSince(dayStart) / 60) / Self.slotMinutes }
+    private var contentHeight: CGFloat { CGFloat(slotCount) * Self.slotHeight }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if let model, !model.allDayEvents.isEmpty {
+                    banner(model.allDayEvents)
+                }
+                Rectangle().fill(Colors.separator).frame(height: 1)
+                timeline
+                Rectangle().fill(Colors.separator).frame(height: 1)
+                tray
+            }
+            .background(Colors.background)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Colors.background, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    (Text(dayWord).fontWeight(.bold) + Text("  \(Self.titleFormatter.string(from: day).uppercased())"))
+                        .font(Fonts.mono(12))
+                        .tracking(2)
+                        .foregroundStyle(Colors.text)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                SquareToolbarButton(systemImage: "checkmark", label: "Save plan", placement: .confirmationAction,
+                                    isProminent: true, isDisabled: draft == nil) { save() }
+                SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { close() }
+            }
+            .confirmationDialog("Discard changes to this plan?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+                Button("Discard Changes", role: .destructive) { dismiss() }
+            }
+            .sheet(item: $timePick) { pick in
+                PlanTimePicker(title: pick.title, initial: pick.initial, day: day) { start in
+                    apply(pick, at: start)
+                }
+            }
+        }
+        .tint(Colors.accent)
+        .preferredColorScheme(.dark)
+        .task {
+            // The model's tray reaches back over the overdue lookback; load it before building.
+            store.loadMonths(covering: AgendaWindow.loadRange(around: day))
+            let saved = makeModel(blocks: nil)
+            draft = PlanDraft(model: saved)
+            model = saved
+        }
+        .onChange(of: draft?.blocks) { _, _ in rebuildModel() }
+        .onChange(of: store.reminders) { _, _ in rebuildModel() }
+        .onChange(of: store.events) { _, _ in rebuildModel() }
+    }
+
+    // MARK: Model
+
+    /// `blocks == nil` uses the saved plans; otherwise the draft's blocks replace this day's.
+    private func makeModel(blocks: [PlanBlock]?) -> DayPlanModel {
+        let plans: [PlanBlock]
+        if let blocks {
+            plans = store.plans.filter { !Self.calendar.isDate($0.start, inSameDayAs: day) } + blocks
+        } else {
+            plans = store.plans
+        }
+        return DayPlanModel.make(day: day, events: store.events, reminders: store.reminders,
+                                 plans: plans, today: today)
+    }
+
+    private func rebuildModel() {
+        guard let draft else { return }
+        model = makeModel(blocks: draft.blocks)
+    }
+
+    private var dayWord: String {
+        if Self.calendar.isDate(day, inSameDayAs: today) { return "TODAY" }
+        if let tomorrow = Self.calendar.date(byAdding: .day, value: 1, to: Self.calendar.startOfDay(for: today)),
+           Self.calendar.isDate(day, inSameDayAs: tomorrow) { return "TOMORROW" }
+        return AgendaFormat.weekdayName(day).uppercased()
+    }
+
+    private static let titleFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.dateFormat = "EEE MMM d"
+        return formatter
+    }()
+
+    private func title(ofReminder id: String) -> String {
+        store.reminders.first { $0.id == id }?.title ?? "Task"
+    }
+
+    // MARK: Save / close
+
+    private func save() {
+        guard let draft else { return }
+        store.replacePlans(on: day, with: draft.blocks)
+        dismiss()
+    }
+
+    private func close() {
+        if draft?.hasChanges == true {
+            confirmDiscard = true
+        } else {
+            dismiss()
+        }
+    }
+
+    // MARK: Positions
+
+    private func y(for date: Date) -> CGFloat {
+        CGFloat(date.timeIntervalSince(dayStart) / 3600) * Self.hourHeight
+    }
+
+    private func height(minutes: Double) -> CGFloat {
+        CGFloat(minutes / 60) * Self.hourHeight
+    }
+
+    /// The time at a y offset in the timeline's content (unsnapped; `PlanDraft` snaps).
+    private func time(atY y: CGFloat) -> Date {
+        let clamped = min(max(y, 0), contentHeight)
+        return dayStart.addingTimeInterval(TimeInterval(clamped / Self.hourHeight * 3600))
+    }
+
+    private static func slotID(_ index: Int) -> String { "slot-\(index)" }
+
+    // MARK: Banner
+
+    private func banner(_ items: [AgendaItem]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Spacing.xs) {
+                ForEach(items) { item in
+                    Text(item.title)
+                        .font(Fonts.mono(11))
+                        .foregroundStyle(Colors.text)
+                        .lineLimit(1)
+                        .padding(.horizontal, Spacing.sm)
+                        .padding(.vertical, Spacing.xs)
+                        .background(Colors.eventDot.opacity(0.35))
+                        .overlay(alignment: .leading) {
+                            Rectangle().fill(Colors.eventDot).frame(width: 3)
+                        }
+                        .accessibilityLabel("All day: \(item.title)")
+                }
+            }
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
+        }
+    }
+
+    // MARK: Timeline
+
+    private var timeline: some View {
+        GeometryReader { outer in
+            ScrollViewReader { proxy in
+                ScrollView(.vertical) {
+                    timelineContent(width: outer.size.width)
+                }
+                .scrollIndicators(.visible)
+                // Once an item is lifted or resized, scrolling is switched off so only the item
+                // moves (edge auto-scroll still scrolls programmatically).
+                .scrollDisabled(lift != nil || resize != nil)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { viewportFrame = $0 }
+                .onAppear {
+                    // Open near the start of the working day (07:30), with room above it.
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(Self.slotID(7 * 4 + 2), anchor: .top)
+                    }
+                }
+                .onChange(of: lift?.globalY) { _, newY in
+                    updateAutoScroll(globalY: newY, proxy: proxy)
+                }
+            }
+        }
+    }
+
+    private func timelineContent(width: CGFloat) -> some View {
+        let laneX = Self.gutter
+        let laneWidth = max(width - laneX - Spacing.sm, 100)
+        let eventWidth = (laneWidth * 0.38).rounded()
+        let taskX = laneX + eventWidth + Spacing.xs
+        let taskWidth = laneWidth - eventWidth - Spacing.xs
+
+        return ZStack(alignment: .topLeading) {
+            // Quarter-hour slots: the grid lines, the hour labels and the scroll anchors.
+            VStack(spacing: 0) {
+                ForEach(0..<slotCount, id: \.self) { index in
+                    slotRow(index)
+                        .id(Self.slotID(index))
+                }
+            }
+            .frame(width: width)
+
+            if let model {
+                ForEach(model.events) { item in
+                    eventBlock(item)
+                        .frame(width: eventWidth, height: eventHeight(item))
+                        .offset(x: laneX, y: y(for: max(item.occurrence, dayStart)))
+                }
+                ForEach(model.timed) { item in
+                    timedTask(item, width: taskWidth)
+                        .offset(x: taskX, y: liftedY(id: item.id) ?? y(for: item.displayDate))
+                        .zIndex(lift?.id == item.id ? 2 : 1)
+                }
+                ForEach(model.blocks) { block in
+                    planBlock(block, width: taskWidth)
+                        .offset(x: taskX, y: liftedY(id: block.id) ?? y(for: block.start))
+                        .zIndex(lift?.id == block.id ? 2 : 1)
+                }
+            }
+        }
+        .frame(width: width, height: contentHeight, alignment: .topLeading)
+        .background(dropTargeted ? Colors.accent.opacity(0.06) : Colors.background)
+        .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { contentMinY = $0 }
+        // A tray chip dropped here becomes a block. The location is in this (content) view's
+        // own coordinates, so y maps straight to a time; the block is centred on the finger.
+        .dropDestination(for: String.self) { ids, location in
+            guard let id = ids.first, let item = model?.tray.first(where: { $0.id == id }) else { return false }
+            let start = time(atY: location.y - height(minutes: Double(PlanLayout.defaultMinutes)) / 2)
+            return place(item, at: start)
+        } isTargeted: { dropTargeted = $0 }
+    }
+
+    private func slotRow(_ index: Int) -> some View {
+        let isHour = index % 4 == 0
+        return ZStack(alignment: .topLeading) {
+            Rectangle()
+                .fill(isHour ? Colors.separator : Colors.separator.opacity(0.35))
+                .frame(height: 1)
+                .padding(.leading, Self.gutter - Spacing.xs)
+            if isHour {
+                Text(AgendaFormat.time(dayStart.addingTimeInterval(TimeInterval(index * Self.slotMinutes * 60))))
+                    .font(Fonts.mono(10))
+                    .foregroundStyle(Colors.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(width: Self.gutter - Spacing.sm, alignment: .trailing)
+                    .offset(y: -6)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(height: Self.slotHeight, alignment: .top)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func eventHeight(_ item: AgendaItem) -> CGFloat {
+        guard case .event(let event) = item.kind else { return Self.slotHeight }
+        let start = max(item.occurrence, dayStart)
+        let length = event.end.map { $0.timeIntervalSince(event.start) } ?? 0
+        let end = min(item.occurrence.addingTimeInterval(length), dayEnd)
+        let minutes = end.timeIntervalSince(start) / 60
+        return max(height(minutes: minutes), Self.slotHeight + Spacing.sm)
+    }
+
+    private func eventBlock(_ item: AgendaItem) -> some View {
+        Text(item.title)
+            .font(Fonts.mono(10))
+            .foregroundStyle(Colors.text.opacity(0.8))
+            .lineLimit(2)
+            .padding(.horizontal, Spacing.xs)
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Colors.eventDot.opacity(0.3))
+            .overlay(alignment: .leading) { Rectangle().fill(Colors.eventDot.opacity(0.8)).frame(width: 2) }
+            .clipped()
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Event: \(item.title), \(AgendaFormat.time(item.occurrence))")
+    }
+
+    /// A task due this day at a set time and not yet planned: an outline at its due time.
+    /// Moving it creates a block (`PlanDraft.place`); its due time is never changed.
+    private func timedTask(_ item: AgendaItem, width: CGFloat) -> some View {
+        let minutes = Double(PlanLayout.defaultMinutes)
+        let visual = VStack(alignment: .leading, spacing: 1) {
+            Text(AgendaFormat.time(item.displayDate))
+                .font(Fonts.mono(9))
+                .foregroundStyle(Colors.accent)
+            Text(item.title)
+                .font(Fonts.mono(11))
+                .foregroundStyle(Colors.text)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, Spacing.xs)
+        .padding(.vertical, 2)
+        .frame(width: width, height: height(minutes: minutes), alignment: .topLeading)
+        .background(Colors.background)
+        .overlay { Rectangle().strokeBorder(Colors.accent, lineWidth: 1) }
+        .clipped()
+        .opacity(lift?.id == item.id ? 0.8 : 1)
+        .contentShape(Rectangle())
+        .onTapGesture { timePick = .place(item, initial: item.displayDate) }
+        let target = LiftTarget(id: item.id, top: y(for: item.displayDate), onDrop: { start, _ in
+            place(item, at: start)
+        })
+        return liftable(visual, target)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.title), due \(AgendaFormat.time(item.displayDate)), not planned")
+        .accessibilityAction(named: "Add to plan") { timePick = .place(item, initial: item.displayDate) }
+    }
+
+    private func planBlock(_ block: PlanBlock, width: CGFloat) -> some View {
+        let shownMinutes: Double = {
+            if let resize, resize.id == block.id { return max(Double(PlanLayout.minMinutes), Double(resize.minutes)) }
+            return Double(block.minutes)
+        }()
+        let blockHeight = height(minutes: shownMinutes)
+        let title = title(ofReminder: block.reminderID)
+        let range = "\(AgendaFormat.time(block.start))–\(AgendaFormat.time(block.end))"
+        let visual = Group {
+            if shownMinutes < 30 {
+                // A quarter hour is 15 pt: one line, start time then title.
+                (Text(AgendaFormat.time(block.start)).font(Fonts.mono(9)).foregroundColor(Colors.background.opacity(0.8))
+                 + Text("  \(title)").font(Fonts.mono(10, weight: .semibold)).foregroundColor(Colors.background))
+                    .lineLimit(1)
+            } else {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(range)
+                        .font(Fonts.mono(9))
+                        .foregroundStyle(Colors.background.opacity(0.8))
+                    Text(title)
+                        .font(Fonts.mono(11, weight: .semibold))
+                        .foregroundStyle(Colors.background)
+                        .lineLimit(shownMinutes >= 45 ? 2 : 1)
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .padding(.leading, Spacing.xs)
+        .padding(.trailing, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // 1 pt shorter than its slot, so back-to-back blocks read as separate blocks.
+        .frame(width: width, height: max(blockHeight - 1, 1))
+        .background(Colors.accent)
+        .clipped()
+        // The resize grip: a short bar on the bottom edge, at the trailing side so it never runs
+        // through the title. Pressing along the bottom edge and dragging resizes.
+        .overlay(alignment: .bottomTrailing) {
+            Rectangle()
+                .fill(Colors.background.opacity(0.6))
+                .frame(width: 16, height: 2)
+                .padding(.trailing, 6)
+                .padding(.bottom, 2)
+                .allowsHitTesting(false)
+        }
+        .overlay(alignment: .topTrailing) {
+            // Remove: a sibling button, not nested in another button.
+            Button { withAnimation(.easeOut(duration: 0.15)) { draft?.remove(id: block.id) } } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Colors.background)
+                    .frame(width: 28, height: min(24, max(blockHeight - 1, 1)))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHidden(true)
+        }
+        .frame(height: blockHeight, alignment: .top)
+        .opacity(lift?.id == block.id ? 0.85 : 1)
+        .contentShape(Rectangle())
+        .onTapGesture { timePick = .move(block.id, initial: block.start) }
+        let target = LiftTarget(id: block.id, top: y(for: block.start),
+                                resizable: (minutes: block.minutes, height: blockHeight),
+                                onDrop: { start, overTray in
+            if overTray {
+                withAnimation(.easeOut(duration: 0.15)) { draft?.remove(id: block.id) }
+                return true
+            }
+            return draft?.move(id: block.id, to: start) ?? false
+        })
+        return liftable(visual, target)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), planned \(range)")
+        .accessibilityAction(named: "Move") { timePick = .move(block.id, initial: block.start) }
+        .accessibilityAction(named: "Make longer") { draft?.resize(id: block.id, toMinutes: block.minutes + PlanLayout.snapMinutes) }
+        .accessibilityAction(named: "Make shorter") { draft?.resize(id: block.id, toMinutes: block.minutes - PlanLayout.snapMinutes) }
+        .accessibilityAction(named: "Remove from plan") { draft?.remove(id: block.id) }
+    }
+
+    // MARK: Lift and drag (blocks, timed tasks)
+
+    /// Where a lifted item is drawn, from the finger's current position and the scroll offset
+    /// (so it stays under the finger while the timeline auto-scrolls).
+    private func liftedY(id: String) -> CGFloat? {
+        guard let lift, lift.id == id else { return nil }
+        return lift.globalY - contentMinY - lift.grabOffset
+    }
+
+    /// What a press-and-drag on a timeline item does.
+    private struct LiftTarget {
+        let id: String
+        /// The item's top in timeline content coordinates.
+        let top: CGFloat
+        /// Blocks only: their length and drawn height. A press on the bottom edge resizes.
+        var resizable: (minutes: Int, height: CGFloat)?
+        /// Called on release with the new start and whether the finger is over the tray.
+        let onDrop: (Date, Bool) -> Bool
+    }
+
+    /// Press briefly, then drag: a plain swipe over a block still scrolls the timeline. One
+    /// gesture per item, so a move and a resize never compete for the same touch (a separate
+    /// grip gesture won SwiftUI's fuzzy hit-test even for presses well above it, seen in the
+    /// simulator): on a block, a press on its bottom edge resizes, anywhere else moves.
+    ///
+    /// On iOS 18+ this is a UIKit long-press recognizer: it fails as soon as the finger moves
+    /// before the press is held, so the scroll view's pan takes the swipe. A SwiftUI
+    /// `LongPressGesture.sequenced(before: DragGesture)` on the item (as `.gesture` or
+    /// `.simultaneousGesture`) stopped every swipe that started on a block from scrolling the
+    /// timeline (seen in the iOS 26 simulator). iOS 17 keeps the SwiftUI gesture.
+    private func liftable<Content: View>(_ content: Content, _ target: LiftTarget) -> some View {
+        Group {
+            if #available(iOS 18.0, *) {
+                content.gesture(LiftRecognizer(
+                    onBegan: { liftBegan(target, at: $0) },
+                    onChanged: { liftMoved(target, to: $0) },
+                    onEnded: { liftEnded(target, at: $0, cancelled: $1) }
+                ))
+            } else {
+                content.gesture(
+                    LongPressGesture(minimumDuration: 0.25)
+                        .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+                        .onChanged { value in
+                            guard case .second(true, let drag?) = value else { return }
+                            if lift?.id == target.id || resize?.id == target.id {
+                                liftMoved(target, to: drag.location)
+                            } else {
+                                liftBegan(target, at: drag.startLocation)
+                                liftMoved(target, to: drag.location)
+                            }
+                        }
+                        .onEnded { value in
+                            guard case .second(true, let drag?) = value else { endLift(); return }
+                            liftEnded(target, at: drag.location, cancelled: false)
+                        }
+                )
+            }
+        }
+    }
+
+    /// `point` is in global coordinates.
+    private func liftBegan(_ target: LiftTarget, at point: CGPoint) {
+        let grab = point.y - contentMinY - target.top
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if let resizable = target.resizable,
+           grab >= resizable.height - min(Self.gripZone, resizable.height / 3) {
+            resize = Resize(id: target.id, startY: point.y, baseMinutes: resizable.minutes,
+                            minutes: CGFloat(resizable.minutes))
+        } else {
+            lift = Lift(id: target.id, grabOffset: grab, globalY: point.y)
+        }
+    }
+
+    private func liftMoved(_ target: LiftTarget, to point: CGPoint) {
+        if let current = resize, current.id == target.id {
+            resize?.minutes = CGFloat(current.baseMinutes) + (point.y - current.startY) / Self.hourHeight * 60
+        } else if lift?.id == target.id {
+            lift?.globalY = point.y
+        }
+    }
+
+    private func liftEnded(_ target: LiftTarget, at point: CGPoint, cancelled: Bool) {
+        defer { endLift() }
+        guard !cancelled else { return }
+        if let current = resize, current.id == target.id {
+            draft?.resize(id: target.id, toMinutes: Int(Double(current.minutes).rounded()))
+            return
+        }
+        guard let lift, lift.id == target.id else { return }
+        let overTray = trayFrame.contains(point)
+        let topY = point.y - contentMinY - lift.grabOffset
+        if !target.onDrop(time(atY: topY), overTray) { refuse() }
+    }
+
+    private func endLift() {
+        lift = nil
+        resize = nil
+        autoScroll?.cancel()
+        autoScroll = nil
+    }
+
+    /// Scrolls the timeline a quarter hour at a time while a lifted item is held within
+    /// `edgeZone` of its top or bottom edge. Stops when the finger leaves the zone or drops.
+    private func updateAutoScroll(globalY: CGFloat?, proxy: ScrollViewProxy) {
+        guard let globalY, viewportFrame.height > 0 else {
+            autoScroll?.cancel(); autoScroll = nil; return
+        }
+        let direction: Int
+        if globalY < viewportFrame.minY + Self.edgeZone { direction = -1 }
+        else if globalY > viewportFrame.maxY - Self.edgeZone && globalY < viewportFrame.maxY + Self.edgeZone { direction = 1 }
+        else { direction = 0 }
+        guard direction != 0 else { autoScroll?.cancel(); autoScroll = nil; return }
+        guard autoScroll == nil else { return }
+        autoScroll = Task { @MainActor in
+            while !Task.isCancelled, let current = lift?.globalY {
+                let up = current < viewportFrame.minY + Self.edgeZone
+                let down = current > viewportFrame.maxY - Self.edgeZone && current < viewportFrame.maxY + Self.edgeZone
+                guard up || down else { break }
+                let visibleTop = viewportFrame.minY - contentMinY
+                let topSlot = Int((visibleTop / Self.slotHeight).rounded())
+                let visibleSlots = Int(viewportFrame.height / Self.slotHeight)
+                if up {
+                    guard topSlot > 0 else { break }
+                    withAnimation(.linear(duration: 0.08)) { proxy.scrollTo(Self.slotID(topSlot - 1), anchor: .top) }
+                } else {
+                    let bottomSlot = topSlot + visibleSlots
+                    guard bottomSlot < slotCount else { break }
+                    withAnimation(.linear(duration: 0.08)) { proxy.scrollTo(Self.slotID(bottomSlot), anchor: .bottom) }
+                }
+                try? await Task.sleep(for: .milliseconds(80))
+            }
+            autoScroll = nil
+        }
+    }
+
+    // MARK: Tray
+
+    private var tray: some View {
+        let items = model?.tray ?? []
+        return VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text(items.isEmpty ? "TRAY" : "TRAY  \(items.count)")
+                .font(Fonts.mono(10, weight: .semibold))
+                .tracking(2)
+                .foregroundStyle(lift != nil && model?.blocks.contains { $0.id == lift?.id } == true
+                                 ? Colors.accent : Colors.textSecondary)
+                .accessibilityAddTraits(.isHeader)
+            if items.isEmpty {
+                Text(model == nil ? "Loading…" : "Nothing left to plan")
+                    .font(Fonts.mono(12))
+                    .foregroundStyle(Colors.textSecondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                ScrollView(.vertical) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: Spacing.xs)],
+                              alignment: .leading, spacing: Spacing.xs) {
+                        ForEach(items) { item in
+                            trayChip(item)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.top, Spacing.sm)
+        .frame(height: Self.trayHeight)
+        .frame(maxWidth: .infinity)
+        .background(Colors.background)
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { trayFrame = $0 }
+    }
+
+    private func trayChip(_ item: AgendaItem) -> some View {
+        Button {
+            timePick = .place(item, initial: suggestedStart)
+        } label: {
+            chipLabel(item)
+        }
+        .buttonStyle(.plain)
+        .draggable(item.id) {
+            chipLabel(item).frame(width: 160)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(chipAccessibilityLabel(item))
+        .accessibilityHint("Drag onto the timeline, or use the Add to plan action.")
+        .accessibilityAction(named: "Add to plan") { timePick = .place(item, initial: suggestedStart) }
+    }
+
+    private func chipLabel(_ item: AgendaItem) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(item.title)
+                .font(Fonts.mono(11))
+                .foregroundStyle(Colors.text)
+                .lineLimit(1)
+            if let note = chipNote(item) {
+                Text(note)
+                    .font(Fonts.mono(9))
+                    .foregroundStyle(item.isOverdue ? Colors.accent : Colors.textSecondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.xs)
+        .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+        .background(Colors.separator)
+        .overlay(alignment: .leading) { Rectangle().fill(Colors.accent).frame(width: 2) }
+        .contentShape(Rectangle())
+    }
+
+    private func chipNote(_ item: AgendaItem) -> String? {
+        if item.isOverdue { return "due \(AgendaFormat.monthDay(item.occurrence))" }
+        if Self.calendar.isDate(item.occurrence, inSameDayAs: day) { return nil }
+        return "due \(AgendaFormat.monthDay(item.occurrence))"
+    }
+
+    private func chipAccessibilityLabel(_ item: AgendaItem) -> String {
+        guard let note = chipNote(item) else { return item.title }
+        return "\(item.title), \(note)"
+    }
+
+    /// Where the time picker starts for a tray task: right after the last block, else 09:00.
+    private var suggestedStart: Date {
+        if let last = model?.blocks.map(\.end).max() { return last }
+        return dayStart.addingTimeInterval(9 * 3600)
+    }
+
+    // MARK: Changes
+
+    @discardableResult
+    private func place(_ item: AgendaItem, at start: Date) -> Bool {
+        var placed = false
+        withAnimation(.easeOut(duration: 0.15)) {
+            placed = draft?.place(item, at: start) ?? false
+        }
+        if !placed { refuse() }
+        return placed
+    }
+
+    private func apply(_ pick: TimePick, at start: Date) {
+        switch pick {
+        case .place(let item, _):
+            place(item, at: start)
+        case .move(let id, _):
+            if draft?.move(id: id, to: start) != true { refuse() }
+        }
+    }
+
+    /// A refused place or move leaves the draft unchanged; this is the only feedback.
+    private func refuse() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+}
+
+/// A block or timed task being dragged.
+private struct Lift: Equatable {
+    let id: String
+    /// Finger's distance below the item's top edge when it was lifted.
+    let grabOffset: CGFloat
+    var globalY: CGFloat
+}
+
+/// Press-and-hold, then drag (iOS 18+). A `UILongPressGestureRecognizer` keeps reporting
+/// `.changed` as the finger moves after the hold, and fails if the finger moves first, which
+/// leaves the swipe to the scroll view. Locations are global.
+@available(iOS 18.0, *)
+private struct LiftRecognizer: UIGestureRecognizerRepresentable {
+    let onBegan: (CGPoint) -> Void
+    let onChanged: (CGPoint) -> Void
+    let onEnded: (CGPoint, Bool) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let recognizer = UILongPressGestureRecognizer()
+        recognizer.minimumPressDuration = 0.25
+        return recognizer
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        let point = context.converter.location(in: .global)
+        switch recognizer.state {
+        case .began: onBegan(point)
+        case .changed: onChanged(point)
+        case .ended: onEnded(point, false)
+        case .cancelled, .failed: onEnded(point, true)
+        default: break
+        }
+    }
+}
+
+/// A block whose bottom edge is being dragged.
+private struct Resize: Equatable {
+    let id: String
+    let startY: CGFloat
+    let baseMinutes: Int
+    var minutes: CGFloat
+}
+
+/// What the time picker sheet is choosing a time for.
+private enum TimePick: Identifiable {
+    case place(AgendaItem, initial: Date)
+    case move(String, initial: Date)
+
+    var id: String {
+        switch self {
+        case .place(let item, _): return "place-\(item.id)"
+        case .move(let id, _): return "move-\(id)"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .place: return "Add to plan"
+        case .move: return "Move"
+        }
+    }
+
+    var initial: Date {
+        switch self {
+        case .place(_, let date), .move(_, let date): return date
+        }
+    }
+}
+
+/// The non-drag path (VoiceOver, or a tap): pick a start time on the planned day, rounded to
+/// the quarter hour (`PlanLayout.snap`), then place or move the item there.
+private struct PlanTimePicker: View {
+    let title: String
+    let day: Date
+    let onPick: (Date) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var time: Date
+
+    private static let calendar = Calendar(identifier: .gregorian)
+
+    init(title: String, initial: Date, day: Date, onPick: @escaping (Date) -> Void) {
+        self.title = title
+        self.day = day
+        self.onPick = onPick
+        _time = State(initialValue: PlanLayout.snap(initial))
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: Spacing.md) {
+                DatePicker("Start", selection: $time, displayedComponents: .hourAndMinute)
+                    #if targetEnvironment(macCatalyst)
+                    .datePickerStyle(.compact)
+                    #else
+                    .datePickerStyle(.wheel)
+                    #endif
+                    .labelsHidden()
+                Text("Rounded to the nearest 15 minutes.")
+                    .font(Fonts.mono(11))
+                    .foregroundStyle(Colors.textSecondary)
+                Spacer(minLength: 0)
+            }
+            .padding(Spacing.md)
+            .frame(maxWidth: .infinity)
+            .background(Colors.background)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Colors.background, for: .navigationBar)
+            .toolbar {
+                SquareToolbarButton(systemImage: "checkmark", label: title, placement: .confirmationAction,
+                                    isProminent: true) {
+                    onPick(startOnDay())
+                    dismiss()
+                }
+                SquareToolbarButton(systemImage: "xmark", label: "Cancel", placement: .cancellationAction) { dismiss() }
+            }
+        }
+        .presentationDetents([.medium])
+        .tint(Colors.accent)
+        .preferredColorScheme(.dark)
+    }
+
+    /// The picked hour and minute on the planned day, snapped to the quarter hour.
+    private func startOnDay() -> Date {
+        let parts = Self.calendar.dateComponents([.hour, .minute], from: time)
+        let start = Self.calendar.date(bySettingHour: parts.hour ?? 9, minute: parts.minute ?? 0, second: 0,
+                                       of: Self.calendar.startOfDay(for: day)) ?? day
+        return PlanLayout.snap(start)
+    }
+}

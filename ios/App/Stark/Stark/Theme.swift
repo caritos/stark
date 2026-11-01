@@ -12,10 +12,11 @@ enum Colors {
     static let separator = Color(hex: 0x333333)
     static let checkboxBorder = Color(hex: 0x555555)
     /// A muted purple: a single, deliberate, user-approved exception to the one-accent-color
-    /// rule, so a glance tells task days (accent) from event days. Scoped to exactly two places:
-    /// the month grid's event density markers (`MonthGridView`) and the year view's day-cell tint
-    /// (`YearView`, issue #102 — purple wins when a day has both tasks and events). Don't use it
-    /// anywhere else.
+    /// rule, so a glance tells task days (accent) from event days. Scoped to exactly three places:
+    /// the month grid's event density markers (`MonthGridView`), the year view's day-cell tint
+    /// (`YearView`, issue #102 — purple wins when a day has both tasks and events), and the day
+    /// planner's dimmed event blocks and all-day banner (`PlannerView`, timeboxing spec). Don't
+    /// use it anywhere else.
     static let eventDot = Color(hex: 0x8E5FD9)
 }
 
