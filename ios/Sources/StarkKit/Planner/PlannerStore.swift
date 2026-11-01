@@ -290,6 +290,107 @@ public final class PlannerStore: ObservableObject {
         rebuild()
     }
 
+    // MARK: Conversion (issue #116)
+
+    /// Converts the event `eventID` into a reminder with `ItemConversion.reminder(from:)`.
+    /// See `convertEvent(id:to:)`.
+    @discardableResult
+    public func convertToReminder(eventID: String) -> Bool {
+        guard let event = events.first(where: { $0.id == eventID }) else { return false }
+        return convertEvent(id: eventID, to: ItemConversion.reminder(from: event))
+    }
+
+    /// Converts the open reminder `reminderID` into an event with `ItemConversion.event(from:)`
+    /// (an undated reminder lands on `today`'s day). See `convertReminder(id:to:)`.
+    @discardableResult
+    public func convertToEvent(reminderID: String, today: Date = Date()) -> Bool {
+        guard let reminder = reminders.first(where: { $0.id == reminderID }) else { return false }
+        return convertReminder(id: reminderID, to: ItemConversion.event(from: reminder, undatedStart: today))
+    }
+
+    /// Replaces the event `id` with `reminder` (given the same id, whatever it carried) in one
+    /// step: the event is removed from wherever it lives and the reminder is placed where it
+    /// belongs (`recurring.ics` when it has a recurrence, else its due date's month, as
+    /// `addReminder` routes it). Memory is changed first, then each affected file is written
+    /// once, so there is no persisted state with both or neither. Returns false and changes
+    /// nothing for an unknown id or when the destination month can't be read (a real read
+    /// failure is never overwritten). Plans are left alone.
+    @discardableResult
+    public func convertEvent(id: String, to reminder: Reminder) -> Bool {
+        var reminder = reminder
+        reminder.id = id
+        let sources = eventLocations(id: id)
+        guard !sources.isEmpty else { return false }
+        let destination: StoreLocation = reminder.recurrence != nil
+            ? .recurring
+            : .month(YearMonth(date: reminder.dueDate ?? Date()))
+        guard prepareDestination(destination) else { return false }
+
+        for source in sources {
+            switch source {
+            case .recurring: recurringEvents.removeAll { $0.id == id }
+            case .month(let month): monthEvents[month]?.removeAll { $0.id == id }
+            }
+        }
+        switch destination {
+        case .recurring: recurringReminders.append(reminder)
+        case .month(let month): monthReminders[month, default: []].append(reminder)
+        }
+        persist(sources.union([destination]))
+        rebuild()
+        return true
+    }
+
+    /// Reminder -> event counterpart of `convertEvent(id:to:)`, routed like `addEvent`. Only an
+    /// open reminder converts: a completed one (or a series' completed copy) returns false and
+    /// is left as history; a recurring series' completed copies are not touched. Plans that
+    /// pointed at the reminder are kept as harmless orphans (they only ever match reminders).
+    @discardableResult
+    public func convertReminder(id: String, to event: Event) -> Bool {
+        guard let original = reminders.first(where: { $0.id == id }),
+              ItemConversion.isConvertible(original) else { return false }
+        var event = event
+        event.id = id
+        var sources: Set<StoreLocation> = []
+        if recurringReminders.contains(where: { $0.id == id }) { sources.insert(.recurring) }
+        for month in loadedMonths where monthReminders[month]?.contains(where: { $0.id == id }) == true {
+            sources.insert(.month(month))
+        }
+        guard !sources.isEmpty else { return false }
+        let destination: StoreLocation = event.recurrence != nil ? .recurring : .month(YearMonth(date: event.start))
+        guard prepareDestination(destination) else { return false }
+
+        for source in sources {
+            switch source {
+            case .recurring: recurringReminders.removeAll { $0.id == id }
+            case .month(let month): monthReminders[month]?.removeAll { $0.id == id }
+            }
+        }
+        switch destination {
+        case .recurring: recurringEvents.append(event)
+        case .month(let month): monthEvents[month, default: []].append(event)
+        }
+        persist(sources.union([destination]))
+        rebuild()
+        return true
+    }
+
+    private func eventLocations(id: String) -> Set<StoreLocation> {
+        var sources: Set<StoreLocation> = []
+        if recurringEvents.contains(where: { $0.id == id }) { sources.insert(.recurring) }
+        for month in loadedMonths where monthEvents[month]?.contains(where: { $0.id == id }) == true {
+            sources.insert(.month(month))
+        }
+        return sources
+    }
+
+    /// Loads a month destination first; false when it can't be read (then nothing may change).
+    private func prepareDestination(_ destination: StoreLocation) -> Bool {
+        guard case .month(let month) = destination else { return true }
+        loadMonth(month)
+        return loadedMonths.contains(month)
+    }
+
     /// Completes one occurrence of a recurring reminder (exdate on the master + a completed
     /// one-off copy), or completes a one-off in place.
     ///

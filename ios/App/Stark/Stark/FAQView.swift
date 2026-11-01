@@ -34,6 +34,15 @@ struct FAQView: View {
             not finish keeps its original due date.
             """
         ),
+        Entry(
+            question: "Can I turn an event into a task?",
+            answer: """
+            Yes. Open the event, use the Event/Reminder switch at the top and tap the check. The \
+            event's end time is dropped, its location and URL move into the task's notes, and any \
+            attended/skipped marks are dropped (Stark asks first). It works the other way round \
+            too: a task becomes an event, and its priority is dropped.
+            """
+        ),
     ]
 
     var body: some View {
