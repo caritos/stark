@@ -37,6 +37,17 @@ public enum ItemConversion {
         )
     }
 
+    /// The event the Edit form describes when it converts a reminder: `edited` is the reminder
+    /// with the form's fields already applied, `originalDueDate` its due date when the form
+    /// opened. The form's Starts/Ends/All day apply (an end not after the start is stored as
+    /// none), except that a reminder opened undated always lands all-day on the form's date: its
+    /// All day toggle starts off only because an undated reminder has no time to show.
+    public static func event(fromEdited edited: Reminder, originalDueDate: Date?,
+                             start: Date, end: Date, allDay: Bool) -> Event {
+        let isAllDay = allDay || originalDueDate == nil
+        return event(from: edited, undatedStart: start).scheduled(start: start, end: end, allDay: isAllDay)
+    }
+
     /// How many attended/skipped marks converting this event to a reminder would lose.
     public static func droppedMarks(converting event: Event) -> Int {
         event.outcomes.count

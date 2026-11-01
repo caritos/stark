@@ -163,6 +163,32 @@ struct ItemConversionTests {
         #expect(ItemConversion.reminder(from: event).priority == nil)
     }
 
+    @Test("the Edit form: an undated task lands all-day on the form's date even with All day off")
+    func formUndatedReminderIsAllDay() {
+        let reminder = Reminder(title: "Someday")
+        let event = ItemConversion.event(fromEdited: reminder, originalDueDate: nil,
+                                         start: at("2026-11-04", 9, 15), end: at("2026-11-04", 9, 15), allDay: false)
+        #expect(event.isAllDay)
+        #expect(event.start == startOfDay("2026-11-04"))
+        #expect(event.end == nil)
+    }
+
+    @Test("the Edit form: a dated task follows the form's All day, Starts and Ends")
+    func formDatedReminderFollowsForm() {
+        let due = at("2026-11-04", 14, 30)
+        let reminder = Reminder(title: "Write", dueDate: due, priority: 1)
+        let timed = ItemConversion.event(fromEdited: reminder, originalDueDate: due,
+                                         start: due, end: at("2026-11-04", 15, 30), allDay: false)
+        #expect(!timed.isAllDay)
+        #expect(timed.start == due)
+        #expect(timed.end == at("2026-11-04", 15, 30))
+        let noEnd = ItemConversion.event(fromEdited: reminder, originalDueDate: due, start: due, end: due, allDay: false)
+        #expect(noEnd.end == nil)
+        let allDay = ItemConversion.event(fromEdited: reminder, originalDueDate: due, start: due, end: due, allDay: true)
+        #expect(allDay.isAllDay)
+        #expect(allDay.start == startOfDay("2026-11-04"))
+    }
+
     @Test("isConvertible: only open reminders")
     func onlyOpenRemindersConvertible() {
         #expect(ItemConversion.isConvertible(Reminder(title: "Open", dueDate: at("2026-11-03", 8))))

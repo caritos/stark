@@ -408,9 +408,10 @@ struct EditItemView: View {
             converted.priority = priority.icalValue
             store.convertEvent(id: event.id, to: converted)
         case (.reminder(let reminder), .event):
-            // Priority is dropped; the form's Starts/Ends/All day and Location/URL apply.
-            var converted = ItemConversion.event(from: edited(reminder), undatedStart: date)
-                .scheduled(start: date, end: endDate, allDay: allDay)
+            // Priority is dropped; the form's Starts/Ends/All day and Location/URL apply (an
+            // undated reminder lands all-day).
+            var converted = ItemConversion.event(fromEdited: edited(reminder), originalDueDate: reminder.dueDate,
+                                                 start: date, end: endDate, allDay: allDay)
             converted.location = FormFields.trimmedOrNil(location)
             converted.url = FormFields.trimmedOrNil(url)
             store.convertReminder(id: reminder.id, to: converted)
