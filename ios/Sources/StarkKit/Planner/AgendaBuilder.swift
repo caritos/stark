@@ -212,7 +212,7 @@ public func buildAgendaItems(
 
 /// How many days after its start day an event's occurrence runs (0 = a single day). Capped so a
 /// bad end date cannot explode the row count.
-private func spanDays(of event: Event, calendar: Calendar) -> Int {
+func spanDays(of event: Event, calendar: Calendar) -> Int {
     guard let end = event.end else { return 0 }
     let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: event.start),
                                        to: calendar.startOfDay(for: end)).day ?? 0

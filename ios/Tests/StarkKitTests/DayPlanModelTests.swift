@@ -25,7 +25,7 @@ struct DayPlanModelTests {
         let later = Reminder(id: "later", title: "Renew passport", dueDate: at(2026, 11, 24, 14))
         let allDay = Reminder(id: "allday", title: "Groceries", dueDate: at(2026, 11, 3))
         let model = make(reminders: [overdue, later, allDay])
-        #expect(Set(reminderIDs(model.tray)) == ["overdue", "later", "allday"])
+        #expect(reminderIDs(model.tray) == ["overdue", "allday", "later"])
         #expect(model.timed.isEmpty)
         let overdueItem = model.tray.first { reminderIDs([$0]) == ["overdue"] }
         #expect(overdueItem?.isOverdue == true)
@@ -37,7 +37,7 @@ struct DayPlanModelTests {
         let farFuture = Reminder(id: "far", title: "Far", dueDate: at(2027, 6, 1))
         let undated = Reminder(id: "undated", title: "Someday")
         let model = make(reminders: [ancient, farFuture, undated])
-        #expect(Set(reminderIDs(model.tray)) == ["ancient", "far"])
+        #expect(reminderIDs(model.tray) == ["ancient", "far"])
         let ancientItem = model.tray.first { reminderIDs([$0]) == ["ancient"] }
         #expect(ancientItem?.isOverdue == true)
         #expect(ancientItem?.occurrence == at(2026, 3, 1, 9))
@@ -170,5 +170,68 @@ struct DayPlanModelTests {
         #expect(ids(model.events) == ["meeting"])
         #expect(ids(model.allDayEvents) == ["holiday"])
         #expect(model.day == day)
+    }
+
+    func eventIDs(_ items: [AgendaItem]) -> [String] {
+        items.compactMap { if case .event(let e) = $0.kind { return e.id } else { return nil } }
+    }
+
+    @Test func timedMultiDayEventIsInBannerOnEveryDay() {
+        let trip = Event(id: "trip", title: "Conference", start: at(2026, 11, 2, 9), end: at(2026, 11, 5, 17))
+        for d in [at(2026, 11, 2), at(2026, 11, 3), at(2026, 11, 5)] {
+            let model = make(events: [trip], reminders: [], day: d)
+            #expect(eventIDs(model.allDayEvents) == ["trip"])
+            #expect(model.events.isEmpty)
+        }
+    }
+
+    @Test func overnightEventIsInBannerOnBothDays() {
+        let party = Event(id: "party", title: "Party", start: at(2026, 11, 2, 22), end: at(2026, 11, 3, 1))
+        for d in [at(2026, 11, 2), at(2026, 11, 3)] {
+            let model = make(events: [party], reminders: [], day: d)
+            #expect(eventIDs(model.allDayEvents) == ["party"])
+            #expect(model.events.isEmpty)
+        }
+    }
+
+    @Test func eventEndingAtNextMidnightIsSingleDay() {
+        let late = Event(id: "late", title: "Late show", start: at(2026, 11, 3, 22), end: at(2026, 11, 4))
+        let model = make(events: [late], reminders: [], day: at(2026, 11, 3))
+        #expect(eventIDs(model.events) == ["late"])
+        #expect(model.events.first?.occurrence == at(2026, 11, 3, 22))
+        #expect(model.allDayEvents.isEmpty)
+        // It does not spill onto the next day at all.
+        let next = make(events: [late], reminders: [], day: at(2026, 11, 4))
+        #expect(next.events.isEmpty)
+        #expect(next.allDayEvents.isEmpty)
+    }
+
+    @Test func dailyEventEndingAtMidnightIsListedOncePerDay() {
+        let nightly = Event(id: "nightly", title: "Wind down", start: at(2026, 11, 1, 22), end: at(2026, 11, 2),
+                            recurrence: RecurrenceRule(frequency: .daily))
+        let model = make(events: [nightly], reminders: [], day: at(2026, 11, 3))
+        #expect(eventIDs(model.events) == ["nightly"])
+        #expect(model.allDayEvents.isEmpty)
+    }
+
+    @Test func singleDayTimedEventIsOnTimeline() {
+        let lunch = Event(id: "lunch", title: "Lunch", start: at(2026, 11, 3, 12), end: at(2026, 11, 3, 13))
+        let model = make(events: [lunch], reminders: [], day: at(2026, 11, 3))
+        #expect(eventIDs(model.events) == ["lunch"])
+        #expect(model.allDayEvents.isEmpty)
+    }
+
+    @Test func trayAndTimedAreOrdered() {
+        let older = Reminder(id: "older", title: "A", dueDate: at(2026, 10, 20, 9))
+        let newer = Reminder(id: "newer", title: "B", dueDate: at(2026, 10, 30, 9))
+        let ancient = Reminder(id: "ancient", title: "C", dueDate: at(2026, 3, 1))
+        let soon = Reminder(id: "soon", title: "D", dueDate: at(2026, 11, 3))
+        let later = Reminder(id: "later", title: "E", dueDate: at(2026, 11, 24, 14))
+        let far = Reminder(id: "far", title: "F", dueDate: at(2027, 6, 1))
+        let afternoon = Reminder(id: "pm", title: "G", dueDate: at(2026, 11, 3, 15))
+        let morning = Reminder(id: "am", title: "H", dueDate: at(2026, 11, 3, 8))
+        let model = make(reminders: [far, later, soon, newer, ancient, older, afternoon, morning])
+        #expect(reminderIDs(model.tray) == ["ancient", "older", "newer", "soon", "later", "far"])
+        #expect(reminderIDs(model.timed) == ["am", "pm"])
     }
 }
