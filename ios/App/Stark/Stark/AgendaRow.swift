@@ -185,7 +185,7 @@ struct AgendaRowView: View {
     private var planLines: PlanRowText.Lines? {
         guard let range = item.plannedRange, case .reminder = item.kind else { return nil }
         return PlanRowText.make(occurrence: item.occurrence, overdueText: overdueText,
-                                range: range, time: AgendaFormat.time)
+                                range: range, time: AgendaFormat.time, monthDay: AgendaFormat.monthDay)
     }
 
     private var timeLine: (text: String, isAccent: Bool)? {
