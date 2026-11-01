@@ -43,6 +43,7 @@ struct PlannerView: View {
     @State private var model: DayPlanModel?
     @State private var confirmDiscard = false
     @State private var timePick: TimePick?
+    @State private var showHistory = false
     /// The tray pane on screen; the planner opens on the planned day's own pane.
     @State private var pane: TrayPane = .today
 
@@ -109,7 +110,11 @@ struct PlannerView: View {
                 SquareToolbarButton(systemImage: "checkmark", label: "Save plan", placement: .confirmationAction,
                                     isProminent: true, isDisabled: draft == nil) { save() }
                 SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { close() }
+                SquareToolbarButton(systemImage: "clock.arrow.circlepath", label: "History", placement: .topBarTrailing) {
+                    showHistory = true
+                }
             }
+            .fullScreenCover(isPresented: $showHistory) { DayHistoryView(day: today, today: today) }
             .confirmationDialog("Discard changes to this plan?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
             }
