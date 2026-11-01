@@ -6,7 +6,7 @@ struct AddItemView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
 
-    @State private var kind: Kind = .event
+    @State private var kind: ItemKind = .event
     @State private var title = ""
     @State private var date: Date
     @State private var endDate: Date
@@ -18,8 +18,6 @@ struct AddItemView: View {
     @State private var notes = ""
     @State private var url = ""
     @State private var priority: ReminderPriority = .none
-
-    enum Kind: String, CaseIterable { case event = "Event", reminder = "Reminder" }
 
     /// Which text field has focus, so the keyboard's sigil buttons know which one to append to
     /// (and stay hidden for the URL field, which must not get tags).
@@ -165,32 +163,5 @@ struct AddItemView: View {
             ))
         }
         dismiss()
-    }
-}
-
-/// Event / Reminder switch: two flat 48 pt squares side by side, the chosen one filled with the
-/// accent, the other outlined. Square and flat like the rest of the app (no rounded segments).
-private struct KindSwitch: View {
-    @Binding var kind: AddItemView.Kind
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(AddItemView.Kind.allCases, id: \.self) { option in
-                let selected = option == kind
-                Button {
-                    kind = option
-                } label: {
-                    Text(option.rawValue)
-                        .font(Fonts.mono(15, weight: .semibold))
-                        .foregroundStyle(selected ? Colors.background : Colors.text)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(selected ? Colors.accent : Color.clear)
-                        .overlay(Rectangle().strokeBorder(selected ? Colors.accent : Colors.checkboxBorder, lineWidth: 1))
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(selected ? .isSelected : [])
-            }
-        }
     }
 }

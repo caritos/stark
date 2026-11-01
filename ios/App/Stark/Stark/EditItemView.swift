@@ -7,6 +7,11 @@ import StarkKit
 /// committed only by Save; the action buttons act immediately and dismiss. Reminders show Done /
 /// Undo / Skip / Delete; events show Done / Skip / Undo / Remove
 /// This Occurrence / Open Link (for an http/https URL, does not dismiss) / Delete.
+///
+/// The Event / Reminder switch above the form converts the item (issue #116): the form switches
+/// to the other kind's fields at once, but nothing is stored until Save, which replaces the item
+/// under the same id in one store call (`PlannerStore.convertEvent` / `convertReminder`). While
+/// converting, the per-occurrence actions and History (which belong to the old kind) are hidden.
 struct EditItemView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
@@ -28,6 +33,9 @@ struct EditItemView: View {
     @State private var url: String
     @State private var priority: ReminderPriority
     @State private var showDeleteConfirm = false
+    /// The kind the form describes; differs from the item's own kind while converting.
+    @State private var kind: ItemKind
+    @State private var showMarksConfirm = false
 
     /// Which text field has focus, so the keyboard's sigil buttons know which one to append to
     /// (and stay hidden for the URL field, which must not get tags).
@@ -84,6 +92,7 @@ struct EditItemView: View {
         _location = State(initialValue: startLocation)
         _url = State(initialValue: startURL)
         _priority = State(initialValue: startPriority)
+        if case .event = item.kind { _kind = State(initialValue: .event) } else { _kind = State(initialValue: .reminder) }
         initialDate = startDate
         initialAllDay = startAllDay
     }
@@ -158,15 +167,20 @@ struct EditItemView: View {
                         .focused($focusedField, equals: .notes)
                     TagSuggestionRow(text: notes) { notes = TagAutocomplete.applying($0, to: notes) }
                 } footer: {
-                    if item.isRecurring {
-                        Text("Changes apply to every occurrence.")
-                            .font(.footnote)
-                            .foregroundStyle(Colors.textSecondary)
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        if item.isRecurring {
+                            Text("Changes apply to every occurrence.")
+                        }
+                        if movesDetailsToNotes {
+                            Text("Location and URL will be added to the notes.")
+                        }
                     }
+                    .font(.footnote)
+                    .foregroundStyle(Colors.textSecondary)
                 }
                 .listRowBackground(Colors.background)
 
-                if let history, !history.entries.isEmpty {
+                if !isConverting, let history, !history.entries.isEmpty {
                     Section("History") {
                         ForEach(Array(history.summaryLines().enumerated()), id: \.offset) { _, line in
                             Text(line)
@@ -178,7 +192,7 @@ struct EditItemView: View {
                 }
 
                 Section {
-                    if let actions = eventActions {
+                    if !isConverting, let actions = eventActions {
                         if actions.showsAttended {
                             Button("Done") { markOutcome(.attended) }.foregroundStyle(Colors.accent)
                         }
@@ -192,17 +206,17 @@ struct EditItemView: View {
                             Button("Remove This Occurrence") { skipOccurrence() }.foregroundStyle(Colors.accent)
                         }
                     }
-                    if let link = openableLink {
+                    if !isConverting, let link = openableLink {
                         // Opens the link and leaves the sheet up: nothing is dismissed or saved.
                         Button("Open Link") { openURL(link) }.foregroundStyle(Colors.accent)
                     }
-                    if showsDone {
+                    if !isConverting && showsDone {
                         Button("Done") { markDone() }.foregroundStyle(Colors.accent)
                     }
-                    if showsUndo {
+                    if !isConverting && showsUndo {
                         Button("Undo") { markUndone() }.foregroundStyle(Colors.accent)
                     }
-                    if showsSkip {
+                    if !isConverting && showsSkip {
                         Button("Skip") { skipOccurrence() }.foregroundStyle(Colors.accent)
                     }
                     Button("Delete", role: .destructive) { showDeleteConfirm = true }
@@ -225,7 +239,22 @@ struct EditItemView: View {
             }
             .sigilKeyboardBar(isVisible: focusedField != nil && focusedField != .url,
                               onTap: insertSigil)
-            .navigationTitle(isEvent ? "Event" : "Reminder")
+            // Same pinned switch as Add (issue #109); only for an event or an open reminder.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if canConvert {
+                    KindSwitch(kind: kindSelection)
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                        .background(Colors.background)
+                }
+            }
+            .alert("Convert to Reminder?", isPresented: $showMarksConfirm) {
+                Button("Convert", role: .destructive) { kind = .reminder }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(marksMessage)
+            }
+            .navigationTitle(kind.rawValue)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Colors.background, for: .navigationBar)
             .toolbar {
@@ -262,9 +291,55 @@ struct EditItemView: View {
         }
     }
 
-    private var isEvent: Bool {
-        if case .event = item.kind { return true }
-        return false
+    /// The form's kind (the converted one while converting), which decides the fields shown.
+    private var isEvent: Bool { kind == .event }
+
+    /// The item's own kind, before any conversion.
+    private var originalKind: ItemKind {
+        if case .event = item.kind { return .event }
+        return .reminder
+    }
+
+    private var isConverting: Bool { kind != originalKind }
+
+    /// An event, or an open reminder: a completed one (or a series' completed copy) is history.
+    private var canConvert: Bool {
+        switch item.kind {
+        case .event: return true
+        case .reminder(let reminder): return ItemConversion.isConvertible(reminder)
+        }
+    }
+
+    /// Attended/skipped marks an event would lose by becoming a reminder.
+    private var droppedMarks: Int {
+        if case .event(let event) = item.kind { return ItemConversion.droppedMarks(converting: event) }
+        return 0
+    }
+
+    private var marksMessage: String {
+        let marks = droppedMarks == 1 ? "1 attended/skipped mark" : "\(droppedMarks) attended/skipped marks"
+        return "This event has \(marks). A reminder can't keep them, so they will be removed when you save."
+    }
+
+    /// Event -> reminder with a location or URL typed: those move into the notes on save.
+    private var movesDetailsToNotes: Bool {
+        isConverting && originalKind == .event
+            && (FormFields.trimmedOrNil(location) != nil || FormFields.trimmedOrNil(url) != nil)
+    }
+
+    /// The switch's binding: choosing Reminder for an event with marks asks first (on the tap,
+    /// so the user learns before editing anything else); cancelling leaves it an event.
+    private var kindSelection: Binding<ItemKind> {
+        Binding(
+            get: { kind },
+            set: { newKind in
+                if newKind == .reminder && kind == .event && originalKind == .event && droppedMarks > 0 {
+                    showMarksConfirm = true
+                } else {
+                    kind = newKind
+                }
+            }
+        )
     }
 
     private var dateLabel: String { isEvent ? "Starts" : "Due" }
@@ -321,30 +396,53 @@ struct EditItemView: View {
     // MARK: Actions
 
     private func save() {
-        switch item.kind {
-        case .event(let event):
-            // `scheduled` stores the picked start/end (an all-day end is its last day) and drops an
-            // end that is not after the start.
-            var updated = event.scheduled(start: date, end: endDate, allDay: allDay)
-            updated.title = trimmedTitle
-            updated.recurrence = repeatEnd.applied(to: recurrence)
-            updated.notes = FormFields.trimmedOrNil(notes)
-            updated.location = FormFields.trimmedOrNil(location)
-            updated.url = FormFields.trimmedOrNil(url)
-            store.updateEvent(updated)
-        case .reminder(let reminder):
-            var updated = reminder
-            updated.title = trimmedTitle
-            // A reminder with no due date stays that way unless the user picked one.
-            if reminder.dueDate != nil || date != initialDate || allDay != initialAllDay {
-                updated.dueDate = FormFields.normalizedStart(date, allDay: allDay)
-            }
-            updated.recurrence = repeatEnd.applied(to: recurrence)
-            updated.notes = FormFields.trimmedOrNil(notes)
-            updated.priority = ReminderPriority.updated(original: reminder.priority, chosen: priority)
-            store.updateReminder(updated)
+        switch (item.kind, kind) {
+        case (.event(let event), .event):
+            store.updateEvent(edited(event))
+        case (.reminder(let reminder), .reminder):
+            store.updateReminder(edited(reminder))
+        case (.event(let event), .reminder):
+            // Apply the form to the event, then convert (location/URL go into the notes, the end
+            // and marks are dropped), then the reminder-only field: one store call, one write each.
+            var converted = ItemConversion.reminder(from: edited(event))
+            converted.priority = priority.icalValue
+            store.convertEvent(id: event.id, to: converted)
+        case (.reminder(let reminder), .event):
+            // Priority is dropped; the form's Starts/Ends/All day and Location/URL apply.
+            var converted = ItemConversion.event(from: edited(reminder), undatedStart: date)
+                .scheduled(start: date, end: endDate, allDay: allDay)
+            converted.location = FormFields.trimmedOrNil(location)
+            converted.url = FormFields.trimmedOrNil(url)
+            store.convertReminder(id: reminder.id, to: converted)
         }
         dismiss()
+    }
+
+    /// The event with the form's fields applied.
+    private func edited(_ event: Event) -> Event {
+        // `scheduled` stores the picked start/end (an all-day end is its last day) and drops an
+        // end that is not after the start.
+        var updated = event.scheduled(start: date, end: endDate, allDay: allDay)
+        updated.title = trimmedTitle
+        updated.recurrence = repeatEnd.applied(to: recurrence)
+        updated.notes = FormFields.trimmedOrNil(notes)
+        updated.location = FormFields.trimmedOrNil(location)
+        updated.url = FormFields.trimmedOrNil(url)
+        return updated
+    }
+
+    /// The reminder with the form's fields applied.
+    private func edited(_ reminder: Reminder) -> Reminder {
+        var updated = reminder
+        updated.title = trimmedTitle
+        // A reminder with no due date stays that way unless the user picked one.
+        if reminder.dueDate != nil || date != initialDate || allDay != initialAllDay {
+            updated.dueDate = FormFields.normalizedStart(date, allDay: allDay)
+        }
+        updated.recurrence = repeatEnd.applied(to: recurrence)
+        updated.notes = FormFields.trimmedOrNil(notes)
+        updated.priority = ReminderPriority.updated(original: reminder.priority, chosen: priority)
+        return updated
     }
 
     private func markDone() {
