@@ -89,6 +89,38 @@ struct PlannerStorePlansTests {
         #expect(!FileManager.default.fileExists(atPath: path))
     }
 
+    @Test("an unreadable month is never deleted or overwritten by replacePlans")
+    @MainActor
+    func unreadableMonthIsLeftAlone() throws {
+        let (store, _, root) = makeStore()
+        let day = DateMath.date(from: "2026-11-02")
+        // A directory where the month file should be: exists, but cannot be read as text.
+        let path = root.appendingPathComponent("docs/2026-11.ics")
+        try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
+        start(store, around: day)
+        store.error = nil
+        store.replacePlans(on: day, with: [])
+        var isDir: ObjCBool = false
+        #expect(FileManager.default.fileExists(atPath: path.path, isDirectory: &isDir) && isDir.boolValue)
+        #expect(store.error != nil)
+        store.error = nil
+        store.replacePlans(on: day, with: [block("r1", day: "2026-11-02")])
+        #expect(FileManager.default.fileExists(atPath: path.path, isDirectory: &isDir) && isDir.boolValue)
+        #expect(store.error != nil)
+        #expect(store.plans.isEmpty)
+    }
+
+    @Test("blocks starting on another day are ignored")
+    @MainActor
+    func foreignDayBlocksIgnored() {
+        let (store, _, _) = makeStore()
+        let d1 = DateMath.date(from: "2026-11-02")
+        start(store, around: d1)
+        let mine = block("r1", day: "2026-11-02")
+        store.replacePlans(on: d1, with: [mine, block("r2", day: "2026-11-05")])
+        #expect(store.plans == [mine])
+    }
+
     @Test("a month without plans is byte-identical to the plan-free serializer")
     @MainActor
     func emptyPlansLeavesFileUntouched() throws {

@@ -168,23 +168,22 @@ public final class PlannerStore: ObservableObject {
 
     /// The plan blocks whose `start` falls on `day`, in stored order.
     public func plans(on day: Date) -> [PlanBlock] {
-        plans.filter { Calendar.current.isDate($0.start, inSameDayAs: day) }
+        let calendar = Calendar(identifier: .gregorian)
+        return plans.filter { calendar.isDate($0.start, inSameDayAs: day) }
     }
 
-    /// Replaces every block starting on `day` with `blocks` and persists the affected month(s).
-    /// Plans never touch a reminder's own due date, recurrence or exception dates.
+    /// Replaces every block starting on `day` with `blocks` and persists the day's month.
+    /// Blocks whose `start` is not on `day` are ignored. If the month failed to load (a real
+    /// read failure, `error` is set) nothing is changed or written, so the unreadable file is
+    /// never treated as empty. Plans never touch a reminder's due date, recurrence or exceptions.
     public func replacePlans(on day: Date, with blocks: [PlanBlock]) {
-        let dayMonth = YearMonth(date: day)
-        loadMonth(dayMonth)
-        var touched: Set<YearMonth> = [dayMonth]
-        monthPlans[dayMonth]?.removeAll { Calendar.current.isDate($0.start, inSameDayAs: day) }
-        for block in blocks {
-            let month = YearMonth(date: block.start)
-            loadMonth(month)
-            monthPlans[month, default: []].append(block)
-            touched.insert(month)
-        }
-        for month in touched.sorted() { persistMonth(month) }
+        let calendar = Calendar(identifier: .gregorian)
+        let month = YearMonth(date: day)
+        loadMonth(month)
+        guard loadedMonths.contains(month) else { return }
+        monthPlans[month]?.removeAll { calendar.isDate($0.start, inSameDayAs: day) }
+        monthPlans[month, default: []].append(contentsOf: blocks.filter { calendar.isDate($0.start, inSameDayAs: day) })
+        persistMonth(month)
         rebuild()
     }
 
