@@ -168,18 +168,26 @@ public struct DayPlanModel {
             .filter { isOnDay($0.start) && !blockIDs.contains($0.id) }
             .sorted { ($0.start, $0.id) < ($1.start, $1.id) }
             .compactMap { plan -> DoneBlock? in
-                let match = reminders.first { r in
-                    guard r.isCompleted else { return false }
-                    if r.id == plan.reminderID { return true }
-                    guard r.seriesID == plan.reminderID, let due = r.dueDate ?? r.completedDate else { return false }
-                    return calendar.isDate(due, inSameDayAs: plan.occurrence)
-                }
-                guard let match, doneSeen.insert(plan.id).inserted else { return nil }
-                return DoneBlock(block: plan, title: match.title)
+                guard let done = doneBlock(for: plan, reminders: reminders, calendar: calendar),
+                      doneSeen.insert(plan.id).inserted else { return nil }
+                return done
             }
 
         return DayPlanModel(day: day, tray: tray, timed: timed, allDayEvents: allDayEvents,
                             events: timedEvents, blocks: blocks, doneBlocks: doneBlocks, calendar: calendar)
+    }
+
+    /// The plan as a done block when its task is completed: a one-off by id, a recurring
+    /// occurrence by its completed copy (`seriesID` = the plan's reminder id, due on the plan's
+    /// occurrence day). nil when no completed reminder matches.
+    static func doneBlock(for plan: PlanBlock, reminders: [Reminder], calendar: Calendar) -> DoneBlock? {
+        let match = reminders.first { r in
+            guard r.isCompleted else { return false }
+            if r.id == plan.reminderID { return true }
+            guard r.seriesID == plan.reminderID, let due = r.dueDate ?? r.completedDate else { return false }
+            return calendar.isDate(due, inSameDayAs: plan.occurrence)
+        }
+        return match.map { DoneBlock(block: plan, title: $0.title) }
     }
 
     /// Banner, not timeline: an all-day event, or a multi-day one, i.e. its end falls on a later
