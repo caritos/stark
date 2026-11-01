@@ -1,0 +1,144 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Third-party actions are pinned by major version tag. For stricter supply-chain
+# control, pin each one to a full commit SHA instead.
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: web/api/go.mod
+          cache-dependency-path: web/api/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+      - run: corepack enable
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      # go:embed cannot reach outside web/api, so the Go packages embed a copy of web/public.
+      - name: Sync web/public into the embed folder
+        run: bash web/scripts/sync-public.sh
+      # The embed tests run in every tier and fail (rather than skip) when CI is set
+      # and the app is not built, so build it first.
+      - name: Build the frontend and populate the embed directory
+        working-directory: web
+        run: pnpm build
+      - name: Go unit tests (short)
+        working-directory: web/api
+        run: go test -short ./...
+      - name: Web unit tests
+        working-directory: web
+        run: pnpm test
+      - name: Typecheck
+        working-directory: web
+        run: pnpm typecheck
+
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: web/api/go.mod
+          cache-dependency-path: web/api/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+      - run: corepack enable
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: Sync web/public into the embed folder
+        run: bash web/scripts/sync-public.sh
+      - name: Build the frontend and populate the embed directory
+        run: |
+          cd web && pnpm build
+          cd api && go build ./...
+      - name: Go tests with the race detector
+        working-directory: web/api
+        run: go test -race ./...
+      - name: Go vet
+        working-directory: web/api
+        run: go vet ./...
+      - name: Generated code is up to date
+        # status --porcelain also catches new untracked generated files, which diff misses.
+        run: |
+          bash web/scripts/gen-api.sh
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --porcelain
+            git diff
+            echo "generated code is stale or new files appeared: run 'make api' and commit" >&2
+            exit 1
+          fi
+      - name: Embedded app and migrations are present
+        working-directory: web/api
+        run: go test ./tests -run 'Embedded' -count=1
+      - name: Web unit tests and typecheck
+        working-directory: web
+        run: |
+          pnpm test
+          pnpm typecheck
+      - name: Deploy, backup and restore script tests
+        run: bash web/scripts/deploy.test.sh
+      - name: Generator preflight tests
+        run: bash web/scripts/gen-api-preflight.test.sh
+      - name: Hook tests
+        run: bash .claude/hooks/post-edit.test.sh
+      - name: Rename script test
+        run: bash web/scripts/rename.test.sh
+      - name: Build id script test
+        run: bash web/scripts/build-id.test.sh
+      - name: Repository layout test
+        run: bash web/scripts/layout.test.sh
+      - name: Skill tests (fast tier)
+        run: bash .claude/skills/new-web-app/tests/run.sh --fast
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: web/api/go.mod
+          cache-dependency-path: web/api/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+      - run: corepack enable
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        working-directory: web
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        working-directory: web
+        run: make e2e
+      - name: Upload Playwright output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright
+          path: |
+            web/test/e2e/test-results
+            web/test/e2e/playwright-report
+          if-no-files-found: ignore

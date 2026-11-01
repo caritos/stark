@@ -1,0 +1,24 @@
+# systemd USER unit: one backup run, started by stark-backup.timer.
+# Install both files in ~/.config/systemd/user/, then:
+#   systemctl --user daemon-reload && systemctl --user enable --now stark-backup.timer
+#
+# DATA_DIR: a DATA_DIR in stark/.env overrides the Environment= line below (systemd
+# applies EnvironmentFile= last; a relative value is relative to WorkingDirectory).
+# Keep one value, or leave DATA_DIR out of .env.
+#
+# ProtectSystem, ReadWritePaths and PrivateTmp are commented out for the same reason as in
+# stark.service: they can fail with status=226/NAMESPACE, and then no backup runs.
+[Unit]
+Description=stark daily backup
+
+[Service]
+Type=oneshot
+ExecStart=%h/stark/current/stark backup --keep 14
+WorkingDirectory=%h/stark/data
+EnvironmentFile=-%h/stark/.env
+Environment=DATA_DIR=%h/stark/data
+UMask=0077
+NoNewPrivileges=yes
+#ProtectSystem=strict
+#ReadWritePaths=%h/stark/data
+#PrivateTmp=yes

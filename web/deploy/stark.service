@@ -1,0 +1,43 @@
+# systemd USER unit for this app. Install as ~/.config/systemd/user/stark.service, then:
+#   systemctl --user daemon-reload && systemctl --user enable --now stark
+# The user must have linger enabled (loginctl enable-linger), or the service stops
+# when the last SSH session ends.
+#
+# Layout (under the deploy user's home): stark/current/stark is the active
+# release, stark/data is DATA_DIR, stark/.env holds the runtime configuration
+# (ADDR=0.0.0.0:<port>, APP_ENV, SESSION_SECRET, PUBLIC_ORIGIN, ...).
+#
+# DATA_DIR: values in stark/.env OVERRIDE Environment= lines (systemd applies
+# EnvironmentFile= last). A DATA_DIR in .env therefore wins over the
+# Environment=DATA_DIR line below, and a relative value is relative to
+# WorkingDirectory. deploy.sh resolves it the same way for the pre-deploy backup.
+# Simplest: do not set DATA_DIR in .env at all.
+#
+# Sandboxing: NoNewPrivileges is on. ProtectSystem, ReadWritePaths and PrivateTmp are
+# shipped commented out because they need unprivileged mount namespaces, which a shared
+# host can refuse, or start refusing after a reboot; the unit then exits with
+# status=226/NAMESPACE, restarts forever and the proxy answers 502. Without them the app
+# runs with less isolation. To switch them on, uncomment the three lines below, then
+# `systemctl --user daemon-reload && systemctl --user restart stark`, and confirm with
+# `systemctl --user is-active app` and the public /healthz.
+[Unit]
+Description=stark web service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/stark/current/stark serve
+WorkingDirectory=%h/stark/data
+EnvironmentFile=-%h/stark/.env
+Environment=DATA_DIR=%h/stark/data
+UMask=0077
+Restart=on-failure
+RestartSec=2
+
+NoNewPrivileges=yes
+#ProtectSystem=strict
+#ReadWritePaths=%h/stark/data
+#PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

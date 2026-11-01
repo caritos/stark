@@ -7,3 +7,25 @@ dist/
 
 # Root-level eas.json is a mistake — the real one lives in mobile/
 eas.json
+# build outputs
+web/test/e2e/test-results/
+web/test/e2e/playwright-report/
+web/dist/
+/bin/
+web/api/stark
+# go:embed source, generated: pages/ and static/ by web/scripts/sync-public.sh, spa/ by pnpm build
+web/api/embed/*
+!web/api/embed/.gitkeep
+!web/api/embed/embed.go
+# runtime data
+web/db/*
+!web/db/.gitkeep
+web/logs/*
+!web/logs/.gitkeep
+web/storage/*
+!web/storage/.gitkeep
+web/api/internal/db/*.db*
+# SwiftPM
+ios/Caritos/.build/
+ios/Caritos/.swiftpm/
+.swiftpm/
