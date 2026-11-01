@@ -94,7 +94,7 @@ struct DayHistoryView: View {
         if isToday { return "TODAY" }
         if let yesterday = cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: today)),
            cal.isDate(day, inSameDayAs: yesterday) { return "YESTERDAY" }
-        return AgendaFormat.weekdayName(day).uppercased()
+        return ""
     }
 
     private func numbers(_ h: DayHistory) -> String {
@@ -108,7 +108,7 @@ struct DayHistoryView: View {
         HStack(spacing: 0) {
             arrow("chevron.left", label: "Previous day", disabled: false) { step(-1) }
             VStack(spacing: 3) {
-                (Text(dayWord).fontWeight(.bold) + Text("  \(Self.titleFormatter.string(from: day).uppercased())"))
+                (Text(dayWord).fontWeight(.bold) + Text("\(dayWord.isEmpty ? "" : "  ")\(Self.titleFormatter.string(from: day).uppercased())"))
                     .font(Fonts.mono(12)).tracking(2)
                     .foregroundStyle(Colors.text)
                     .accessibilityAddTraits(.isHeader)
