@@ -3,45 +3,57 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FAQ - Stark</title>
+  <title>FAQ &mdash; Stark</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="/">Stark</a>
-    <nav aria-label="Main">
-      <a href="/">Home</a>
-      <a href="/faq">FAQ</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/terms">Terms</a>
-      <a href="/support">Support</a>
-    </nav>
+    <div class="wordmark"><a href="/">STARK</a></div>
+    <h1>Frequently Asked Questions</h1>
   </header>
   <main>
-    <h1>Frequently asked questions</h1>
-    <h2>What is Stark?</h2>
-    <p>It is a simple notes app. You sign in, write notes, and attach photos to them. It works in any modern web browser.</p>
-    <h2>Do I need an account?</h2>
-    <p>Yes. You sign up with an email address and a password so that only you can see your notes.</p>
-    <h2>Where is my data stored?</h2>
-    <p>Your notes, account details and uploaded photos are stored on the server that runs this site. They are not sent to any other company. See the <a href="/privacy">privacy policy</a> for details.</p>
-    <h2>Can I delete my notes?</h2>
-    <p>Yes. Deleting a note removes it from your list. If you want your whole account removed, contact us through the <a href="/support">support page</a>.</p>
-    <h2>What if I forget my password?</h2>
-    <p>Contact support and we will help you recover access. Replace this answer with your real password reset process.</p>
-    <h2>How much does it cost?</h2>
-    <p>It is free. Replace this answer with your real pricing.</p>
-    <p class="note">Replace these questions and answers with ones that match your own app.</p>
+    <p><strong>Where is my data stored?</strong><br>
+    On your device only, in Stark's private storage, as standard iCalendar (<strong>.ics</strong>) files. Nothing is uploaded and there is no account.</p>
+
+    <p><strong>Does Stark sync between my devices?</strong><br>
+    No. Each device keeps its own data. Stark's data is included in your normal device backups (iCloud Backup or a computer backup), so restoring a device from a backup restores it too.</p>
+
+    <p><strong>How do I add a recurring reminder or event?</strong><br>
+    Tap + to add an item, then use the Repeat row to choose daily, weekly, monthly or yearly, or a custom rule such as every two weeks or the first Tuesday of the month. Repeat End stops the series after a date or a number of times. Completing a repeating reminder completes only that occurrence; the series continues.</p>
+
+    <p><strong>What happens to a reminder I miss?</strong><br>
+    An overdue reminder moves to today's section with its missed date shown, until you complete or skip it. Missed daily repeats are not carried forward, so they don't nag you every day.</p>
+
+    <p><strong>Can I record whether I attended an event?</strong><br>
+    Yes. Open the event and choose Attended or Didn't Attend. The event stays on your agenda, marked and dimmed, and you can clear the mark at any time.</p>
+
+    <p><strong>Can I search old items?</strong><br>
+    Yes. Search looks through the titles, notes and locations of everything you have ever saved, not just what is near today's date.</p>
+
+    <p><strong>Can I tag people, projects, or labels in a task?</strong><br>
+    Yes &mdash; just type the tag anywhere in the title or notes. <strong>+project</strong> and <strong>@context</strong> are todo.txt's own standard tags; <strong>%label</strong> and <strong>~person</strong> are free-form ones Stark also understands, for whatever categories or people you want to track (e.g. "Call mom ~mom %family"). As you type a tag, Stark suggests matching ones you've already used elsewhere, so you don't have to remember your own spelling.</p>
+
+    <p><strong>How do I plan my day?</strong><br>
+    Tap the calendar-clock button next to TODAY or TOMORROW in the agenda to open Plan. Drag tasks from the tray onto the timeline, resize a block with its bottom edge, then tap the check to save. Planning never changes a task's due date: a task you do not finish keeps its original due date.</p>
+
+    <p><strong>Does Stark work offline?</strong><br>
+    Yes. Stark never needs a connection: everything is read from and written to your device.</p>
+
+    <a class="badge" href="https://apps.apple.com/app/id6772774783"><img src="/static/app-store-badge.svg" alt="Download on the App Store" width="144" height="48"></a>
   </main>
   <footer class="site-footer">
     <nav aria-label="Footer">
       <a href="/">Home</a>
       <a href="/faq">FAQ</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Service</a>
       <a href="/support">Support</a>
     </nav>
-    <p>Stark - contact support@caritos.com</p>
+    <p>&copy; 2026 ELADIO CARITOS</p>
     <p><span class="build-id">Build @@BUILD_ID@@</span></p>
   </footer>
 </body>
