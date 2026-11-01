@@ -174,9 +174,13 @@ struct AgendaView: View {
     private func headerRow(day: Date, todayStart: Date, compact: Bool, items: [AgendaItem]) -> some View {
         let isToday = day == todayStart
         let tomorrow = Self.calendar.date(byAdding: .day, value: 1, to: todayStart)
+        let isYesterday = day == Self.calendar.date(byAdding: .day, value: -1, to: todayStart)
+        let canExport = isToday || isYesterday
         let word: String
         if isToday {
             word = "TODAY"
+        } else if isYesterday {
+            word = "YESTERDAY"
         } else if day == tomorrow {
             word = "TOMORROW"
         } else {
@@ -189,8 +193,8 @@ struct AgendaView: View {
         return HStack(spacing: 0) {
             title
             Spacer(minLength: 0)
-            // Export today as plain text (issue #114), next to the TODAY line.
-            if isToday {
+            // Export today or yesterday as plain text (issue #114), next to the header.
+            if canExport {
                 ShareLink(item: DayExport.text(day: day, items: items, calendar: Self.calendar)) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 14))
@@ -198,11 +202,11 @@ struct AgendaView: View {
                         .frame(width: 44, height: 32)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Export today")
+                .accessibilityLabel(isToday ? "Export today" : "Export yesterday")
             }
         }
         .padding(.leading, Spacing.md)
-        .padding(.trailing, isToday ? Spacing.xs : Spacing.md)
+        .padding(.trailing, canExport ? Spacing.xs : Spacing.md)
         .padding(.top, Spacing.md)
         .padding(.bottom, Spacing.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
