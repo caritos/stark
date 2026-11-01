@@ -6,7 +6,7 @@ Approved in chat 2026-11-01. Size: small/medium.
 The user wants to see how productive they are: flip back through earlier days, see the timeline as planned, which blocks got done and which did not, with numbers on top.
 
 ## What
-- A read-only **History** screen (`DayHistoryView`), opened by a button in the planner header. It opens on yesterday (today if the planner was opened for today and there is nothing earlier is not a case: it always opens on the planner's day if that is today, else today). Decision: opens on **today**, with ‹ steps back as far as the user wants, › forward up to today. No future days.
+- A read-only **History** screen (`DayHistoryView`), opened by a button in the planner header. It opens on today (assistant's call); ‹ steps back day by day, › forward up to today. No future days.
 - Shows that day's timeline: events (banner + timed), done blocks (dimmed, check, struck title), and **open blocks** (planned, task not completed). On a past day open blocks are labelled MISSED; on today OPEN.
 - Header numbers for the viewed day: `3 DONE - 2 MISSED`, `4h planned - 2h30 done`, completion `60%`. A day with no plan says `NO PLAN`.
 - A week line (Sunday-Saturday containing the day, same as Weekly Review): `WEEK: 11 of 16 blocks done - 69%`. Hidden when the week has no plan. (Assistant's call, easy to drop.)
