@@ -271,6 +271,9 @@ app.get('/faq', (c) => {
       <p><strong>Can I tag people, projects, or labels in a task?</strong><br>
       Yes — just type the tag anywhere in the title or notes. <strong>+project</strong> and <strong>@context</strong> are todo.txt's own standard tags; <strong>%label</strong> and <strong>~person</strong> are free-form ones Stark also understands, for whatever categories or people you want to track (e.g. "Call mom ~mom %family"). As you type a tag, Stark suggests matching ones you've already used elsewhere, so you don't have to remember your own spelling.</p>
 
+      <p><strong>How do I plan my day?</strong><br>
+      Tap the calendar-clock button next to TODAY or TOMORROW in the agenda to open Plan. Drag tasks from the tray onto the timeline, resize a block with its bottom edge, then tap the check to save. Planning never changes a task's due date: a task you do not finish keeps its original due date.</p>
+
       <p><strong>Does Stark work offline?</strong><br>
       Yes. Stark never needs a connection: everything is read from and written to your device.</p>
 

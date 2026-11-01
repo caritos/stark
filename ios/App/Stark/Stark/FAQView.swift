@@ -25,6 +25,15 @@ struct FAQView: View {
             elsewhere, so you don't have to remember your own spelling.
             """
         ),
+        Entry(
+            question: "How do I plan my day?",
+            answer: """
+            Tap the calendar-clock button next to TODAY or TOMORROW in the agenda to open Plan. \
+            Drag tasks from the tray onto the timeline, resize a block with its bottom edge, \
+            then tap the check to save. Planning never changes a task's due date: a task you do \
+            not finish keeps its original due date.
+            """
+        ),
     ]
 
     var body: some View {
