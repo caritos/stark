@@ -15,19 +15,33 @@ public struct AgendaItem: Identifiable, Equatable {
     public let displayDate: Date
     /// True when `displayDate` is start-of-today and `occurrence` is the missed date.
     public let isOverdue: Bool
+    /// Timeboxing: the plan block this row was placed by (`applyPlans`), or nil for a normal row.
+    /// A planned row's `displayDate` is the plan's start.
+    public let plan: PlanBlock?
 
-    public init(kind: Kind, occurrence: Date, displayDate: Date, isOverdue: Bool) {
+    public init(kind: Kind, occurrence: Date, displayDate: Date, isOverdue: Bool, plan: PlanBlock? = nil) {
         self.kind = kind
         self.occurrence = occurrence
         self.displayDate = displayDate
         self.isOverdue = isOverdue
+        self.plan = plan
     }
 
+    /// Stable row id. A planned copy appends `-plan-<plan id>`, so it never collides with the
+    /// unplanned row it was copied from (both can be listed, on different days).
     public var id: String {
+        let base: String
         switch kind {
-        case .event(let event): return "\(event.id)-\(occurrence.timeIntervalSince1970)"
-        case .reminder(let reminder): return "\(reminder.id)-\(occurrence.timeIntervalSince1970)"
+        case .event(let event): base = "\(event.id)-\(occurrence.timeIntervalSince1970)"
+        case .reminder(let reminder): base = "\(reminder.id)-\(occurrence.timeIntervalSince1970)"
         }
+        guard let plan else { return base }
+        return "\(base)-plan-\(plan.id)"
+    }
+
+    /// The planned time range (`plan.start...plan.end`), or nil for an unplanned row.
+    public var plannedRange: ClosedRange<Date>? {
+        plan.map { $0.start...$0.end }
     }
 
     public var title: String {
@@ -190,6 +204,14 @@ public func buildAgendaItems(
         }
     }
 
+    return sortAgendaItems(items, calendar: calendar)
+}
+
+/// The agenda's one ordering, shared by `buildAgendaItems` and `applyPlans`: by day of
+/// `displayDate`; within a day overdue rows (by missed `occurrence`), then normal incomplete/event
+/// rows (by `displayDate`), then completed rows; ties break on `id`. A planned row (`plan != nil`)
+/// always sorts as a normal incomplete row at its planned time, even when it carries an overdue miss.
+func sortAgendaItems(_ items: [AgendaItem], calendar: Calendar) -> [AgendaItem] {
     // Decorate, sort, undecorate: each item's sort key (day, group, key, id) is computed once, not
     // on every comparison (`startOfDay` and `id` are far too costly to repeat n log n times).
     let decorated = items.map { item in
@@ -197,7 +219,7 @@ public func buildAgendaItems(
             dayStart: calendar.startOfDay(for: item.displayDate),
             group: sortGroup(item),
             // Overdue rows all share a displayDate, so their real order is the missed occurrence.
-            key: item.isOverdue ? item.occurrence : item.displayDate,
+            key: item.isOverdue && item.plan == nil ? item.occurrence : item.displayDate,
             id: item.id,
             item: item
         )
@@ -232,9 +254,9 @@ private struct SortKey {
 /// `isCompleted` is always false for events, since `outcome` is the event equivalent of
 /// completion; without checking it here an attended/skipped event stayed stuck in the normal
 /// group even though the row already renders it dimmed and struck through like a completed
-/// reminder, via `AgendaRowView`'s `hasOutcome`).
+/// reminder, via `AgendaRowView`'s `hasOutcome`). A planned row is never in the overdue group.
 private func sortGroup(_ item: AgendaItem) -> Int {
-    if item.isOverdue { return 0 }
+    if item.isOverdue && item.plan == nil { return 0 }
     if item.isCompleted || item.outcome != nil { return 2 }
     return 1
 }
