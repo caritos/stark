@@ -16,4 +16,8 @@ export EXPECT_PUBLIC_LISTENER=1
 export REQUIRE_BACKUP_TIMER=1
 # smoke.sh looks for this text in the home page HTML, so it is the HTML-escaped display name
 export APP_NAME='Stark'
+# Stark is a static marketing site: the starter's React app is not built or embedded (2026-11-01), so
+# deploy.sh checks for the synced home page instead of the React index, and smoke.sh wants /app/ to be 404.
+export EMBED_INDEX="$HERE/../api/embed/pages/index.html"
+export SMOKE_APP=0
 exec bash "$HERE/deploy.sh" "$@"

@@ -1435,6 +1435,8 @@ class H(http.server.BaseHTTPRequestHandler):
             self.reply(200, "text/html", "<html>" + cfg.get("home_head", "") + "<body>" + cfg.get("home_body", "<h1>stark</h1>") + footer() + "</body></html>")
         elif p == "/privacy":
             self.reply(200, "text/html", "<html><body><h1>Privacy</h1><p>" + "We keep your data private. " * 5 + "</p></body></html>")
+        elif p == "/app/" and cfg.get("app_status", 200) != 200:
+            self.reply(cfg["app_status"], "text/html", "<html><body>Page not found" + footer() + "</body></html>")
         elif p == "/app/":
             self.reply(200, "text/html", "<html><div id=root></div>" + ("" if cfg.get("no_app_footer") else "<noscript>" + footer() + "</noscript>") + "</html>")
         elif p == "/static/style.css":
@@ -1716,6 +1718,64 @@ test_smoke_compares_EXPECTED_BUILD_ID_literally() {
   local rc=$?
   stop_smoke_server
   assert_false "a regex-looking id must not match" test "$rc" -eq 0
+}
+
+# SMOKE_APP=0: a site without the starter's React app (a static marketing site). /app/ must then
+# be 404, and its 200 and build-id checks are skipped. The default (lotus itself) is unchanged.
+test_smoke_default_still_requires_app_200() {
+  smoke_css
+  start_site '{"version":"v9","css":"body{color:#123}\n","app_status":404}' || { stop_smoke_server; return; }
+  smoke "$SITE_URL" v9
+  local rc=$?
+  stop_smoke_server
+  assert_false "exit nonzero" test "$rc" -eq 0
+  assert_contains "$(cat "$T/err")" "/app/: status 404, want 200" "default wants /app/ 200"
+}
+
+test_smoke_with_SMOKE_APP_0_passes_when_app_is_404() {
+  smoke_css
+  start_site '{"version":"v9","css":"body{color:#123}\n","app_status":404}' || { stop_smoke_server; return; }
+  SMOKE_APP=0 EXPECTED_BUILD_ID=20261027-abc1234 smoke "$SITE_URL" v9
+  local rc=$?
+  stop_smoke_server
+  assert_eq "$rc" "0" "exit status ($(cat "$T/err"))"
+  assert_contains "$(cat "$T/out")" "/app/ is 404 (SMOKE_APP=0)" "says /app/ is 404"
+  assert_false "no /app/ footer check" grep -q "/app/ footer" "$T/out"
+}
+
+test_smoke_with_SMOKE_APP_0_fails_when_app_is_served() {
+  smoke_css
+  start_site '{"version":"v9","css":"body{color:#123}\n"}' || { stop_smoke_server; return; }
+  SMOKE_APP=0 smoke "$SITE_URL" v9
+  local rc=$?
+  stop_smoke_server
+  assert_false "exit nonzero" test "$rc" -eq 0
+  assert_contains "$(cat "$T/err")" "/app/: status 200, want 404 (SMOKE_APP=0)" "names /app/"
+}
+
+test_smoke_rejects_an_unknown_SMOKE_APP_value() {
+  SMOKE_APP=no smoke http://127.0.0.1:1 v9
+  local rc=$?
+  assert_eq "$rc" "2" "exit status"
+  assert_contains "$(cat "$T/err")" "SMOKE_APP" "names the variable"
+}
+
+# The generated wrapper (absent in the starter itself) carries this app's static-site settings:
+# no React build to require (EMBED_INDEX points at the synced home page) and SMOKE_APP=0.
+test_deploy_app_wrapper_sets_the_static_site_switches() {
+  [ -f "$SCRIPT_DIR/deploy-app.sh" ] || { skip "no web/scripts/deploy-app.sh (starter repo)"; return; }
+  mkdir -p "$T/w/web/scripts" "$T/w/web/deploy"
+  cp "$SCRIPT_DIR/deploy-app.sh" "$T/w/web/scripts/"
+  printf 'ADDR=0.0.0.0:8030\n' > "$T/w/web/deploy/.env.example"
+  cat > "$T/w/web/scripts/deploy.sh" <<'EOF'
+echo "SMOKE_APP=${SMOKE_APP:-unset}"
+echo "EMBED_INDEX=${EMBED_INDEX:-unset}"
+echo "args=$*"
+EOF
+  local out; out="$(env -u SMOKE_APP -u EMBED_INDEX bash "$T/w/web/scripts/deploy-app.sh" u@h --check 2>&1)"
+  assert_contains "$out" "SMOKE_APP=0" "wrapper sets SMOKE_APP=0"
+  assert_contains "$out" "EMBED_INDEX=$T/w/web/scripts/../api/embed/pages/index.html" "wrapper points EMBED_INDEX at the synced home page"
+  assert_contains "$out" "args=u@h --check" "arguments passed through"
 }
 
 # deploy_site <build-id-the-site-reports>: starts the fake site for a v2 deploy against it.
@@ -2419,6 +2479,11 @@ for t in \
   test_smoke_fails_when_EXPECTED_BUILD_ID_mismatches \
   test_smoke_fails_when_EXPECTED_BUILD_ID_is_not_in_the_app_html \
   test_smoke_compares_EXPECTED_BUILD_ID_literally \
+  test_smoke_default_still_requires_app_200 \
+  test_smoke_with_SMOKE_APP_0_passes_when_app_is_404 \
+  test_smoke_with_SMOKE_APP_0_fails_when_app_is_served \
+  test_smoke_rejects_an_unknown_SMOKE_APP_value \
+  test_deploy_app_wrapper_sets_the_static_site_switches \
   test_deploy_passes_the_build_id_to_the_build_and_to_smoke \
   test_deploy_smoke_fails_when_the_site_serves_another_build_id \
   test_deploy_refuses_a_port_already_in_use_by_another_service \

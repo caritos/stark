@@ -7,7 +7,8 @@
 # Checks: /healthz is JSON with status ok, the expected version and a well-formed build_id
 # (YYYYMMDD-<short commit>); / is 200 HTML whose <title> or first <h1> contains the app name as a
 # whole word (case-insensitive) and a "Build <id>"
-# footer whose id equals the /healthz build_id; /privacy is 200 with real body text; /app/ is 200;
+# footer whose id equals the /healthz build_id; /privacy is 200 with real body text; /app/ is 200
+# (or 404 with SMOKE_APP=0);
 # /nope is 404; /static/style.css fetched over HTTP/1.0 with compression is
 # byte-identical to the local file; unauthenticated GET /api/notes is 401.
 # Redirects are NOT followed: a 301 to another host fails the check that sees it.
@@ -23,6 +24,9 @@
 #              (the check is skipped with a note when the file is absent)
 #   CURL       curl binary, default curl
 #   EXPECTED_BUILD_ID   the build id that was just deployed (deploy.sh sets it)
+#   SMOKE_APP  1 (default): /app/ is the embedded React app and must be 200 (with the build id).
+#              0: the site ships no React app (a static site); /app/ must be the 404 page and
+#              its 200 and build-id checks are skipped. Any other value is a usage error (exit 2).
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,6 +35,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 APP_NAME="${APP_NAME:-stark}"
 CSS_FILE="${CSS_FILE:-$REPO_ROOT/web/public/static/style.css}"
 CURL="${CURL:-curl}"
+SMOKE_APP="${SMOKE_APP:-1}"
 
 if [ $# -ne 2 ] || [ -z "$1" ] || [ -z "$2" ]; then
   echo "usage: smoke.sh <url> <expected-version>" >&2
@@ -39,6 +44,7 @@ fi
 BASE="${1%/}"
 EXPECTED="$2"
 case "$BASE" in http://*|https://*) ;; *) echo "smoke: url must start with http:// or https://" >&2; exit 2 ;; esac
+case "$SMOKE_APP" in 0|1) ;; *) echo "smoke: SMOKE_APP must be 0 or 1, got '$SMOKE_APP'" >&2; exit 2 ;; esac
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -153,7 +159,9 @@ fi
 
 # /app/
 fetch /app/
-if [ "$STATUS" != "200" ]; then
+if [ "$SMOKE_APP" = 0 ]; then
+  if [ "$STATUS" != "404" ]; then fail "/app/: status $STATUS, want 404 (SMOKE_APP=0)"; else pass "/app/ is 404 (SMOKE_APP=0)"; fi
+elif [ "$STATUS" != "200" ]; then
   fail "/app/: status $STATUS, want 200"
 else
   pass "/app/ is 200"
