@@ -1,19 +1,32 @@
 import Foundation
 
 /// The editable plan for one day: a copy of the saved blocks that the planner UI changes
-/// (place, move, resize, remove) before saving `blocks` with `PlannerStore.replacePlans`.
+/// (place, move, resize, remove) before saving `blocksToSave` with `PlannerStore.replacePlans`.
 /// Only `PlanBlock`s change; a reminder's due date and recurrence are never touched.
 public struct PlanDraft {
+    /// The blocks the planner shows and edits (the model's blocks: open, loaded tasks).
     public private(set) var blocks: [PlanBlock]
+    /// Saved blocks on this day that the model leaves out (a completed task's entry, kept as the
+    /// record, or one for a task whose month is not loaded). Never shown, never edited, never
+    /// considered for overlap, and always written back on save so a save never deletes them.
+    public let retained: [PlanBlock]
     private let initial: [PlanBlock]
     private let day: Date
     private let calendar = Calendar(identifier: .gregorian)
 
-    public init(model: DayPlanModel) {
+    /// - Parameter saved: the day's stored blocks (`PlannerStore.plans(on:)`); those starting on
+    ///   `model.day` and not among `model.blocks` (by id) are retained.
+    public init(model: DayPlanModel, saved: [PlanBlock] = []) {
         self.blocks = model.blocks
         self.initial = model.blocks
         self.day = model.day
+        let shown = Set(model.blocks.map(\.id))
+        let calendar = Calendar(identifier: .gregorian)
+        self.retained = saved.filter { !shown.contains($0.id) && calendar.isDate($0.start, inSameDayAs: model.day) }
     }
+
+    /// Everything to persist for the day: the edited blocks plus the retained ones.
+    public var blocksToSave: [PlanBlock] { blocks + retained }
 
     /// True when the blocks differ from those the draft started with (order ignored).
     public var hasChanges: Bool {

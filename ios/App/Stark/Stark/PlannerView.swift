@@ -110,7 +110,7 @@ struct PlannerView: View {
             // The model's tray reaches back over the overdue lookback; load it before building.
             store.loadMonths(covering: AgendaWindow.loadRange(around: day))
             let saved = makeModel(blocks: nil)
-            draft = PlanDraft(model: saved)
+            draft = PlanDraft(model: saved, saved: store.plans(on: day))
             model = saved
         }
         .onChange(of: draft?.blocks) { _, _ in rebuildModel() }
@@ -168,7 +168,7 @@ struct PlannerView: View {
 
     private func save() {
         guard let draft else { return }
-        store.replacePlans(on: day, with: draft.blocks)
+        store.replacePlans(on: day, with: draft.blocksToSave)
         dismiss()
     }
 

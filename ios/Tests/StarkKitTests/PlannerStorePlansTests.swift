@@ -133,4 +133,36 @@ struct PlannerStorePlansTests {
         let expected = ICSSerializer.serialize(events: [event], reminders: [])
         #expect(String(decoding: data, as: UTF8.self) == expected)
     }
+
+    @Test("saving a day's plan from the planner keeps entries for completed and unloaded tasks")
+    @MainActor
+    func savingKeepsCompletedAndUnloadedEntries() {
+        let (store, _, _) = makeStore()
+        let day = DateMath.date(from: "2026-11-02")
+        let today = day.addingTimeInterval(-3600) // 11:00 the same day
+        start(store, around: day)
+        let ticked = Reminder(title: "Ticked", dueDate: day)
+        let open = Reminder(title: "Open", dueDate: day)
+        store.addReminder(ticked)
+        store.addReminder(open)
+        let tickedBlock = block(ticked.id, day: "2026-11-02", hour: 13)
+        let openBlock = block(open.id, day: "2026-11-02", hour: 14)
+        let unloadedBlock = block("in-an-unloaded-month", day: "2026-11-02", hour: 16)
+        store.replacePlans(on: day, with: [tickedBlock, openBlock, unloadedBlock])
+        store.completeReminder(id: ticked.id, on: day, today: today, now: today)
+
+        // Reopen the planner and save without editing.
+        let model = DayPlanModel.make(day: day, events: store.events, reminders: store.reminders,
+                                      plans: store.plans, today: today)
+        #expect(model.blocks.map(\.id) == [openBlock.id])
+        var draft = PlanDraft(model: model, saved: store.plans(on: day))
+        #expect(draft.hasChanges == false)
+        store.replacePlans(on: day, with: draft.blocksToSave)
+        #expect(Set(store.plans(on: day).map(\.id)) == [tickedBlock.id, openBlock.id, unloadedBlock.id])
+
+        // Removing the open task's block still removes it.
+        draft.remove(id: openBlock.id)
+        store.replacePlans(on: day, with: draft.blocksToSave)
+        #expect(Set(store.plans(on: day).map(\.id)) == [tickedBlock.id, unloadedBlock.id])
+    }
 }

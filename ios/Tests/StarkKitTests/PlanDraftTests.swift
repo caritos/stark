@@ -124,4 +124,44 @@ struct PlanDraftTests {
         draft.resize(id: "zzz", toMinutes: 15)
         #expect(draft.blocks.count == 2)
     }
+
+    // MARK: Retained entries (saved blocks the model does not show)
+
+    @Test func completedAndUnknownTaskBlocksAreRetainedOnSave() {
+        let open = Reminder(id: "a", title: "A", dueDate: at(2026, 10, 30, 9))
+        let done = Reminder(id: "d", title: "D", dueDate: at(2026, 11, 3, 8), isCompleted: true, completedDate: at(2026, 11, 3, 8))
+        let visible = PlanBlock(id: "v", reminderID: "a", occurrence: at(2026, 10, 30, 9), start: at(2026, 11, 3, 9), minutes: 30)
+        let completed = PlanBlock(id: "c", reminderID: "d", occurrence: at(2026, 11, 3, 8), start: at(2026, 11, 3, 13), minutes: 30)
+        let unloaded = PlanBlock(id: "u", reminderID: "elsewhere", occurrence: at(2027, 2, 1, 9), start: at(2026, 11, 3, 15), minutes: 60)
+        let saved = [visible, completed, unloaded]
+        let m = model(reminders: [open, done], plans: saved)
+        #expect(m.blocks.map(\.id) == ["v"])
+        var draft = PlanDraft(model: m, saved: saved)
+        #expect(draft.blocks.map(\.id) == ["v"])
+        #expect(draft.hasChanges == false)
+        #expect(Set(draft.blocksToSave.map(\.id)) == ["v", "c", "u"])
+        // Removing the visible block removes it, the retained ones stay.
+        draft.remove(id: "v")
+        #expect(draft.hasChanges)
+        #expect(Set(draft.blocksToSave.map(\.id)) == ["c", "u"])
+    }
+
+    @Test func retainedBlocksDoNotBlockPlacement() {
+        let open = Reminder(id: "a", title: "A", dueDate: at(2026, 10, 30, 9))
+        // A retained block for an unloaded task sits at 09:00-10:00.
+        let unloaded = PlanBlock(id: "u", reminderID: "elsewhere", occurrence: at(2027, 2, 1, 9), start: at(2026, 11, 3, 9), minutes: 60)
+        let m = model(reminders: [open], plans: [unloaded])
+        var draft = PlanDraft(model: m, saved: [unloaded])
+        let ok = draft.place(item(m, "a"), at: at(2026, 11, 3, 9))
+        #expect(ok)
+        #expect(draft.blocks.first { $0.reminderID == "a" }?.start == at(2026, 11, 3, 9))
+        #expect(draft.blocksToSave.count == 2)
+    }
+
+    @Test func savedBlocksOnOtherDaysAreNotRetained() {
+        let other = PlanBlock(id: "o", reminderID: "x", occurrence: at(2026, 11, 4, 9), start: at(2026, 11, 4, 9), minutes: 30)
+        let m = model(reminders: [])
+        let draft = PlanDraft(model: m, saved: [other])
+        #expect(draft.blocksToSave.isEmpty)
+    }
 }
