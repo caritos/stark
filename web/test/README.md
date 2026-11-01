@@ -3,7 +3,7 @@
 What lives where for the web app's tests:
 
 - `e2e/`: Playwright end-to-end tests against the built binary (specs, `global-setup.ts`,
-  `playwright.config.ts`, `fixtures/`). Failure artifacts land in `e2e/test-results/` and
+  `playwright.config.ts`; Stark's specs check the static site, the build id, the 404 page and that `/app/` is 404). Failure artifacts land in `e2e/test-results/` and
   `e2e/playwright-report/` (both gitignored).
 - Vitest unit and component tests are not here: they sit beside the source files in `web/src/`
   (`*.test.ts`, `*.test.tsx`).

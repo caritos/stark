@@ -8,7 +8,7 @@ full tier runs before every merge; end to end is separate because it downloads a
 | Go unit | package logic, handlers with `httptest`, in-memory or temp-file SQLite | beside the code (`foo_test.go`) | `go test -short ./...` |
 | Go integration | real server wiring, migrations on populated data, auth flow, upload to `storage/`, backup and restore round trip, embed and import-direction checks | `web/api/tests/` | `go test -race ./...` plus `go vet ./...` |
 | Web unit | components and hooks, Vitest + Testing Library, API mocked with MSW | beside the source in `web/src/` | `pnpm test` (and `pnpm typecheck`) |
-| End to end | Playwright against the built binary with a fresh temp database: sign in, create, edit and delete a note, upload a photo, sign out, 404 page | `web/test/e2e/` | `make -C web e2e` |
+| End to end | Playwright against the built binary with a fresh temp database. Stark (2026-11-01): the static pages, build id footers, the 404 page and `/app/` being 404 (the starter's sign-in, notes and photo specs were removed with the React app) | `web/test/e2e/` | `make -C web e2e` |
 
 Shell scripts (deploy, backup pull, restore, generator preflight, the Claude hook, the
 rename script and the build id script) have their own tests, run by `make -C web test-scripts`.
@@ -48,19 +48,16 @@ and the same for `test-ios` (run, failure, skip without `swift`, nothing without
 Integration tests in `web/api/tests/` call `integration(t)`, which skips them with `-short`,
 so `make -C web test-fast` stays quick. The tests that check the embedded migrations and frontend
 (`TestEmbedded...`) and the import-direction guard run in every tier on purpose.
-`TestEmbeddedAppPresentWhenBuilt` and the deep-link test skip locally when the frontend has not
-been built, but **fail** when the `CI` environment variable is set, so CI can never skip them
-silently (both CI Go jobs run `pnpm build` first).
+In Stark the starter's SPA embed tests are replaced by `TestNoReactAppEmbeddedAndAppIs404`, which fails
+whenever the binary embeds a `spa/` tree (a stale Vite build in `web/api/embed/spa`; `pnpm build` removes it)
+and checks that `/app`, `/app/` and `/app/*` are the 404 page.
 
 ## How end to end works
 
-`web/test/e2e/global-setup.ts` builds the frontend (`pnpm build`, skipped with `E2E_SKIP_BUILD=1`
-when it is already built) and the Go binary into a temp directory, creates a user with the
-`user create` command in a fresh temp `DATA_DIR`, starts the server on a random free port and
-waits for `/healthz`. Everything is removed afterwards. No test touches your real data.
-The frontend build writes into `web/api/embed/spa` (inside the embed directory), which is
-shared with `make -C web build`; the prebuild step clears it first, and it stays out of git.
-This is not Vite's usual `dist/`: `go:embed` can only embed files inside the Go module.
+`web/test/e2e/global-setup.ts` runs `pnpm build` (skipped with `E2E_SKIP_BUILD=1`; in Stark it only syncs
+`web/public` and removes `web/api/embed/spa`) and builds the Go binary into a temp directory, starts it with a
+fresh temp `DATA_DIR` on a random free port and waits for `/healthz` (Stark creates no e2e user: there is no
+sign-in to drive). Everything is removed afterwards. No test touches your real data.
 `web/dist/` holds only the binary from `make -C web build`; e2e builds its own binary in a temp directory.
 
 Failure artifacts (traces, screenshots, the HTML report) land in `web/test/e2e/test-results` and
@@ -76,7 +73,7 @@ Failure artifacts (traces, screenshots, the HTML report) land in `web/test/e2e/t
   `apptest.NewServer(t, apptest.WithConfig(func(c *config.Config) { c.TrustedProxy = "127.0.0.1/32" }))`.
 - **Web unit:** add `Thing.test.tsx` beside the component. Render with `src/test/render.tsx`
   and add MSW handlers in `src/test/handlers.ts`. Query by role and label, as a user would.
-- **End to end:** add `name.spec.ts` in `web/test/e2e/`. Use the helpers in `support.ts`. Keep it to
+- **End to end:** add `name.spec.ts` in `web/test/e2e/`. Keep it to
   journeys a browser must prove; push detail down to the cheaper tiers.
 - **Shell scripts:** extend the matching `*.test.sh`; use fake commands on `PATH` and temp
   directories, never real servers. `ONLY='test_deploy_*' bash web/scripts/deploy.test.sh` runs a subset of the
@@ -219,15 +216,15 @@ the module has no YAML library; a differently laid-out spec makes the guard fail
   is served with `__BUILD_ID__` replaced, a matching `Content-Length`, an ETag that follows the id,
   other app files untouched, and the id HTML-escaped. `internal/server`: `/healthz` reports `build_id`.
 - `tests/public_test.go` `TestEveryPageFooterShowsTheHealthzBuildID`: `/`, `/faq`, `/privacy`, `/terms`,
-  `/support`, a 404 URL and (when the app is built; a failure under `CI`) `/app/` show the id that
-  `/healthz` reports.
+  `/support`, a 404 URL and `/app/` (the 404 page in Stark) show the id that `/healthz` reports.
 - `src/Footer.test.tsx`: the React footer reads the meta tag, shows `dev` for the placeholder or a
   missing tag, and is on the sign-in, notes and not-found routes.
-- `web/test/e2e/buildid.spec.ts`: a real id (from `web/scripts/build-id.sh`) in `/healthz` and in the footer of `/`,
-  the sign-in page, the notes page and the 404 page.
+- `web/test/e2e/buildid.spec.ts`: a real id (from `web/scripts/build-id.sh`) in `/healthz` and in the footer of every
+  public page and the 404 page.
 - `web/scripts/deploy.test.sh`: `smoke.sh` accepts a matching footer and fails on a footer id that differs from
   `/healthz`, a missing footer, a missing or malformed `build_id` and a wrong `EXPECTED_BUILD_ID`;
-  `deploy.sh` passes the same id to its build ldflags and to the smoke run.
+  `deploy.sh` passes the same id to its build ldflags and to the smoke run. With `SMOKE_APP=0` smoke wants `/app/`
+  to be 404 and skips its build-id check; `web/scripts/deploy-app.sh` sets it (tested).
 
 ## Import-direction guard
 

@@ -9,9 +9,9 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: "api/embed/spa",
-    // The React bundle goes to web/api/embed/spa (served under the /app/ URL); the embed
-    // directory also holds pages/ and static/ from sync-public.sh, so web/scripts/clean-app.mjs
-    // (the prebuild step) removes only stale spa/ files instead.
+    // Starter layout: the React bundle went to web/api/embed/spa (served under /app/). Stark ships no
+    // React app (2026-11-01): `pnpm build` no longer runs vite build, removes spa/, and the Go server
+    // answers /app/ with 404; web/api/tests/embed_test.go fails if spa/ is ever embedded.
     emptyOutDir: false,
   },
   server: {

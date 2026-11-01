@@ -9,6 +9,14 @@ embedded React app and static public pages), a documented systemd-user-service d
 NGINX reverse proxy, tested backups and restore, and an agent-friendly test setup. The example
 feature is notes with an optional photo, behind email + password sign-in.
 
+**Stark (2026-11-01): no React app.** Stark's site is static, so the starter's React app is not built,
+not embedded and not mounted: `/app`, `/app/` and everything under it is the ordinary 404 page,
+`pnpm build` only syncs `web/public` (and removes a stale `web/api/embed/spa`), and
+`web/api/tests/embed_test.go` fails if the binary embeds a `spa/` tree. The notes/auth API (default-deny
+under `/api/`), `web/src` (the React source, still unit-tested and typechecked) and the Vite config are left
+in place but unused by the deploy. Statements below about the React app, `spa/` and `/app/` describe the
+starter, not this site.
+
 ## Layout and layering
 
 ```
@@ -41,9 +49,9 @@ web/                everything for the web platform; run its commands from here 
     openapi.yaml    the API contract (source of truth)
 ```
 
-`web/dist/` holds only the compiled Go binary. Vite's output (`pnpm build`) goes to
+`web/dist/` holds only the compiled Go binary. In the starter, Vite's output (`pnpm build`) goes to
 `web/api/embed/spa/` (ignored) instead of Vite's usual `dist/`, because `go:embed` can only embed
-files inside the Go module.
+files inside the Go module. Stark runs no Vite build (see the note under Purpose).
 
 Import-direction rules (enforced by `web/api/tests/boundary_test.go`):
 
@@ -63,8 +71,8 @@ Import-direction rules (enforced by `web/api/tests/boundary_test.go`):
 | `make -C web test` | full tier: `go test -race ./...`, `go vet ./...`, Vitest, typecheck, generated-code check, shell script tests, `test-skills`, `test-ios` |
 | `make -C web e2e-install` then `make -C web e2e` | Playwright against the built binary (not part of the other tiers) |
 | `make -C web api` | regenerate `models.gen.go` and `schema.d.ts` from `openapi.yaml` |
-| `make -C web build` | `pnpm build` (fills the embed directory) then `go build` into `web/dist/stark` |
-| `make -C web dev` | Go API on 127.0.0.1:8080 (data under `web/`) plus Vite on :5173; open http://localhost:5173/app/ |
+| `make -C web build` | `pnpm build` (syncs `web/public` into the embed directory; no Vite build in Stark) then `go build` into `web/dist/stark` |
+| `make -C web dev` | Go API on 127.0.0.1:8080 (data under `web/`) plus Vite on :5173; the unshipped React app is only at http://localhost:5173/app/ (the Go server answers `/app/` with 404) |
 
 The Makefile lives in `web/`: run `cd web && make test`, or `make -C web test` from the repo root. Examples elsewhere in this file use `make -C web`.
 If the full suite is slow, run it in the background and wait for the result.
@@ -125,14 +133,15 @@ If the full suite is slow, run it in the background and wait for the result.
   (see `web/docs/https.md` for the staged max-age rollout). Do not add it back in the middleware.
 - Public pages (`/`, `/faq`, `/privacy`, `/terms`, `/support`) are plain static HTML; keep them
   true to the behavior, including every third-party network call.
-- Build id: every HTML page the app serves (public pages, the 404 and "app not built" pages, the React
-  app) has a footer with `Build YYYYMMDD-<short commit>` (UTC build date; `-dirty` when tracked files are
+- Build id: every HTML page the app serves (public pages and the 404 page; Stark has no React app or
+  "app not built" page) has a footer with `Build YYYYMMDD-<short commit>` (UTC build date; `-dirty` when tracked files are
   modified; `unknown` as the commit outside git). `/healthz` reports it as `build_id`. The id is set only by
   `web/scripts/build-id.sh` passed as `-ldflags -X <module>/internal/version.BuildID=...` (`make -C web build`, `make -C web dev`,
   `web/scripts/deploy.sh`, `web/test/e2e/global-setup.ts`); never hard-code it. The web package substitutes it once at
   startup (before ETags and lengths): new HTML pages in `web/public/pages/` must contain the literal
-  `@@BUILD_ID@@` exactly once inside a `site-footer` (a test enforces it); the React app reads it from the
-  `build-id` meta tag in `web/index.html` (`__BUILD_ID__`). `smoke.sh` checks it after every deploy.
+  `@@BUILD_ID@@` exactly once inside a `site-footer` (a test enforces it); in the starter the React app reads it from the
+  `build-id` meta tag in `web/index.html` (`__BUILD_ID__`). `smoke.sh` checks it after every deploy
+  (with `SMOKE_APP=0`, set by `web/scripts/deploy-app.sh`, it wants `/app/` to be 404 instead of the React app).
 - Every subcommand runs under umask 077 (set in `run`), so the database, WAL/SHM, logs, uploads and
   backups are owner-only whichever command creates them.
 - Backups: `stark backup` writes daily sets `<stamp>`; `--label NAME` writes `<stamp>-NAME` sets pruned
@@ -146,14 +155,14 @@ If the full suite is slow, run it in the background and wait for the result.
 - Rule (decided 2026-10-29, implemented the same day): frontend source lives in `web/src` (React and TypeScript) or `web/public`
   (HTML templates and public pages, CSS, fonts, images, icons and Markdown content that Go renders). Nothing
   frontend goes in `web/api`, which is Go code only.
-- `pnpm build` compiles `web/src` into `web/api/embed/spa/`; `bash web/scripts/sync-public.sh` copies
+- In the starter `pnpm build` compiles `web/src` into `web/api/embed/spa/` (in Stark it only syncs and removes `spa/`); `bash web/scripts/sync-public.sh` copies
   `web/public/{pages,static}` into `web/api/embed/pages/` and `static/`. Everything in `web/api/embed/` except
   `embed.go` and `.gitkeep` is generated and gitignored; never edit it. Every `make` target, `pnpm build`
   (`prebuild`), `deploy.sh`, the e2e harness, CI and the post-edit hook (on an edit under `web/public`) run the sync.
 - `go build` embeds only that folder: `package embed` has one `//go:embed all:*` (it always matches `.gitkeep`, so
-  a missing build compiles), and `internal/web` takes `pages/`, `static/` and `spa/` from it. `go:embed` cannot reach
-  outside the Go module, so the frontend is built and synced first and Go embeds the result. `/app/` is only the URL
-  mount of `spa/`; templates and pages sit beside it and are not reachable through it.
+  a missing build compiles), and `internal/web` takes `pages/` and `static/` from it (Stark has no `spa/`). `go:embed` cannot reach
+  outside the Go module, so the frontend is built and synced first and Go embeds the result. In the starter `/app/` is
+  only the URL mount of `spa/`; Stark removed that mount (2026-11-01).
 - Fail fast: `requireUI` in `internal/web` (and `TestMain` in `web/api/tests`) report an empty embed tree with
   "run `pnpm build` in web/ first", instead of a "file does not exist" panic.
 - The output is one static Go binary with no files beside it except the server `.env`. A fresh clone needs
@@ -328,6 +337,19 @@ pins `packageManager`. Commit `pnpm-lock.yaml`. `typescript` is pinned to 5.9.x 
   pre-rename `ls` order, so every renamed app failed it. It now compares sorted sets (self-tests prove an extra
   and a missing file still fail), and `scripts/rename.test.sh` runs the guard in its renamed copy.
 
+### Done (Stark, 2026-11-01)
+
+- Removed the starter's React app from the site: `internal/web` no longer mounts `/app/` (no SPA index, assets,
+  `/app` redirect or "app not built" 503; `/app`, `/app/` and `/app/*` are the same 404 page as `/nope`;
+  `AppBuilt` and `NewHandler(app)` are gone, `NewHandlerWithBuildID(buildID)` takes no app FS); `pnpm build` is
+  `sync-public.sh` plus `rm -rf api/embed/spa` (no Vite build; deploy, `make build`, CI and the e2e harness all
+  call it); `web/api/tests/embed_test.go` `TestNoReactAppEmbeddedAndAppIs404` fails if the binary embeds `spa/`;
+  `smoke.sh` has `SMOKE_APP=0` (wants `/app/` 404 and skips the `/app/` build-id check; default 1 unchanged) and
+  `web/scripts/deploy-app.sh` sets it plus `EMBED_INDEX` = the synced `pages/index.html` (deploy.sh's "is the
+  frontend built" check); Playwright lost the sign-in, notes and photo specs (and `support.ts`, the photo fixture
+  and the e2e user) and gained a `/app/` 404 check in `site.spec.ts`. Kept: the notes/auth API (still default-deny,
+  401 signed out), `web/src`, Vite/Vitest, `clean-app.mjs` (now unused by the build; its test stays).
+
 ### Not yet verified
 
 - A real SSH deploy to a server and a real systemd user service.
@@ -341,8 +363,16 @@ pins `packageManager`. Commit `pnpm-lock.yaml`. `typescript` is pinned to 5.9.x 
 - An Xcode build of a scaffolded app that resolves the nested Caritos package (xcodebuild / `deploy.sh`) has not been run;
   only `swift test` on macOS has (plus an iOS Simulator `xcodebuild` of the `CaritosUI` scheme in the starter itself).
 - `ErrorBanner` with VoiceOver on a device.
+- Stark: the `/app/` removal on the live server (the deploy with `SMOKE_APP=0` has not been run yet).
 
 ### Deferred
+
+Stark (2026-11-01)
+- lotus should offer a static-only mode (no React app, no SPA mount, smoke without `/app/`) so a marketing site
+  does not have to remove it by hand: caritos/lotus#7 item 3. Until then Stark carries this local fork of
+  `internal/web`, `package.json`'s `build`, the e2e specs and the `SMOKE_APP` switch.
+- Removing the unused notes/auth API, `web/src`, the Vite/React toolchain and `clean-app.mjs` from Stark: left in
+  place because lotus's guard, gen-api, layout and Vitest tiers are wired to them.
 
 Caritos package
 - `sync-caritos.sh` to re-copy a newer snapshot of `ios/Caritos` into an app that already has one (the scaffold copies once).
