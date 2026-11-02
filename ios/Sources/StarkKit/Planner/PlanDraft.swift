@@ -10,12 +10,13 @@ public struct PlanDraft {
     /// record, or one for a task whose month is not loaded). Never shown, never edited, never
     /// considered for overlap (except the done
     /// blocks, see `done`), and always written back on save so a save never deletes them.
-    public let retained: [PlanBlock]
+    public private(set) var retained: [PlanBlock]
     /// The model's done blocks (completed tasks' plans on this day): shown read-only, never
     /// moved, resized or removed, kept on save (they are among `retained`), and obstacles: no
     /// block is placed, moved or grown over one.
-    public let done: [PlanBlock]
+    public private(set) var done: [PlanBlock]
     private let initial: [PlanBlock]
+    private var completedAny = false
     private let day: Date
     private let calendar = Calendar(identifier: .gregorian)
 
@@ -46,7 +47,7 @@ public struct PlanDraft {
 
     /// True when the blocks differ from those the draft started with (order ignored).
     public var hasChanges: Bool {
-        Set(blocks.map(Key.init)) != Set(initial.map(Key.init))
+        completedAny || Set(blocks.map(Key.init)) != Set(initial.map(Key.init))
     }
 
     private struct Key: Hashable {
@@ -90,5 +91,19 @@ public struct PlanDraft {
 
     public mutating func remove(id: String) {
         blocks.removeAll { $0.id == id }
+    }
+
+    /// The task behind block `id` was just completed (by the caller, via the store): the block
+    /// leaves the open list and becomes a done block, which is always written back on save, so
+    /// the entry is kept exactly once and other unsaved edits are untouched. Returns the block
+    /// (nil for an unknown id, e.g. a second call).
+    @discardableResult
+    public mutating func markDone(id: String) -> PlanBlock? {
+        guard let index = blocks.firstIndex(where: { $0.id == id }) else { return nil }
+        let block = blocks.remove(at: index)
+        done.append(block)
+        retained.append(block)
+        completedAny = true
+        return block
     }
 }
