@@ -3,7 +3,11 @@ import SwiftUI
 import UIKit
 import StarkKit
 
-/// The day planner (timeboxing): a full-screen editor for today's or tomorrow's plan.
+/// The day planner (timeboxing): a full-screen editor for one day's plan. The ‹ › chevrons in
+/// the header step one calendar day at a time, with no bounds: today and later days are
+/// editable, earlier days are view-only (`PastDayView` under the `DayHistory` numbers, with no
+/// tray, no gestures and no save). Each editable day keeps its own unsaved draft in a
+/// `PlanSession` while the user steps elsewhere.
 ///
 /// - A vertically scrolling timeline (60 pt per hour, one row per real hour of the day, so a
 ///   23- or 25-hour DST day is drawn as it is). Events are dimmed purple blocks in a narrow
@@ -31,9 +35,16 @@ import StarkKit
 /// and block also has actions ("Add to plan", "Move", "Remove from plan", longer/shorter) and
 /// a tap opens the same time picker.
 struct PlannerView: View {
-    let day: Date
+    /// The viewed day (start of day); the ‹ › chevrons step it. Today and later are editable,
+    /// earlier days are view-only (`PlannerDays.isEditable`).
+    @State private var day: Date
     /// The real today, handed down by `ContentView` (views never read `Date()` themselves).
     let today: Date
+
+    init(day: Date, today: Date) {
+        self.today = today
+        _day = State(initialValue: Calendar(identifier: .gregorian).startOfDay(for: day))
+    }
 
     @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
@@ -45,7 +56,8 @@ struct PlannerView: View {
     @State private var timePick: TimePick?
     /// The open block whose action menu (Done / Move / Remove) is showing.
     @State private var actionBlock: PlanBlock?
-    @State private var showHistory = false
+    /// Unsaved drafts of the days stepped away from, restored on stepping back.
+    @State private var session = PlanSession()
     /// The tray pane on screen; the planner opens on the planned day's own pane.
     @State private var pane: TrayPane = .today
 
@@ -81,42 +93,35 @@ struct PlannerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                if let model, !model.allDayEvents.isEmpty {
-                    banner(model.allDayEvents)
+            Group {
+                if isEditable {
+                    VStack(spacing: 0) {
+                        if let model, !model.allDayEvents.isEmpty {
+                            banner(model.allDayEvents)
+                        }
+                        Rectangle().fill(Colors.separator).frame(height: 1)
+                        timeline
+                        Rectangle().fill(Colors.separator).frame(height: 1)
+                        tray
+                    }
+                } else {
+                    pastDay
                 }
-                Rectangle().fill(Colors.separator).frame(height: 1)
-                timeline
-                Rectangle().fill(Colors.separator).frame(height: 1)
-                tray
             }
             .background(Colors.background)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Colors.background, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    VStack(spacing: 1) {
-                        (Text(dayWord).fontWeight(.bold) + Text("  \(Self.titleFormatter.string(from: day).uppercased())"))
-                            .font(Fonts.mono(12))
-                            .tracking(2)
-                            .foregroundStyle(Colors.text)
-                            .accessibilityAddTraits(.isHeader)
-                        if let summary = DayPlanModel.summary(done: model?.doneCount ?? 0, planned: draft?.blocks.count ?? 0) {
-                            Text(summary)
-                                .font(Fonts.mono(9))
-                                .tracking(1.5)
-                                .foregroundStyle(Colors.textSecondary)
-                        }
-                    }
+                ToolbarItem(placement: .principal) { header }
+                if isEditable {
+                    SquareToolbarButton(systemImage: "checkmark", label: "Save plan", placement: .confirmationAction,
+                                        isProminent: true, isDisabled: draft == nil) { save() }
+                } else {
+                    // Keeps the chevrons where they were while stepping into the past.
+                    SquareToolbarPlaceholder(placement: .confirmationAction)
                 }
-                SquareToolbarButton(systemImage: "checkmark", label: "Save plan", placement: .confirmationAction,
-                                    isProminent: true, isDisabled: draft == nil) { save() }
                 SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { close() }
-                SquareToolbarButton(systemImage: "clock.arrow.circlepath", label: "History", placement: .topBarTrailing) {
-                    showHistory = true
-                }
             }
-            .fullScreenCover(isPresented: $showHistory) { DayHistoryView(day: today, today: today) }
             .confirmationDialog("Discard changes to this plan?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
             }
@@ -140,13 +145,7 @@ struct PlannerView: View {
         }
         .tint(Colors.accent)
         .preferredColorScheme(.dark)
-        .task {
-            // The model's tray reaches back over the overdue lookback; load it before building.
-            store.loadMonths(covering: AgendaWindow.loadRange(around: day))
-            let saved = makeModel(blocks: nil)
-            draft = PlanDraft(model: saved, saved: store.plans(on: day))
-            model = saved
-        }
+        .task(id: day) { loadDay() }
         .onChange(of: draft?.blocks) { _, _ in rebuildModel() }
         .onChange(of: store.reminders) { _, _ in rebuildModel() }
         .onChange(of: store.events) { _, _ in rebuildModel() }
@@ -172,7 +171,91 @@ struct PlannerView: View {
             plans = store.plans
         }
         return DayPlanModel.make(day: day, events: store.events, reminders: store.reminders,
-                                 plans: plans, today: today)
+                                 plans: plans, today: today,
+                                 plannedElsewhere: session.plannedElsewhere(of: day, saved: store.plans, today: today))
+    }
+
+    // MARK: Day stepping
+
+    private var isEditable: Bool { PlannerDays.isEditable(day, today: today, calendar: Self.calendar) }
+
+    /// Loads the months `day` needs (its week widened by the overdue lookback), then builds the
+    /// draft: the one kept from an earlier visit in this session, or a fresh one from the saved
+    /// plans. A past day has no draft or model; it draws from `DayHistory`.
+    private func loadDay() {
+        store.loadMonths(covering: PlannerDays.loadRange(for: day, calendar: Self.calendar))
+        guard isEditable else {
+            draft = nil
+            model = nil
+            return
+        }
+        if let kept = session.draft(for: day) {
+            draft = kept
+            model = makeModel(blocks: kept.blocksToSave)
+        } else {
+            let saved = makeModel(blocks: nil)
+            draft = PlanDraft(model: saved, saved: store.plans(on: day))
+            model = saved
+        }
+    }
+
+    /// Keeps the current day's draft in the session, moves to the day `days` away and drops
+    /// every in-flight gesture or menu; `.task(id: day)` then loads the new day.
+    private func step(_ days: Int) {
+        if let draft, isEditable { session.stash(draft, for: day) }
+        endLift()  // lift, resize, autoScroll
+        actionBlock = nil
+        timePick = nil
+        pane = .today
+        draft = nil
+        model = nil
+        day = PlannerDays.step(day, by: days, calendar: Self.calendar)
+    }
+
+    /// `‹  TITLE  ›`: the day word (TODAY / TOMORROW / weekday) over the date line, which says
+    /// VIEW ONLY on a past day, and the done/planned summary on an editable one.
+    private var header: some View {
+        HStack(spacing: Spacing.sm) {
+            SquareButton(systemImage: "chevron.left", label: "Previous day") { step(-1) }
+            VStack(spacing: 1) {
+                Text(dayWord)
+                    .font(Fonts.mono(12, weight: .bold))
+                    .tracking(2)
+                    .foregroundStyle(Colors.text)
+                Text(dateLine)
+                    .font(Fonts.mono(10))
+                    .tracking(1.5)
+                    .foregroundStyle(Colors.textSecondary)
+                if isEditable, let summary = DayPlanModel.summary(done: model?.doneCount ?? 0, planned: draft?.blocks.count ?? 0) {
+                    Text(summary)
+                        .font(Fonts.mono(9))
+                        .tracking(1.5)
+                        .foregroundStyle(Colors.textSecondary)
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(minWidth: 150)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            SquareButton(systemImage: "chevron.right", label: "Next day") { step(1) }
+        }
+    }
+
+    private var dateLine: String {
+        let date = Self.titleFormatter.string(from: day).uppercased()
+        return isEditable ? date : "\(date) - VIEW ONLY"
+    }
+
+    /// A past day: the `DayHistory` numbers above the read-only timeline. No tray, no gestures.
+    private var pastDay: some View {
+        let history = DayHistory.make(day: day, events: store.events, reminders: store.reminders,
+                                      plans: store.plans, today: today)
+        let week = DayHistory.weekStats(containing: day, reminders: store.reminders, plans: store.plans, today: today)
+        return VStack(spacing: 0) {
+            PastDayHeader(history: history, weekStats: week)
+            PastDayView(day: day, history: history, isToday: false)
+        }
     }
 
     /// Done from the block menu: the store's own completion path (same as the agenda checkbox,

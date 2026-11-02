@@ -62,6 +62,40 @@ struct SquareToolbarButton: ToolbarContent {
     }
 
     private var button: some View {
+        SquareButton(systemImage: systemImage, label: label, isProminent: isProminent,
+                     isDisabled: isDisabled, action: action)
+    }
+}
+
+/// An empty, invisible 40 pt square in a toolbar slot, so the items beside it do not shift when
+/// a `SquareToolbarButton` is left out (the planner's chevrons stay put on a view-only day).
+struct SquareToolbarPlaceholder: ToolbarContent {
+    let placement: ToolbarItemPlacement
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, *) {
+            ToolbarItem(placement: placement) { square }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: placement) { square }
+        }
+    }
+
+    private var square: some View {
+        Color.clear.frame(width: 40, height: 40).accessibilityHidden(true).allowsHitTesting(false)
+    }
+}
+
+/// The plain view behind `SquareToolbarButton`, for placing the same flat square inside another
+/// toolbar item (the planner's day chevrons sit in its principal item).
+struct SquareButton: View {
+    let systemImage: String
+    let label: String
+    var isProminent = false
+    var isDisabled = false
+    let action: () -> Void
+
+    var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 17, weight: .semibold))

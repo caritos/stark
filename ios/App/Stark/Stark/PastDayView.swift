@@ -201,3 +201,35 @@ struct PastDayView: View {
         .accessibilityLabel("\(label.lowercased()): \(open.title), \(range(block))")
     }
 }
+
+/// The numbers under a past day's title in the planner (moved from the old History screen):
+/// `2 DONE - 1 MISSED`, `3h planned - 2h done - 67%` (or `NO PLAN`) and the Sunday-Saturday
+/// week line, all computed by `DayHistory` in StarkKit.
+struct PastDayHeader: View {
+    let history: DayHistory
+    let weekStats: DayHistory.Stats
+
+    var body: some View {
+        VStack(spacing: 3) {
+            if let line = DayHistory.summaryLine(stats: history.stats, isToday: false) {
+                Text(line).font(Fonts.mono(10)).tracking(1.5).foregroundStyle(Colors.accent)
+            }
+            Text(Self.numbers(history)).font(Fonts.mono(10)).foregroundStyle(Colors.textSecondary)
+            if let week = DayHistory.weekLine(weekStats) {
+                Text(week).font(Fonts.mono(9)).tracking(1).foregroundStyle(Colors.textSecondary.opacity(0.8))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.sm)
+        .accessibilityElement(children: .combine)
+    }
+
+    static func numbers(_ h: DayHistory) -> String {
+        guard h.stats.hasPlan else { return "NO PLAN" }
+        var s = "\(DayHistory.minutesText(h.stats.plannedMinutes)) planned - \(DayHistory.minutesText(h.stats.doneMinutes)) done"
+        if let c = h.stats.completion { s += " - \(Int((c * 100).rounded()))%" }
+        return s
+    }
+}
