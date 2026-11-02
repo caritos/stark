@@ -43,6 +43,8 @@ struct PlannerView: View {
     @State private var model: DayPlanModel?
     @State private var confirmDiscard = false
     @State private var timePick: TimePick?
+    /// The open block whose action menu (Done / Move / Remove) is showing.
+    @State private var actionBlock: PlanBlock?
     @State private var showHistory = false
     /// The tray pane on screen; the planner opens on the planned day's own pane.
     @State private var pane: TrayPane = .today
@@ -118,6 +120,18 @@ struct PlannerView: View {
             .confirmationDialog("Discard changes to this plan?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
             }
+            .confirmationDialog(
+                actionBlock.map { title(ofReminder: $0.reminderID) } ?? "Task",
+                isPresented: Binding(get: { actionBlock != nil }, set: { if !$0 { actionBlock = nil } }),
+                titleVisibility: .visible, presenting: actionBlock
+            ) { block in
+                Button("Done") { completeBlock(block) }
+                Button("Move") { timePick = .move(block.id, initial: block.start) }
+                Button("Remove from plan", role: .destructive) {
+                    withAnimation(.easeOut(duration: 0.15)) { draft?.remove(id: block.id) }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
             .sheet(item: $timePick) { pick in
                 PlanTimePicker(title: pick.title, initial: pick.initial, day: day) { start in
                     apply(pick, at: start)
@@ -159,6 +173,17 @@ struct PlannerView: View {
         }
         return DayPlanModel.make(day: day, events: store.events, reminders: store.reminders,
                                  plans: plans, today: today)
+    }
+
+    /// Done from the block menu: the store's own completion path (same as the agenda checkbox,
+    /// idempotent), then the block becomes a done block in the draft; the due date and the plan
+    /// itself are untouched, and unsaved draft edits survive.
+    private func completeBlock(_ block: PlanBlock) {
+        guard draft?.blocks.contains(where: { $0.id == block.id }) == true else { return }
+        store.completeReminder(id: block.reminderID, on: block.occurrence, today: today)
+        withAnimation(.easeOut(duration: 0.15)) { _ = draft?.markDone(id: block.id) }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        rebuildModel()
     }
 
     private func rebuildModel() {
@@ -464,7 +489,7 @@ struct PlannerView: View {
         .frame(height: blockHeight, alignment: .top)
         .opacity(lift?.id == block.id ? 0.85 : 1)
         .contentShape(Rectangle())
-        .onTapGesture { timePick = .move(block.id, initial: block.start) }
+        .onTapGesture { actionBlock = block }
         let target = LiftTarget(id: block.id, top: y(for: block.start),
                                 resizable: (minutes: block.minutes, height: blockHeight),
                                 onDrop: { start, overTray in
@@ -477,6 +502,7 @@ struct PlannerView: View {
         return liftable(visual, target)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(title), planned \(range)")
+        .accessibilityAction(named: "Mark done") { completeBlock(block) }
         .accessibilityAction(named: "Move") { timePick = .move(block.id, initial: block.start) }
         .accessibilityAction(named: "Make longer") { resizeBlock(id: block.id, toMinutes: block.minutes + PlanLayout.snapMinutes) }
         .accessibilityAction(named: "Make shorter") { resizeBlock(id: block.id, toMinutes: block.minutes - PlanLayout.snapMinutes) }
