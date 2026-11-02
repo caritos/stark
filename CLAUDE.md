@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **`mobile/` (the Expo/React Native app) is deprecated as of 2026-09-22.** Active development is the native Swift app in `ios/`. Do not fix bugs, add features, or otherwise propose changes in `mobile/` unless a human explicitly asks for `mobile/` by name — a bug report that just says "the app" almost always means `ios/`. This applies to automated tooling (issue-fixer bots, scheduled agents) as much as to an interactive session: if an issue's screenshot or wording doesn't specify which app, assume `ios/`, and check the screenshot's own visual style (Braun/Bauhaus dark theme with a single orange accent for both) before touching either codebase — `mobile/` and `ios/` render enough alike from a distance that only that check (or a stack trace / file path in the report) reliably tells them apart.
 
-**Repository and pricing.** The GitHub repo was renamed from `caritos/todo-txt` to **`caritos/stark`** (2026-09-23); `origin` is `git@github.com:caritos/stark.git`. GitHub redirects the old URL, so the `caritos/todo-txt/issues/N` links in older `docs/superpowers/` plans and specs still resolve and are deliberately left as written; user-facing links (`README.md` clone URL, the `web/` site's release badge) use the new name. The local checkout folder is still named `todo-txt`. The app's price is **$9.99, set globally in App Store Connect** (2026-09-23) — it appears nowhere in this repo (no StoreKit config, no purchase code, no price on the `web/` site), so a price change is an App Store Connect edit only. The site's "no subscriptions" copy assumes a one-time price.
+**Repository and pricing.** The GitHub repo was renamed from `caritos/todo-txt` to **`caritos/stark`** (2026-09-23); `origin` is `git@github.com:caritos/stark.git`. GitHub redirects the old URL, so the `caritos/todo-txt/issues/N` links in older `docs/superpowers/` plans and specs still resolve and are deliberately left as written; user-facing links (the `README.md` clone URL) use the new name. The local checkout folder is still named `todo-txt`. The app's price is **$9.99, set globally in App Store Connect** (2026-09-23) — it appears nowhere in this repo (no StoreKit config, no purchase code, no price on the `web/` site), so a price change is an App Store Connect edit only. The site's "no subscriptions" copy assumes a one-time price.
 
 **No CLI, no iCloud storage (decided 2026-09-23).** The command-line app was dropped (issue #94 closed as not planned; `console/` and `todo.sh` were deleted — recover them from git history if ever needed) and the native app keeps its data in the local Documents directory only, with no iCloud storage and no shared folder. Start/end times are handled in the GUI. Do not propose either. `shared/commands/exportIcs.ts` and `shared/ics/` (the old `todo.txt` → `.ics` converter) now have no caller; they remain only because the Swift `ExportFixtureTests` and `ParityTests` read their golden fixtures.
+
+**Website (`web/`, stark.caritos.com): a Go + React app started from lotus (2026-11-01).** The old Bun + Hono site (`web/src/index.ts`, its own `web/scripts/deploy.sh`, systemd user service `stark-web`) was replaced on 2026-11-01 by the lotus layout: one Go binary (`web/api`, module `github.com/caritos/stark`, command `stark`) that embeds the static public pages (`web/public/pages/{index,faq,privacy,terms,support}.html`), the CSS, icons and App Store screenshots (`web/public/static/`, served at `/static/...`) (the starter's React app is not shipped; see below). The Bun site lives on in git history only. Read `web/CLAUDE.md` for layout, layering and conventions and `web/docs/` (`deploy.md`, `https.md`, `backups.md`, `testing.md`) for deploy, HTTPS, backups and test tiers; do not restate them here. Same domain and port as before (`ADDR=0.0.0.0:8030` in `web/deploy/.env.example`, the DreamHost panel proxy points at 8030); the new systemd user service is named after the slug, **`stark`** (`web/deploy/stark.service`, plus `stark-backup.service`/`.timer`), deployed with `web/scripts/deploy-app.sh <user>@<host>` (`--check` first). The pages are plain static HTML in the app's dark Braun look (`#1A1A1A`, `#F0F0F0`, accent `#E8461A`, Courier New); every page keeps lotus's `site-footer` with `Build @@BUILD_ID@@` exactly once. Contact address on every page: `support@caritos.com` (the Bun site used `eladio@caritos.com`). `/terms/` and the other pages with a trailing slash 301 to the slash-free path with a relative `Location` (as the Bun site did; `TestPageWithTrailingSlashRedirects`). Stark has no accounts, so **the starter's React app was removed on 2026-11-01**: `/app`, `/app/` and everything under it is the ordinary 404 page (same as `/nope`), `pnpm build` only syncs `web/public` (no Vite build; the binary embeds no `spa/`, pinned by `TestNoReactAppEmbeddedAndAppIs404`), and the deploy's smoke check runs with `SMOKE_APP=0` (set in `web/scripts/deploy-app.sh`), which wants `/app/` to be 404. The starter's notes/auth API stays in the binary, invisible and default-deny (`/api/notes` is 401 signed out); `web/src` and the Vite/React toolchain stay in the repo, unused by the deploy. `web/test/e2e/site.spec.ts` asserts no page links to `/app/` and that `/app/` is the 404 page. The Stark-specific page checks are `TestPrivacyDatedAndMentionsData` (`web/api/internal/web/web_test.go`) and `web/test/e2e/site.spec.ts`.
 
 ## Commands
 
@@ -31,6 +33,15 @@ cd ios && swift test
 
 # Native iOS app: build + install + launch on the connected iPhone (xcodebuild + devicectl)
 ios/App/deploy.sh
+
+# Website (web/): fast tier, full tier, Playwright, build the binary (Node 24 from web/.nvmrc, pnpm via corepack)
+cd web && make test-fast
+cd web && make test
+cd web && make e2e-install && make e2e
+cd web && make build            # web/dist/stark
+
+# Website: deploy to the DreamHost VPS (preflight first; see web/docs/deploy.md)
+web/scripts/deploy-app.sh <user>@<host> --check
 ```
 
 ### sim.sh build behavior
@@ -92,10 +103,14 @@ shared/                       ← platform-agnostic business logic
 │   └── report.ts             ← applyReport()
 └── tests/
 
-web/                          ← stark.caritos.com marketing site (Bun + Hono + TypeScript)
-├── src/index.ts              ← routes: /, /privacy, /terms, /faq, /support; serves screenshot strip
-├── scripts/deploy.sh         ← one-command SSH deploy to DreamHost VPS (port 8030)
-└── scripts/stark-web.service ← systemd user service
+web/                          ← stark.caritos.com: Go + React app from lotus (see web/CLAUDE.md)
+├── web/public/pages/*.html   ← /, /faq, /privacy, /terms, /support (static HTML, the source of truth)
+├── web/public/static/        ← style.css, favicons, App Store badge, screenshots/ (served at /static/)
+├── web/api/                  ← Go module: cmd/stark, internal/*, embed/ (generated, gitignored)
+├── web/src/                  ← the starter's React app at /app/ (unlinked; Stark has no accounts)
+├── web/deploy/               ← stark.service, stark-backup.service/.timer, web/deploy/.env.example (ADDR port 8030)
+├── web/docs/                 ← deploy.md, https.md, backups.md, testing.md
+└── web/scripts/deploy-app.sh ← deploy to the DreamHost VPS (wraps web/scripts/deploy.sh)
 
 mobile/                       ← Expo Router iOS app — DEPRECATED (2026-09-22); see top of this file
 ├── modules/expo-icloud-file/ ← local native module: bookmark-based pickFolder/readFile/writeFile for iCloud Drive storage (see ios/ExpoIcloudFile.m)
@@ -251,6 +266,14 @@ mobile/                       ← Expo Router iOS app — DEPRECATED (2026-09-22
 - **Deferred**: non-task blocks, move-unfinished, planning other days, countdown/focus mode, blocks nearer than 15 minutes, 44 pt touch targets for the block remove button and tray chips, and splitting `PlannerView.swift` (about 800 lines).
 - **Known bug, pre-existing, NOT fixed**: `buildAgendaItems` gives an event that ends exactly at the next midnight an extra row on the following day (a daily one duplicates every day). The planner filters it out; the main agenda still shows it.
 
+## Website log (2026-11-01)
+
+- **Done**: the Bun site's pages (home, FAQ, privacy, terms, support) ported to `web/public/pages` with the copy kept, contact address changed to `support@caritos.com`, a "Plan your day" section on the home page, and a real Plan screenshot (`02-plan.png`, iPhone 14 Plus simulator, made-up items) second in the strip; styling ported to `web/public/static/style.css`; trailing-slash 301 restored. Tested locally: `make test-fast`, `make test`, `make e2e` (incl. `site.spec.ts`), `make build`, and `web/scripts/smoke.sh` against the local binary; pages checked in headless Chromium at 1280 px and 390 px.
+- **Done (2026-11-01, live)**: deployed to the DreamHost VPS (`dh_rieips@vps61393.dreamhostps.com`) as release `v1.0.0-414-gda4ccaf`, build id `20261101-da4ccaf`; the old `stark-web` service was stopped and DISABLED (its files stay in `~/stark-web` for rollback: `systemctl --user enable --now stark-web` after `stop stark`), the new `stark` service and `stark-backup.timer` (daily 03:15) are enabled; server `.env` created from `web/deploy/.env.example` with a generated `SESSION_SECRET` (never in the repo), `TRUSTED_PROXY=127.0.0.1/32` left as the template says (no sign-in is used); deploy used `SKIP_TESTS=1` only to keep the outage short (the same tests had just passed); public smoke check passed, and a manual check of every page, the 301 for `/terms/`, the 404, assets and the App Store link. Backups verified (restore tested): 2026-11-01, `restore.sh <backup> --drill` on the server printed `DRILL OK` for backup `20261101T161945Z`.
+- **Not yet verified**: the Mac-side off-site pull agent (`web/scripts/install-backup-agent.sh`, `~/.config/stark/backup-pull.env`) is deliberately NOT installed (decided 2026-11-01: not wanted for this static site), so backups exist only on the server (daily 03:15 timer, 14 kept); `make -C web test` (full tier) fails 18 checks in `web/scripts/layout.test.sh` because this repo has extra root `docs/` entries and a tracked `mobile/eas.json` that the root `.gitignore` ignores (the untouched scaffold fails the same way); host-mode tolerance belongs in lotus.
+- **Done (2026-11-01)**: removed the starter's `/app/` React app (see the Website paragraph at the top): tested locally with `make test-fast`, `make e2e`, `make build` plus curl of the built binary, and `web/scripts/smoke.sh` with `SMOKE_APP=0` against it. **Not yet verified**: on the live server (needs a deploy with `web/scripts/deploy-app.sh`).
+- **Deferred**: removing the old `stark-web` files from the server (`~/stark-web`, `~/.config/systemd/user/stark-web.service`) once the new site has run a while; the layout guard's host-mode tolerance in lotus; the generic trailing-slash redirect fix (`TestPageWithTrailingSlashRedirects`) belongs in `~/src/lotus` as well; a static-only mode in lotus (no React app, smoke without `/app/`) so the next marketing site need not remove it by hand (caritos/lotus#7 item 3); removing the unused notes/auth API, `web/src` and the Vite toolchain from Stark (kept because lotus's guard, gen-api, layout and Vitest tiers are wired to them).
+
 ## Key Invariants
 
 - `verbatimModuleSyntax: true` — use `import type` for all type-only imports (all layers).
@@ -273,3 +296,4 @@ mobile/                       ← Expo Router iOS app — DEPRECATED (2026-09-22
 - `isInFocusWindow` never hides a recurring task/event based on how old its `start:` date is. A prior guard (commit `2de9411c`) hid daily/monthly/weekly-typed recurring tasks whose `start:` was more than 730 days old and had no `recur-until:`, meant to suppress stale ICS-imported multi-day workshops — but it also hid genuinely still-active long-running recurring tasks/events once they'd been running long enough (commit `599be66`). Recurring means recurring: age of the original `start:` must never suppress it. The `type:event` branch's `weekly` case now delegates to `nextWeeklyDate(...) <= windowEnd` (matching the `monthly`/`yearly` cases) instead of the old blanket `if (frequency) return true`, which had ignored the window entirely for typed weekly events. `nextWeeklyDate`'s `frequency-day` search also anchors at `max(start, todayStr)` rather than always `todayStr`, so a task created today whose first occurrence is a later date can't match an earlier same-weekday date that falls before its own `start:`.
 - **Task line numbers** are 1-based positions in the non-empty task list (blank lines stripped by `readTasks`). They renumber on every read — `task.line` is display position, not a stable ID.
 - `cleanTitle()` strips todo.txt extensions from task text for display. It is defined **inline** in each screen file — it is not exported from a shared module.
+Web app (Go + React): see web/CLAUDE.md.

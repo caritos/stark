@@ -1,7 +1,20 @@
 {
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
+      "Bash(make test-fast:*)",
+      "Bash(make -C web test-fast:*)",
+      "Bash(make test:*)",
+      "Bash(make -C web test:*)",
+      "Bash(make api:*)",
+      "Bash(make -C web api:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(gofmt:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
       "Bash(swift test)",
       "Bash(swift test *)",
       "Bash(xcodebuild test *)",
@@ -9,6 +22,20 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git merge *)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/post-edit.sh"
+          }
+        ]
+      }
     ]
   }
 }

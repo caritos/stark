@@ -38,8 +38,9 @@ ios/App/deploy.sh             # build, install and launch on the connected iPhon
 The website:
 
 ```bash
-cd web && bun install && bun run src/index.ts
-web/scripts/deploy.sh         # deploy to the DreamHost VPS
+cd web && make dev             # Go server + Vite; pages at http://127.0.0.1:8080/
+cd web && make test           # full test tier (see web/docs/testing.md)
+web/scripts/deploy-app.sh <user>@<host> --check   # deploy preflight (see web/docs/deploy.md)
 ```
 
 See [CLAUDE.md](CLAUDE.md) for architecture notes and conventions.
