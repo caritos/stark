@@ -184,15 +184,18 @@ public final class PlannerStore: ObservableObject {
     /// Blocks whose `start` is not on `day` are ignored. If the month failed to load (a real
     /// read failure, `error` is set) nothing is changed or written, so the unreadable file is
     /// never treated as empty. Plans never touch a reminder's due date, recurrence or exceptions.
-    public func replacePlans(on day: Date, with blocks: [PlanBlock]) {
+    /// Returns false exactly when the month failed to load (nothing changed), true otherwise.
+    @discardableResult
+    public func replacePlans(on day: Date, with blocks: [PlanBlock]) -> Bool {
         let calendar = Calendar(identifier: .gregorian)
         let month = YearMonth(date: day)
         loadMonth(month)
-        guard loadedMonths.contains(month) else { return }
+        guard loadedMonths.contains(month) else { return false }
         monthPlans[month]?.removeAll { calendar.isDate($0.start, inSameDayAs: day) }
         monthPlans[month, default: []].append(contentsOf: blocks.filter { calendar.isDate($0.start, inSameDayAs: day) })
         persistMonth(month)
         rebuild()
+        return true
     }
 
     private func removePlans(where shouldRemove: (PlanBlock) -> Bool) {

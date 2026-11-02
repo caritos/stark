@@ -110,6 +110,20 @@ struct PlannerStorePlansTests {
         #expect(store.plans.isEmpty)
     }
 
+    @Test("replacePlans returns false when the month is unreadable, true otherwise")
+    @MainActor
+    func replacePlansReturnsFalseWhenMonthUnreadable() throws {
+        let (store, _, root) = makeStore()
+        let day = DateMath.date(from: "2026-11-02")
+        let path = root.appendingPathComponent("docs/2026-11.ics")
+        try FileManager.default.createDirectory(at: path, withIntermediateDirectories: true)
+        start(store, around: day)
+        #expect(store.replacePlans(on: day, with: []) == false)
+        let (good, _, _) = makeStore()
+        start(good, around: day)
+        #expect(good.replacePlans(on: day, with: [block("r1", day: "2026-11-02")]) == true)
+    }
+
     @Test("blocks starting on another day are ignored")
     @MainActor
     func foreignDayBlocksIgnored() {
