@@ -53,6 +53,10 @@ struct PlannerView: View {
     /// The model is rebuilt only when the draft or the store changes, never per drag frame.
     @State private var model: DayPlanModel?
     @State private var confirmDiscard = false
+    /// How many days the discard dialog is about to throw away (set when ✕ opens it).
+    @State private var discardDayCount = 0
+    /// The failed-save message ("Could not save the plan for Wed Nov 4"), shown as a banner.
+    @State private var saveError: String?
     @State private var timePick: TimePick?
     /// The open block whose action menu (Done / Move / Remove) is showing.
     @State private var actionBlock: PlanBlock?
@@ -96,6 +100,7 @@ struct PlannerView: View {
             Group {
                 if isEditable {
                     VStack(spacing: 0) {
+                        if let saveError { saveErrorBanner(saveError) }
                         if let model, !model.allDayEvents.isEmpty {
                             banner(model.allDayEvents)
                         }
@@ -105,7 +110,10 @@ struct PlannerView: View {
                         tray
                     }
                 } else {
-                    pastDay
+                    VStack(spacing: 0) {
+                        if let saveError { saveErrorBanner(saveError) }
+                        pastDay
+                    }
                 }
             }
             .background(Colors.background)
@@ -115,7 +123,7 @@ struct PlannerView: View {
                 ToolbarItem(placement: .principal) { header }
                 if isEditable {
                     SquareToolbarButton(systemImage: "checkmark", label: "Save plan", placement: .confirmationAction,
-                                        isProminent: true, isDisabled: draft == nil) { save() }
+                                        isProminent: true, isDisabled: unsavedDayCount == 0) { save() }
                 } else {
                     // Keeps the chevrons where they were while stepping into the past.
                     SquareToolbarPlaceholder(placement: .confirmationAction)
@@ -124,6 +132,10 @@ struct PlannerView: View {
             }
             .confirmationDialog("Discard changes to this plan?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
+            } message: {
+                if discardDayCount > 1 {
+                    Text("\(discardDayCount) days have unsaved changes.")
+                }
             }
             .confirmationDialog(
                 actionBlock.map { title(ofReminder: $0.reminderID) } ?? "Task",
@@ -146,6 +158,7 @@ struct PlannerView: View {
         .tint(Colors.accent)
         .preferredColorScheme(.dark)
         .task(id: day) { loadDay() }
+        .onChange(of: today) { _, _ in todayChanged() }
         .onChange(of: draft?.blocks) { _, _ in rebuildModel() }
         .onChange(of: store.reminders) { _, _ in rebuildModel() }
         .onChange(of: store.events) { _, _ in rebuildModel() }
@@ -209,7 +222,10 @@ struct PlannerView: View {
         pane = .today
         draft = nil
         model = nil
-        day = PlannerDays.step(day, by: days, calendar: Self.calendar)
+        let next = PlannerDays.step(day, by: days, calendar: Self.calendar)
+        // Load first, so a day in an unloaded month never draws empty for a frame.
+        store.loadMonths(covering: PlannerDays.loadRange(for: next, calendar: Self.calendar))
+        day = next
     }
 
     /// `‹  TITLE  ›`: the day word (TODAY / TOMORROW / weekday) over the date line, which says
@@ -295,18 +311,76 @@ struct PlannerView: View {
 
     // MARK: Save / close
 
-    private func save() {
-        guard let draft else { return }
-        store.replacePlans(on: day, with: draft.blocksToSave)
-        dismiss()
+    /// Puts the viewed day's live draft into the session (editable days only) and drops drafts
+    /// for days that have lapsed, so `session.hasChanges`/`changedDays` count exactly the
+    /// still-editable days with unsaved edits.
+    private func syncSession() {
+        session.dropLapsed(today: today)
+        if let draft, isEditable { session.stash(draft, for: day) }
     }
 
+    /// The days with unsaved changes, without mutating the session (for the ✓ button's state):
+    /// the live draft for the viewed day, the session's drafts for the others, lapsed ones
+    /// left out.
+    private var unsavedDayCount: Int {
+        let others = session.changedDays.filter {
+            !Self.calendar.isDate($0, inSameDayAs: day) && PlannerDays.isEditable($0, today: today, calendar: Self.calendar)
+        }
+        let current = isEditable && (draft?.hasChanges ?? session.draft(for: day)?.hasChanges ?? false)
+        return others.count + (current ? 1 : 0)
+    }
+
+    /// ✓: writes every changed, still-editable day (never a past day). If every write succeeds
+    /// the planner closes; otherwise it stays open with all drafts kept and a banner naming the
+    /// failed days, and a retry rewrites the same blocks (`replacePlans` is a replace).
+    private func save() {
+        syncSession()
+        let failed = session.saveAll(today: today) { store.replacePlans(on: $0, with: $1) }
+        if failed.isEmpty {
+            saveError = nil
+            dismiss()
+        } else {
+            let days = failed.map { Self.titleFormatter.string(from: $0) }.joined(separator: ", ")
+            saveError = "Could not save the plan for \(days)"
+        }
+    }
+
+    /// ✕: asks first when any editable day has unsaved changes.
     private func close() {
-        if draft?.hasChanges == true {
+        syncSession()
+        if session.hasChanges {
+            discardDayCount = session.changedDays.count
             confirmDiscard = true
         } else {
             dismiss()
         }
+    }
+
+    /// `today` moved on (midnight) while the planner was open: lapsed drafts go, and a viewed
+    /// day that is now past switches to the view-only body with its draft and gestures dropped.
+    private func todayChanged() {
+        session.dropLapsed(today: today)
+        guard !isEditable else { return }
+        endLift()
+        actionBlock = nil
+        timePick = nil
+        draft = nil
+        model = nil
+    }
+
+    /// Accent bar above the planner after a failed save, in the style of `ContentView`'s
+    /// store-error bar; a tap dismisses it.
+    private func saveErrorBanner(_ message: String) -> some View {
+        Button { saveError = nil } label: {
+            Text(message)
+                .font(Fonts.mono(12))
+                .foregroundStyle(Colors.text)
+                .padding(Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Colors.accent)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Dismisses the message")
     }
 
     // MARK: Positions
