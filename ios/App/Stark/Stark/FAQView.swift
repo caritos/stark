@@ -31,7 +31,9 @@ struct FAQView: View {
             Tap the calendar-clock button next to TODAY or TOMORROW in the agenda to open Plan. \
             Drag tasks from the tray onto the timeline, resize a block with its bottom edge, \
             then tap the check to save. Planning never changes a task's due date: a task you do \
-            not finish keeps its original due date.
+            not finish keeps its original due date. The arrows in the header step to another \
+            day, so a whole week can be planned, and past days are shown view only with what \
+            got done and what was missed.
             """
         ),
         Entry(

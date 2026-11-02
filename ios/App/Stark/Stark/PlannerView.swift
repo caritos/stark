@@ -100,6 +100,7 @@ struct PlannerView: View {
             Group {
                 if isEditable {
                     VStack(spacing: 0) {
+                        if let storeError = store.error { storeErrorBanner(storeError) }
                         if let saveError { saveErrorBanner(saveError) }
                         if let model, !model.allDayEvents.isEmpty {
                             banner(model.allDayEvents)
@@ -111,6 +112,7 @@ struct PlannerView: View {
                     }
                 } else {
                     VStack(spacing: 0) {
+                        if let storeError = store.error { storeErrorBanner(storeError) }
                         if let saveError { saveErrorBanner(saveError) }
                         pastDay
                     }
@@ -270,7 +272,7 @@ struct PlannerView: View {
         let week = DayHistory.weekStats(containing: day, reminders: store.reminders, plans: store.plans, today: today)
         return VStack(spacing: 0) {
             PastDayHeader(history: history, weekStats: week)
-            PastDayView(day: day, history: history, isToday: false)
+            PastDayView(day: day, history: history)
         }
     }
 
@@ -360,6 +362,7 @@ struct PlannerView: View {
     /// day that is now past switches to the view-only body with its draft and gestures dropped.
     private func todayChanged() {
         session.dropLapsed(today: today)
+        rebuildModel()
         guard !isEditable else { return }
         endLift()
         actionBlock = nil
@@ -371,7 +374,17 @@ struct PlannerView: View {
     /// Accent bar above the planner after a failed save, in the style of `ContentView`'s
     /// store-error bar; a tap dismisses it.
     private func saveErrorBanner(_ message: String) -> some View {
-        Button { saveError = nil } label: {
+        errorBanner(message) { saveError = nil }
+    }
+
+    /// The store's own error (a month file that failed to read), which `ContentView`'s bar
+    /// would show but the full-screen planner covers.
+    private func storeErrorBanner(_ message: String) -> some View {
+        errorBanner(message) { store.error = nil }
+    }
+
+    private func errorBanner(_ message: String, dismiss: @escaping () -> Void) -> some View {
+        Button(action: dismiss) {
             Text(message)
                 .font(Fonts.mono(12))
                 .foregroundStyle(Colors.text)

@@ -28,11 +28,24 @@ struct PlanSessionTests {
         PlanBlock(reminderID: id, occurrence: at(1, 9), start: at(day, hour), minutes: 30)
     }
 
+    /// A draft for `day` holding one block that was moved off its saved start (non-empty, changed).
+    func movedDraft(_ day: Int, id: String = "a") -> PlanDraft {
+        let saved = block(id, day: day)
+        var draft = PlanDraft(model: model(day, [reminder(id)], plans: [saved]), saved: [saved])
+        _ = draft.move(id: saved.id, to: at(day, 14))
+        return draft
+    }
+
     @Test func stashAndRestore() {
         var session = PlanSession()
-        let draft = changedDraft(6)
+        let draft = movedDraft(6)
+        #expect(!draft.blocks.isEmpty)
+        #expect(draft.hasChanges)
         session.stash(draft, for: at(6, 10))
-        #expect(session.draft(for: at(6))?.blocks == draft.blocks)
+        let restored = session.draft(for: at(6))
+        #expect(restored?.blocks == draft.blocks)
+        #expect(restored?.blocksToSave == draft.blocksToSave)
+        #expect(restored?.hasChanges == true)
         #expect(session.draft(for: at(7)) == nil)
     }
 
@@ -70,6 +83,17 @@ struct PlanSessionTests {
         #expect(!own.contains(saved6))
     }
 
+    @Test func plannedElsewhereReturnsNonEmptyDraftBlocksOfOtherDay() {
+        var session = PlanSession()
+        let draft = movedDraft(7)
+        session.stash(draft, for: at(7))
+        let other = session.plannedElsewhere(of: at(5), saved: [], today: today)
+        #expect(!draft.blocks.isEmpty)
+        for b in draft.blocksToSave { #expect(other.contains(b)) }
+        let own = session.plannedElsewhere(of: at(7), saved: [], today: today)
+        #expect(own.isEmpty)
+    }
+
     @Test func saveAllWritesOnlyChangedEditableDays() {
         var session = PlanSession()
         session.stash(changedDraft(7), for: at(7))
@@ -80,7 +104,9 @@ struct PlanSessionTests {
         var blocks: [[PlanBlock]] = []
         let failed = session.saveAll(today: today) { day, b in written.append(day); blocks.append(b); return true }
         #expect(written == [at(6), at(7)])
+        #expect(blocks.count == 2)
         #expect(blocks[0] == session.draft(for: at(6))!.blocksToSave)
+        #expect(blocks[1] == session.draft(for: at(7))!.blocksToSave)
         #expect(failed.isEmpty)
     }
 

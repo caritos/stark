@@ -3,13 +3,10 @@ import StarkKit
 
 /// Read-only drawing of one past day (`DayHistory` in StarkKit): the all-day banner, the hour
 /// grid, the day's events, the planned blocks whose task got done (dimmed, checked, struck
-/// through) and those that did not (outlined accent, MISSED on a past day, OPEN when
-/// `isToday`). No header, no store access, nothing here edits a plan or a task.
+/// through) and those that did not (outlined accent, MISSED). No header, no store access, nothing here edits a plan or a task.
 struct PastDayView: View {
     let day: Date
     let history: DayHistory
-    /// Only changes the label of unfinished blocks (OPEN instead of MISSED). Passed in; the view never reads `Date()`.
-    var isToday: Bool = false
 
     private static let calendar = Calendar(identifier: .gregorian)
     private static let hourHeight: CGFloat = 60
@@ -182,7 +179,7 @@ struct PastDayView: View {
 
     private func openBlock(_ open: DayHistory.OpenBlock) -> some View {
         let block = open.block
-        let label = isToday ? "OPEN" : "MISSED"
+        let label = "MISSED"
         return VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: Spacing.xs) {
                 Text(label).font(Fonts.mono(8, weight: .semibold)).tracking(1).foregroundStyle(Colors.accent)
