@@ -80,9 +80,12 @@ public struct DayPlanModel {
     ///   plus every open one-off whose due date lies outside that range (undated ones excluded).
     /// - A recurring series' row is in the tray only when it is overdue or falls on or before
     ///   `day`: its later next occurrence is not open yet.
+    /// - `plannedElsewhere` blocks (starting on another day, not before `today`'s day) hide the
+    ///   open row they match from the tray and the timeline.
     /// - A `day` before `today`'s day has lapsed: no tray, timed tasks or blocks.
     public static func make(
         day: Date, events: [Event], reminders: [Reminder], plans: [PlanBlock], today: Date,
+        plannedElsewhere: [PlanBlock] = [],
         calendar: Calendar = Calendar(identifier: .gregorian)
     ) -> DayPlanModel {
         let dayStart = calendar.startOfDay(for: day)
@@ -142,7 +145,13 @@ public struct DayPlanModel {
         let blocks = plans
             .filter { plan in isOnDay(plan.start) && open.contains { matches(plan, $0) } }
             .sorted { ($0.start, $0.id) < ($1.start, $1.id) }
-        let unplanned = open.filter { item in !blocks.contains { matches($0, item) } }
+        // A task planned on another (not lapsed) day belongs to that day, not to this tray.
+        let elsewhere = plannedElsewhere.filter {
+            !isOnDay($0.start) && calendar.startOfDay(for: $0.start) >= todayStart
+        }
+        let unplanned = open.filter { item in
+            !blocks.contains { matches($0, item) } && !elsewhere.contains { matches($0, item) }
+        }
 
         let timed = unplanned
             .filter { !$0.isOverdue && isOnDay($0.displayDate) && calendar.startOfDay(for: $0.displayDate) != $0.displayDate }
