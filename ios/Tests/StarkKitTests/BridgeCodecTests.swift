@@ -112,3 +112,17 @@ private func noise(_ count: Int, seed: UInt64) -> String {
 @Test func splitEmptyYieldsNoBatches() throws {
     #expect(try BridgeCodec.split(items: [], label: nil, issuedAt: 0) { "x" }.isEmpty)
 }
+
+@Test func parseRejectsOversizeQueryValuesBeforeDecoding() {
+    let tooBig = String(repeating: "A", count: BridgeCodec.maxEncodedBytes + 4)
+    #expect(BridgeCodec.parse(URL(string: "stark://add?batch=\(tooBig)&sig=AAAA")!) == nil)
+    let longSig = String(repeating: "A", count: 49)
+    #expect(BridgeCodec.parse(URL(string: "stark://add?batch=AAAA&sig=\(longSig)")!) == nil)
+}
+
+@Test func parseAcceptsMaxLengthBatchAndSigOf43() throws {
+    let maxBatch = String(repeating: "A", count: BridgeCodec.maxEncodedBytes)
+    let sig = String(repeating: "A", count: 43)
+    let parsed = try #require(BridgeCodec.parse(URL(string: "stark://add?batch=\(maxBatch)&sig=\(sig)")!))
+    #expect(parsed.payload.count == BridgeCodec.maxEncodedBytes * 3 / 4)
+}

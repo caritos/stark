@@ -114,6 +114,32 @@ struct ClaudeBridgeTests {
         #expect(r.bridge.handle(u) == .ignored)
     }
 
+    @Test("verify runs before decode: non-zlib payload with the wrong secret is ignored")
+    @MainActor func verifyBeforeDecode() throws {
+        let r = rig()
+        let payload = Data("not zlib".utf8)
+        let u = BridgeCodec.url(payload: payload, signature: BridgeAuth.sign(payload, secret: Data(repeating: 9, count: 32)))
+        #expect(r.bridge.handle(u) == .ignored)
+    }
+
+    @Test("the size guard runs before the secret store is read")
+    @MainActor func sizeGuardBeforeKeychain() throws {
+        final class Counting: SecretStore, @unchecked Sendable {
+            private let lock = NSLock()
+            private var n = 0
+            var reads: Int { lock.lock(); defer { lock.unlock() }; return n }
+            func read() throws -> Data? { lock.lock(); n += 1; lock.unlock(); throw KeychainError(status: -1) }
+            func write(_ secret: Data) throws {}
+            func delete() throws {}
+        }
+        let counting = Counting()
+        let r = rig(secrets: counting)
+        let payload = Data(repeating: 1, count: BridgeCodec.maxEncodedBytes * 3 / 4 + 1)
+        let u = BridgeCodec.url(payload: payload, signature: BridgeAuth.sign(payload, secret: secret))
+        #expect(r.bridge.handle(u) == .ignored)
+        #expect(counting.reads == 0)
+    }
+
     @Test("a signed payload that is not a batch is rejected as unreadable")
     @MainActor func signedGarbage() throws {
         let r = rig()

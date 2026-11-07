@@ -197,10 +197,10 @@ public enum BridgeError: Error, Equatable, CustomStringConvertible {
         case .emptyTitle(let id): return "Claude batch rejected: item \"\(id)\" has no title."
         case .titleTooLong(let id): return "Claude batch rejected: item \"\(id)\" has a title over \(BridgeBatch.maxTitle) characters."
         case .notesTooLong(let id): return "Claude batch rejected: item \"\(id)\" has notes over \(BridgeBatch.maxNotes) characters."
-        case .badDate(let id, let field, let text): return "Claude batch rejected: item \"\(id)\" has an invalid \(field) \"\(text)\" (use yyyy-MM-dd or yyyy-MM-ddTHH:mm)."
+        case .badDate(let id, let field, let text): return "Claude batch rejected: item \"\(id)\" has an invalid \(field) \"\(BridgeIDs.echo(text))\" (use yyyy-MM-dd or yyyy-MM-ddTHH:mm)."
         case .nonexistentLocalTime(let id, let text): return "Claude batch rejected: item \"\(id)\" time \(text) does not exist in this time zone (daylight saving gap)."
         case .untilBeforeStart(let id): return "Claude batch rejected: item \"\(id)\" repeats until a date before it starts."
-        case .badWeekday(let id, let text): return "Claude batch rejected: item \"\(id)\" has an unknown weekday \"\(text)\"."
+        case .badWeekday(let id, let text): return "Claude batch rejected: item \"\(id)\" has an unknown weekday \"\(BridgeIDs.echo(text))\"."
         case .badInterval(let id): return "Claude batch rejected: item \"\(id)\" has a repeat interval below 1."
         case .badCount(let id): return "Claude batch rejected: item \"\(id)\" has a repeat count below 1."
         case .badURL(let id): return "Claude batch rejected: item \"\(id)\" has a link that is not http or https."
@@ -311,6 +311,13 @@ enum BridgeIDs {
     }
 
     /// A banner-safe form: illegal characters shown as `?`, cut to 24 characters.
+    /// Untrusted text echoed in a banner: at most 24 characters, control characters shown as "?".
+    static func echo(_ text: String) -> String {
+        String(text.prefix(24).map { ch in
+            ch.unicodeScalars.contains { $0.properties.generalCategory == .control } ? Character("?") : ch
+        })
+    }
+
     static func display(_ id: String) -> String {
         String(String.UnicodeScalarView(id.unicodeScalars.prefix(24).map { allowed($0) ? $0 : "?" }))
     }

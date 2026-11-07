@@ -66,6 +66,7 @@ public enum BridgeCodec {
         let sigs = items.filter { $0.name == "sig" }
         guard batches.count == 1, sigs.count == 1,
               let b = batches[0].value, let s = sigs[0].value,
+              b.utf8.count <= maxEncodedBytes, s.utf8.count <= 48,
               let payload = data(fromBase64URL: b), let signature = data(fromBase64URL: s) else { return nil }
         return (payload, signature)
     }

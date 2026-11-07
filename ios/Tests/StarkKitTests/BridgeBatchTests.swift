@@ -278,3 +278,13 @@ private func date(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ min: Int = 0) ->
         #expect(throws: BridgeError.badBatchID(bad)) { try b.models(calendar: ny) }
     }
 }
+
+@Test func errorDescriptionsTruncateAndSanitiseEchoedText() {
+    let nasty = "ab\ncd\u{7}" + String(repeating: "z", count: 100)
+    for desc in [BridgeError.badDate(id: "x", field: "start", text: nasty).description,
+                 BridgeError.badWeekday(id: "x", text: nasty).description] {
+        #expect(desc.contains("ab?cd?"))
+        #expect(!desc.contains("\n"))
+        #expect(!desc.contains(String(repeating: "z", count: 20)))
+    }
+}
