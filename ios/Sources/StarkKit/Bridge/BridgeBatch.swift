@@ -64,7 +64,7 @@ public struct BridgeItem: Codable, Equatable, Sendable {
     }
 
     fileprivate func convert(label: String?, calendar: Calendar, into out: inout BridgeImport) throws {
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedTitle = title.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
         guard !trimmedTitle.isEmpty else { throw BridgeError.emptyTitle(id: id) }
         guard title.count <= BridgeBatch.maxTitle else { throw BridgeError.titleTooLong(id: id) }
         if let notes, notes.count > BridgeBatch.maxNotes { throw BridgeError.notesTooLong(id: id) }
@@ -120,9 +120,9 @@ public struct BridgeRecurrence: Codable, Equatable, Sendable {
     }
 
     fileprivate func rule(id: String, start: Date, calendar: Calendar) throws -> RecurrenceRule {
-        if let interval, interval < 1 { throw BridgeError.badInterval(id: id) }
-        if let count, count < 1 { throw BridgeError.badCount(id: id) }
-        let days: [Weekday]? = try byDay.map { names in
+        if let interval, !(1...999).contains(interval) { throw BridgeError.badInterval(id: id) }
+        if let count, !(1...1000).contains(count) { throw BridgeError.badCount(id: id) }
+        let parsedDays: [Weekday]? = try byDay.map { names in
             try names.map { name in
                 switch name.lowercased() {
                 case "sun": return Weekday.sunday
@@ -135,6 +135,11 @@ public struct BridgeRecurrence: Codable, Equatable, Sendable {
                 default: throw BridgeError.badWeekday(id: id, text: name)
                 }
             }
+        }
+        var days: [Weekday]?
+        if let parsedDays, !parsedDays.isEmpty {
+            var seen = Set<Weekday>()
+            days = parsedDays.filter { seen.insert($0).inserted }
         }
         var untilDate: Date?
         if let until {
@@ -214,6 +219,10 @@ enum BridgeDates {
             comps.minute = mi
             allDay = false
         }
+        // The y/m/d alone must be a real date (Feb 30 with a time is a bad date, not a DST gap).
+        guard let dayOnly = calendar.date(from: DateComponents(year: y, month: mo, day: day)) else { throw bad }
+        let dc = calendar.dateComponents([.year, .month, .day], from: dayOnly)
+        guard dc.year == y, dc.month == mo, dc.day == day else { throw bad }
         guard var date = calendar.date(from: comps) else { throw bad }
         let unitSet: Set<Calendar.Component> = allDay ? [.year, .month, .day] : [.year, .month, .day, .hour, .minute]
         func matches(_ d: Date) -> Bool {

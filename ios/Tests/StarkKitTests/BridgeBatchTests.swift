@@ -218,3 +218,39 @@ private func date(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ min: Int = 0) ->
     let c = try b.models(calendar: ny)
     #expect(a == c)
 }
+
+@Test func intervalAndCountCaps() throws {
+    func rec(_ i: Int?, _ c: Int?) -> BridgeRecurrence { BridgeRecurrence(freq: .daily, interval: i, byDay: nil, until: nil, count: c) }
+    #expect(throws: BridgeError.badInterval(id: "x")) { try batch([item("x", recurrence: rec(Int.max, nil))]).models(calendar: ny) }
+    #expect(throws: BridgeError.badInterval(id: "x")) { try batch([item("x", recurrence: rec(1000, nil))]).models(calendar: ny) }
+    #expect(throws: BridgeError.badCount(id: "x")) { try batch([item("x", recurrence: rec(nil, Int.max))]).models(calendar: ny) }
+    #expect(throws: BridgeError.badCount(id: "x")) { try batch([item("x", recurrence: rec(nil, 1001))]).models(calendar: ny) }
+    let r = try batch([item("x", recurrence: rec(999, 1000))]).models(calendar: ny).reminders[0]
+    #expect(r.recurrence?.interval == 999)
+    #expect(r.recurrence?.count == 1000)
+}
+
+@Test func byDayNormalised() throws {
+    func days(_ d: [String]) throws -> [Weekday]? {
+        let rec = BridgeRecurrence(freq: .weekly, interval: nil, byDay: d, until: nil, count: nil)
+        return try batch([item(recurrence: rec)]).models(calendar: ny).reminders[0].recurrence?.byDay
+    }
+    #expect(try days([]) == nil)
+    #expect(try days(["tue", "tue"]) == [.tuesday])
+    #expect(try days(["thu", "tue", "thu"]) == [.thursday, .tuesday])
+}
+
+@Test func impossibleDateWithTimeIsBadDate() {
+    #expect(throws: BridgeError.badDate(id: "x", field: "start", text: "2026-02-30T10:00")) {
+        try batch([item("x", start: "2026-02-30T10:00")]).models(calendar: ny)
+    }
+    #expect(throws: BridgeError.nonexistentLocalTime(id: "x", text: "2026-03-08T02:30")) {
+        try batch([item("x", start: "2026-03-08T02:30")]).models(calendar: ny)
+    }
+}
+
+@Test func titleWhitespaceCollapsed() throws {
+    let r = try batch([item(title: "a\nb\t\tc\r\nd  e", notes: "x\ny")]).models(calendar: ny).reminders[0]
+    #expect(r.title == "a b c d e")
+    #expect(r.notes == "x\ny")
+}
