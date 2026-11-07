@@ -254,3 +254,27 @@ private func date(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ min: Int = 0) ->
     #expect(r.title == "a b c d e")
     #expect(r.notes == "x\ny")
 }
+
+@Test func illegalItemIdsThrow() {
+    for bad in ["a\nb", "a:b", String(repeating: "a", count: 65), "😀", "a b", "a;b", "é"] {
+        #expect(throws: BridgeError.badItemID(bad)) { try batch([item(bad)]).models(calendar: ny) }
+    }
+}
+
+@Test func legalItemIdsPass() throws {
+    let ids = [UUID().uuidString, "item_1-a", String(repeating: "a", count: 64)]
+    let out = try batch(ids.map { item($0) }).models(calendar: ny)
+    #expect(out.reminders.map(\.id) == ids)
+}
+
+@Test func badIdDescriptionHasNoControlCharacters() {
+    let d = BridgeError.badItemID("a\r\nUID:evil").description
+    #expect(!d.contains("\n") && !d.contains("\r"))
+}
+
+@Test func illegalBatchIdThrows() {
+    for bad in ["", "a\nb", "a:b", String(repeating: "a", count: 65)] {
+        let b = BridgeBatch(v: 1, batch: bad, issuedAt: 0, label: nil, items: [item()])
+        #expect(throws: BridgeError.badBatchID(bad)) { try b.models(calendar: ny) }
+    }
+}

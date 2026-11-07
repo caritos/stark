@@ -24,6 +24,7 @@ public struct BridgeBatch: Codable, Equatable, Sendable {
     /// in `calendar`'s time zone (the phone's current one by default).
     public func models(calendar: Calendar = .current) throws -> BridgeImport {
         guard v == 1 else { throw BridgeError.unsupportedVersion(v) }
+        guard BridgeIDs.isValid(batch) else { throw BridgeError.badBatchID(batch) }
         guard !items.isEmpty else { throw BridgeError.emptyBatch }
         guard items.count <= Self.maxItems else { throw BridgeError.tooManyItems(items.count) }
         let label = BridgeLabel.sanitize(self.label)
@@ -31,6 +32,7 @@ public struct BridgeBatch: Codable, Equatable, Sendable {
         var result = BridgeImport(events: [], reminders: [])
         for item in items {
             guard !item.id.isEmpty else { throw BridgeError.emptyID }
+            guard BridgeIDs.isValid(item.id) else { throw BridgeError.badItemID(item.id) }
             guard seen.insert(item.id).inserted else { throw BridgeError.duplicateID(item.id) }
             try item.convert(label: label, calendar: calendar, into: &result)
         }
@@ -167,6 +169,8 @@ public enum BridgeError: Error, Equatable, CustomStringConvertible {
     case emptyBatch
     case tooManyItems(Int)
     case emptyID
+    case badItemID(String)
+    case badBatchID(String)
     case duplicateID(String)
     case emptyTitle(id: String)
     case titleTooLong(id: String)
@@ -187,6 +191,8 @@ public enum BridgeError: Error, Equatable, CustomStringConvertible {
         case .emptyBatch: return "Claude batch rejected: it has no items."
         case .tooManyItems(let n): return "Claude batch rejected: \(n) items (the limit is \(BridgeBatch.maxItems))."
         case .emptyID: return "Claude batch rejected: an item has no id."
+        case .badItemID(let id): return "Claude batch rejected: item id \"\(BridgeIDs.display(id))\" is not allowed (use 1-64 letters, digits, - or _)."
+        case .badBatchID(let id): return "Claude batch rejected: batch id \"\(BridgeIDs.display(id))\" is not allowed (use 1-64 letters, digits, - or _)."
         case .duplicateID(let id): return "Claude batch rejected: item \"\(id)\" appears more than once."
         case .emptyTitle(let id): return "Claude batch rejected: item \"\(id)\" has no title."
         case .titleTooLong(let id): return "Claude batch rejected: item \"\(id)\" has a title over \(BridgeBatch.maxTitle) characters."
@@ -288,5 +294,24 @@ public enum BridgeLabel {
         let words = notes.split(whereSeparator: { $0.isWhitespace })
         if words.contains(where: { $0 == token }) { return notes }
         return notes + "\n" + token
+    }
+}
+
+
+enum BridgeIDs {
+    private static func allowed(_ u: Unicode.Scalar) -> Bool {
+        (u.value >= 48 && u.value <= 57) || (u.value >= 65 && u.value <= 90)
+            || (u.value >= 97 && u.value <= 122) || u == "-" || u == "_"
+    }
+
+    /// 1-64 characters of `[A-Za-z0-9_-]`; ids are written unescaped into `UID:` lines.
+    static func isValid(_ id: String) -> Bool {
+        let scalars = id.unicodeScalars
+        return !scalars.isEmpty && scalars.count <= 64 && scalars.allSatisfy(allowed)
+    }
+
+    /// A banner-safe form: illegal characters shown as `?`, cut to 24 characters.
+    static func display(_ id: String) -> String {
+        String(String.UnicodeScalarView(id.unicodeScalars.prefix(24).map { allowed($0) ? $0 : "?" }))
     }
 }
