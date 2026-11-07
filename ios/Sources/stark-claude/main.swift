@@ -10,12 +10,12 @@ func fail(_ message: String, code: Int32 = 1) -> Never {
 
 let args = Array(CommandLine.arguments.dropFirst())
 let env = ProcessInfo.processInfo.environment
-// STARK_CLAUDE_KEYCHAIN_SERVICE exists only so experiments can avoid the real pairing item.
-let store = KeychainSecretStore(service: env["STARK_CLAUDE_KEYCHAIN_SERVICE"] ?? "com.caritos.stark-claude", account: "pairing")
+let store = KeychainSecretStore(service: "com.caritos.stark-claude", account: "pairing")
 
 let usage = """
 usage: stark-claude pair            (secret from stdin, or a hidden prompt)
        stark-claude add <file|->    (JSON: {"label": "...", "items": [...]})
+times are read in the phone's time zone (this Mac's zone is only used for a pre-check).
 """
 
 do {
@@ -49,7 +49,8 @@ do {
         } else {
             let report = try command.run(requestJSON: data)
             print("Items: \(report.itemIDs.joined(separator: ", "))")
-            print("Sent \(report.batchesSent) of \(report.batchesTotal) batches (the phone does not confirm; check Stark for the 'Added N items' banner).")
+            print("Sent \(report.batchesSent) of \(report.batchesTotal) batches (the phone does not confirm and may lock mid-send; check Stark for the 'Added N items' banner).")
+            print("Times are read in the phone's time zone; this Mac's zone (\(TimeZone.current.identifier)) was used only for the pre-check.")
         }
     default:
         fail(usage, code: 2)

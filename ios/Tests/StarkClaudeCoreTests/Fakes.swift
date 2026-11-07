@@ -8,6 +8,9 @@ final class FakeRunner: ProcessRunning, @unchecked Sendable {
     var devicesJSON: String = Fixtures.oneIPhone
     var lockStdout: String = "• passcodeRequired: false\n"
     var lockResult: ProcessResult?
+    /// Overrides lockStdout per lockState call (1-based).
+    var lockByCall: ((Int) -> String)?
+    private var lockCalls = 0
     /// Called for each launch (1-based index); return nil for success.
     var launchFailure: (Int) -> ProcessResult? = { _ in nil }
 
@@ -22,7 +25,8 @@ final class FakeRunner: ProcessRunning, @unchecked Sendable {
             return ProcessResult(status: 0, stdout: "", stderr: "")
         }
         if arguments.contains("lockState") {
-            return lockResult ?? ProcessResult(status: 0, stdout: lockStdout, stderr: "")
+            lock.lock(); lockCalls += 1; let n = lockCalls; lock.unlock()
+            return lockResult ?? ProcessResult(status: 0, stdout: lockByCall?(n) ?? lockStdout, stderr: "")
         }
         if arguments.contains("launch") {
             let n = launches.count

@@ -22,5 +22,8 @@ public struct AddFailure: Error, CustomStringConvertible {
     public var cause: CLIError
     public var sent: Int
     public var total: Int
-    public var description: String { "\(cause.description) (sent \(sent) of \(total) batches)" }
+    public var itemIDs: [String] = []
+    public var description: String {
+        "\(cause.description) (sent \(sent) of \(total) batches; items: \(itemIDs.joined(separator: ", ")))"
+    }
 }

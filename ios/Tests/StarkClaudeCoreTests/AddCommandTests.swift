@@ -30,7 +30,7 @@ import StarkKit
         let r = FakeRunner()
         let report = try make(r).run(requestJSON: json(2))
         #expect(report.batchesSent == 1 && report.batchesTotal == 1)
-        #expect(report.itemIDs.count == 2 && report.itemIDs.allSatisfy { $0.hasPrefix("gen-") })
+        #expect(report.itemIDs.count == 2 && report.itemIDs.allSatisfy { $0.hasPrefix("bridge-") })
         #expect(r.launches.count == 1)
         let call = r.launches[0]
         #expect(call.arguments.starts(with: ["devicectl", "device", "process", "launch", "--device", "AAAA-1111", "--payload-url"]))
@@ -97,7 +97,9 @@ import StarkKit
     }
     @Test func lockedPhoneRunsNoLaunch() {
         let r = FakeRunner(); r.lockStdout = "• passcodeRequired: true\n"
-        #expect(throws: CLIError.phoneLocked) { try make(r).run(requestJSON: json(1)) }
+        do { _ = try make(r).run(requestJSON: json(1)); Issue.record("expected throw") }
+        catch let f as AddFailure { #expect(f.cause == .phoneLocked); #expect(f.sent == 0) }
+        catch { Issue.record("wrong error \(error)") }
         #expect(r.launches.isEmpty)
         #expect(r.calls.contains { $0.arguments.contains("lockState") && $0.arguments.contains("AAAA-1111") })
     }
@@ -105,7 +107,10 @@ import StarkKit
         for result in [ProcessResult(status: 1, stdout: "", stderr: "no route"), ProcessResult(status: 0, stdout: "garbage", stderr: "")] {
             let r = FakeRunner(); r.lockResult = result
             do { _ = try make(r).run(requestJSON: json(1)); Issue.record("expected throw") }
-            catch let CLIError.launchFailed(m) { #expect(m.hasPrefix("couldn't check whether the phone is unlocked")) }
+            catch let f as AddFailure {
+                guard case .launchFailed(let m) = f.cause else { Issue.record("wrong cause"); continue }
+                #expect(m.hasPrefix("couldn't check whether the phone is unlocked"))
+            }
             catch { Issue.record("wrong error \(error)") }
             #expect(r.launches.isEmpty)
         }
@@ -117,5 +122,53 @@ import StarkKit
         #expect(r.calls.isEmpty)
         let (p, s) = try #require(BridgeCodec.parse(urls[0]))
         #expect(BridgeAuth.verify(payload: p, signature: s, secret: secret))
+    }
+
+    @Test func idsAreDeterministicAcrossRuns() throws {
+        let a = try make(FakeRunner()).signedURLs(requestJSON: json(3)).ids
+        let b = try make(FakeRunner()).signedURLs(requestJSON: json(3)).ids
+        #expect(a == b)
+        #expect(a.allSatisfy { $0.count <= 64 && $0.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil })
+    }
+    @Test func identicalItemsGetDifferentIDs() throws {
+        let item = "{\"kind\":\"reminder\",\"title\":\"Same\",\"start\":\"2026-12-01\"}"
+        let ids = try make(FakeRunner()).signedURLs(requestJSON: Data("{\"items\":[\(item),\(item)]}".utf8)).ids
+        #expect(ids[0] != ids[1])
+        let again = try make(FakeRunner()).signedURLs(requestJSON: Data("{\"items\":[\(item),\(item)]}".utf8)).ids
+        #expect(ids == again)
+    }
+    @Test func changingTheTitleChangesTheID() throws {
+        func id(_ t: String) throws -> String {
+            try make(FakeRunner()).signedURLs(requestJSON: Data("{\"items\":[{\"kind\":\"reminder\",\"title\":\"\(t)\",\"start\":\"2026-12-01\"}]}".utf8)).ids[0]
+        }
+        #expect(try id("A") != id("B"))
+    }
+    @Test func nullAndEmptyIDsAreFilledNonStringRejected() throws {
+        let ok = Data("{\"items\":[{\"id\":null,\"kind\":\"reminder\",\"title\":\"A\",\"start\":\"2026-12-01\"},{\"id\":\"\",\"kind\":\"reminder\",\"title\":\"B\",\"start\":\"2026-12-01\"}]}".utf8)
+        #expect(try make(FakeRunner()).signedURLs(requestJSON: ok).ids.allSatisfy { $0.hasPrefix("bridge-") })
+        let bad = Data("{\"items\":[{\"id\":5,\"kind\":\"reminder\",\"title\":\"Five\",\"start\":\"2026-12-01\"}]}".utf8)
+        do { _ = try make(FakeRunner()).signedURLs(requestJSON: bad); Issue.record("expected throw") }
+        catch let CLIError.badRequest(m) { #expect(m.contains("Five")) }
+    }
+    @Test func retryAfterFailureResendsTheSameIDs() throws {
+        let r1 = FakeRunner()
+        r1.launchFailure = { $0 == 2 ? ProcessResult(status: 1, stdout: "", stderr: "boom") : nil }
+        var failure: AddFailure?
+        do { _ = try make(r1).run(requestJSON: json(300)) } catch let f as AddFailure { failure = f }
+        let f = try #require(failure)
+        #expect(f.description.contains(f.itemIDs[0]))
+        let r2 = FakeRunner()
+        let report = try make(r2).run(requestJSON: json(300))
+        #expect(report.itemIDs == f.itemIDs)
+        let first = try r1.launches.prefix(1).flatMap { try batch(from: $0).items.map(\.id) }
+        let retry = try r2.launches.prefix(1).flatMap { try batch(from: $0).items.map(\.id) }
+        #expect(first == retry)
+    }
+    @Test func lockIsCheckedBeforeEveryBatch() throws {
+        let r = FakeRunner()
+        r.lockByCall = { $0 == 1 ? "passcodeRequired: false" : "passcodeRequired: true" }
+        do { _ = try make(r).run(requestJSON: json(300)); Issue.record("expected throw") }
+        catch let f as AddFailure { #expect(f.cause == .phoneLocked); #expect(f.sent == 1); #expect(f.total >= 2) }
+        #expect(r.launches.count == 1)
     }
 }

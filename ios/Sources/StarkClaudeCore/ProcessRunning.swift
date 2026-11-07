@@ -14,7 +14,8 @@ public protocol ProcessRunning: Sendable {
 }
 
 public struct FoundationProcessRunner: ProcessRunning {
-    public init() {}
+    private let timeout: TimeInterval
+    public init(timeout: TimeInterval = 60) { self.timeout = timeout }
 
     public func run(_ executable: String, _ arguments: [String]) throws -> ProcessResult {
         #if os(macOS)
@@ -34,6 +35,20 @@ public struct FoundationProcessRunner: ProcessRunning {
         process.standardError = err
         process.standardInput = FileHandle.nullDevice
         try process.run()
+        final class Flag: @unchecked Sendable {
+            private let lock = NSLock(); private var v = false
+            func set() { lock.lock(); v = true; lock.unlock() }
+            var value: Bool { lock.lock(); defer { lock.unlock() }; return v }
+        }
+        let timedOut = Flag()
+        let watchdog = DispatchWorkItem {
+            timedOut.set()
+            process.terminate()
+            DispatchQueue.global().asyncAfter(deadline: .now() + 2) {
+                if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+            }
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: watchdog)
         // Drain both pipes concurrently so neither can fill and block the child.
         let group = DispatchGroup()
         final class Box: @unchecked Sendable { var data = Data() }
@@ -44,6 +59,8 @@ public struct FoundationProcessRunner: ProcessRunning {
         DispatchQueue.global().async { errBox.data = err.fileHandleForReading.readDataToEndOfFile(); group.leave() }
         group.wait()
         process.waitUntilExit()
+        watchdog.cancel()
+        if timedOut.value { throw CLIError.launchFailed("timed out talking to the phone (\(Int(timeout)) s)") }
         return ProcessResult(status: process.terminationStatus,
                              stdout: String(decoding: outBox.data, as: UTF8.self),
                              stderr: String(decoding: errBox.data, as: UTF8.self))
