@@ -12,12 +12,13 @@ struct ClaudeCodeSettingsView: View {
     @State private var reveal = false
     @State private var errorText: String?
     @State private var confirmReset = false
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         List {
             Section {
                 LabeledContent("Status") {
-                    Text(secret == nil ? "Not paired" : "Paired")
+                    Text(errorText != nil ? "Unavailable" : (secret == nil ? "Not paired" : "Paired"))
                 }
                 if let secret {
                     Toggle("Show secret", isOn: $reveal)
@@ -58,6 +59,10 @@ struct ClaudeCodeSettingsView: View {
             Text("Claude Code on your Mac must be paired again with the new secret.")
         }
         .onAppear(perform: ensurePaired)
+        .onDisappear { reveal = false }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { reveal = false }
+        }
     }
 
     private func ensurePaired() {
@@ -65,6 +70,8 @@ struct ClaudeCodeSettingsView: View {
             secret = try BridgePairing.ensureSecret(in: secrets)
             errorText = nil
         } catch {
+            secret = nil
+            reveal = false
             errorText = "Couldn't read the pairing secret: \(error)"
         }
     }
@@ -75,6 +82,8 @@ struct ClaudeCodeSettingsView: View {
             reveal = false
             errorText = nil
         } catch {
+            secret = nil
+            reveal = false
             errorText = "Couldn't reset pairing: \(error)"
         }
     }

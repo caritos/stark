@@ -47,6 +47,9 @@ struct ContentView: View {
     /// existing ids. Drained once, right after start.
     @State private var storeStarted = false
     @State private var pendingBridgeURLs: [URL] = []
+    /// `store.start` reports a failed read (recurring.ics or a month) only through `store.error`;
+    /// that cannot be told apart from other errors, so any error right after start blocks imports.
+    @State private var storeLoadFailed = false
     @State private var notice: String?
     @State private var noticeTask: Task<Void, Never>?
 
@@ -175,6 +178,7 @@ struct ContentView: View {
             // Load the wider window (includes the overdue lookback), not the display window.
             let range = AgendaWindow.loadRange(around: Date())
             store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
+            storeLoadFailed = store.error != nil
             storeStarted = true
             let waiting = pendingBridgeURLs
             pendingBridgeURLs = []
@@ -197,9 +201,21 @@ struct ContentView: View {
     }
 
     private func handleBridge(_ url: URL) {
+        guard !storeLoadFailed else {
+            // Not handed to the bridge, so nothing is imported and no batch is recorded.
+            showNotice("Stark couldn't load your data, so the request wasn't added. Try again.")
+            return
+        }
         guard let text = bridge.handle(url).notice else { return }
+        showNotice(text)
+    }
+
+    private func showNotice(_ text: String) {
         noticeTask?.cancel()
         notice = text
+        #if !targetEnvironment(macCatalyst)
+        UIAccessibility.post(notification: .announcement, argument: text)
+        #endif
         noticeTask = Task {
             try? await Task.sleep(for: .seconds(4))
             if !Task.isCancelled { notice = nil }
