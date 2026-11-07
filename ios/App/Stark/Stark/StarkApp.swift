@@ -12,11 +12,17 @@ import StarkKit
 struct StarkApp: App {
     @StateObject private var store: PlannerStore
     @StateObject private var pending: PendingCompletions
+    private let bridge: ClaudeBridge
+    private let secrets: SecretStore
 
     init() {
         let store = Self.makeStore()
         _store = StateObject(wrappedValue: store)
         // Idempotence (unknown id, already resolved by Done/Skip) lives in `PlannerStore.completeReminder`.
+        let secrets = KeychainSecretStore(service: "com.caritos.todo-txt.bridge", account: "pairing")
+        self.secrets = secrets
+        bridge = ClaudeBridge(store: store, secrets: secrets,
+                              replay: BridgeReplayGuard(store: UserDefaultsReplayStore(), now: Date.init))
         _pending = StateObject(wrappedValue: PendingCompletions(commit: { id, occurrence in
             store.completeReminder(id: id, on: occurrence)
         }))
@@ -24,7 +30,7 @@ struct StarkApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(bridge: bridge, secrets: secrets)
                 .environmentObject(store)
                 .environmentObject(pending)
                 #if targetEnvironment(macCatalyst)

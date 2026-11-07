@@ -40,7 +40,19 @@ struct ContentView: View {
     /// The day the planner (timeboxing) is open for, presented full screen; nil when closed.
     @State private var planRequest: PlanRequest?
 
-    init() {
+    private let bridge: ClaudeBridge
+    private let secrets: SecretStore
+    /// False until `store.start` has loaded recurring.ics and the window's months; a bridge URL
+    /// that arrives earlier (cold launch) waits in `pendingBridgeURLs` so the import sees the
+    /// existing ids. Drained once, right after start.
+    @State private var storeStarted = false
+    @State private var pendingBridgeURLs: [URL] = []
+    @State private var notice: String?
+    @State private var noticeTask: Task<Void, Never>?
+
+    init(bridge: ClaudeBridge, secrets: SecretStore) {
+        self.bridge = bridge
+        self.secrets = secrets
         // One instant for all three, so a launch right at midnight can't split them across days.
         let now = Date()
         _selectedDate = State(initialValue: now)
@@ -66,8 +78,12 @@ struct ContentView: View {
         // The design is dark-only (Colors.* are dark-theme tokens); without this, system
         // sheets and Forms would render light with near-white text.
         .preferredColorScheme(.dark)
-        .onOpenURL { url in // SPIKE - replaced in Task 8
-            store.error = "SPIKE url chars: \(url.absoluteString.count)"
+        .onOpenURL { url in
+            if storeStarted {
+                handleBridge(url)
+            } else {
+                pendingBridgeURLs.append(url)
+            }
         }
     }
 
@@ -78,6 +94,18 @@ struct ContentView: View {
     /// `ModeHandle` row on Mac.
     private var screenContent: some View {
         VStack(spacing: 0) {
+            if let notice {
+                Button {
+                    dismissNotice()
+                } label: {
+                    Text(notice)
+                        .font(.footnote)
+                        .foregroundStyle(Colors.text)
+                        .padding(Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Colors.separator)
+                }
+            }
             if let error = store.error {
                 Button {
                     store.error = nil
@@ -140,13 +168,17 @@ struct ContentView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAdd) { AddItemView() }
         .sheet(isPresented: $showSearch) { SearchView() }
-        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showSettings) { SettingsView(secrets: secrets) }
         .sheet(item: $selectedItem) { item in EditItemView(item: item) }
         .fullScreenCover(item: $planRequest) { request in PlannerView(day: request.day, today: today) }
         .task {
             // Load the wider window (includes the overdue lookback), not the display window.
             let range = AgendaWindow.loadRange(around: Date())
             store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
+            storeStarted = true
+            let waiting = pendingBridgeURLs
+            pendingBridgeURLs = []
+            for url in waiting { handleBridge(url) }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
@@ -162,6 +194,21 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
             followCalendarDay()
         }
+    }
+
+    private func handleBridge(_ url: URL) {
+        guard let text = bridge.handle(url).notice else { return }
+        noticeTask?.cancel()
+        notice = text
+        noticeTask = Task {
+            try? await Task.sleep(for: .seconds(4))
+            if !Task.isCancelled { notice = nil }
+        }
+    }
+
+    private func dismissNotice() {
+        noticeTask?.cancel()
+        notice = nil
     }
 
     /// Square (hard-edged, matching the rest of the app), accent-filled, no shadow or glass
