@@ -178,6 +178,8 @@ public enum BridgeError: Error, Equatable, CustomStringConvertible {
     case badInterval(id: String)
     case badCount(id: String)
     case badURL(id: String)
+    case malformed
+    case itemTooLarge(id: String)
 
     public var description: String {
         switch self {
@@ -196,6 +198,8 @@ public enum BridgeError: Error, Equatable, CustomStringConvertible {
         case .badInterval(let id): return "Claude batch rejected: item \"\(id)\" has a repeat interval below 1."
         case .badCount(let id): return "Claude batch rejected: item \"\(id)\" has a repeat count below 1."
         case .badURL(let id): return "Claude batch rejected: item \"\(id)\" has a link that is not http or https."
+        case .malformed: return "Claude batch rejected: the link is damaged or unreadable."
+        case .itemTooLarge(let id): return "Claude batch rejected: item \"\(id)\" is too large to send."
         }
     }
 }
