@@ -148,4 +148,15 @@ struct ICSSerializerTests {
         let text = ICSSerializer.serialize(event: Event(id: "evt-1", title: "Plain", start: DateMath.date(from: "2026-09-20")))
         #expect(!text.contains("URL:"))
     }
+
+    @Test("CR and CRLF in text values never reach the output raw (no forged components)")
+    func carriageReturnsAreNormalised() {
+        let event = Event(id: "e", title: "a\r\nEND:VEVENT\rBEGIN:VEVENT", notes: "x\r\ny", start: DateMath.date(from: "2026-09-17"), location: "l\rm")
+
+        let text = ICSSerializer.serialize(event: event)
+
+        #expect(text.components(separatedBy: .newlines).filter { $0 == "BEGIN:VEVENT" }.count == 1)
+        #expect(!text.replacingOccurrences(of: "\r\n", with: "").contains("\r"))
+        #expect(text.contains("SUMMARY:a\\nEND:VEVENT\\nBEGIN:VEVENT"))
+    }
 }

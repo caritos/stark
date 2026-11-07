@@ -68,7 +68,12 @@ public enum ICSSerializer {
     private static func dateParam(_ allDay: Bool) -> String { allDay ? ";VALUE=DATE" : "" }
 
     private static func escape(_ text: String) -> String {
-        text.replacingOccurrences(of: "\\", with: "\\\\")
+        // CRLF and a lone CR are normalised to LF first (then escaped as "\\n"): a raw CR in a
+        // value would otherwise end the content line and let text forge extra properties or
+        // components (e.g. "END:VEVENT").
+        text.replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+            .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: ";", with: "\\;")
             .replacingOccurrences(of: ",", with: "\\,")
             .replacingOccurrences(of: "\n", with: "\\n")
