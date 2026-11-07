@@ -135,3 +135,13 @@ CLI argument names, exact JSON field spellings beyond the shape above, banner co
 - All-or-nothing batches; `%label` in notes as the batch marker; no undo.
 - `today` is best-effort and not a blocker for shipping adds.
 - Spike-first ordering because both devicectl paths are unverified on TestFlight.
+
+## Spike results (2026-11-07, iPhone 16 Plus, Stark 2.0.21 build 23, uploaded with ship.sh)
+
+Caveat: the device reports `builtByDeveloper: true` for this install. Build 23 was only ever produced by `ship.sh`, so this is most likely how TestFlight installs report, but it was not independently confirmed.
+
+- **Delivery works.** `devicectl device process launch --payload-url "stark://add?..."` reached `onOpenURL` with the app not running (cold launch) and with the app already running and no `--terminate-existing`. No "Open in Stark?" prompt was reported; the banner simply appeared. The CLI does not need `--terminate-existing`.
+- **URL length:** 2 KB, 8 KB, 32 KB and 64 KB (65,536 characters) were all accepted by devicectl and received by the app. Length is not the limit; the 32 KB cap in this design stands (not the 48 KB the plan's formula gives).
+- **Locked phone: silent drop.** devicectl prints "Launched application" and exits successfully, but the URL is NOT delivered (the app did not come to the foreground and, once opened, still showed the previous URL). The CLI cannot rely on an error. **The CLI must check `xcrun devicectl device info lockState --device <id>` first and refuse when `passcodeRequired: true`** (it reports `false` when unlocked and `true` when locked; verified both).
+- **`today` pull works:** `devicectl device copy from --domain-type appDataContainer --domain-identifier com.caritos.todo-txt --source /Documents` returned the month files from this install.
+- Not tested: a screen-on-but-locked-in-use edge case, and whether a URL sent while locked is ever delivered later (it was not, after unlock).
