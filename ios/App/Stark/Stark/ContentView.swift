@@ -66,6 +66,9 @@ struct ContentView: View {
         // The design is dark-only (Colors.* are dark-theme tokens); without this, system
         // sheets and Forms would render light with near-white text.
         .preferredColorScheme(.dark)
+        .onOpenURL { url in // SPIKE - replaced in Task 8
+            store.error = "SPIKE url chars: \(url.absoluteString.count)"
+        }
     }
 
     /// The grid, drag bar (iPhone only — Mac drives `mode` from `CalendarSidebar` instead),
