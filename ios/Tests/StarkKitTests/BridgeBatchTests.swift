@@ -205,3 +205,16 @@ private func date(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ min: Int = 0) ->
     #expect(b.items[0].recurrence?.byDay == ["mon"])
     #expect(b.label == nil)
 }
+
+@Test func modelsKeepSuppliedItemIds() throws {
+    let out = try batch([item("rem-1"), item("evt-1", kind: .event, start: "2026-11-10T09:00")]).models(calendar: ny)
+    #expect(out.reminders.map(\.id) == ["rem-1"])
+    #expect(out.events.map(\.id) == ["evt-1"])
+}
+
+@Test func modelsTwiceYieldIdenticalIds() throws {
+    let b = batch([item("rem-1"), item("evt-1", kind: .event, start: "2026-11-10T09:00")])
+    let a = try b.models(calendar: ny)
+    let c = try b.models(calendar: ny)
+    #expect(a == c)
+}

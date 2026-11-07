@@ -81,7 +81,7 @@ public struct BridgeItem: Codable, Equatable, Sendable {
         switch kind {
         case .reminder:
             out.reminders.append(Reminder(
-                title: trimmedTitle, notes: finalNotes, dueDate: startDate,
+                id: id, title: trimmedTitle, notes: finalNotes, dueDate: startDate,
                 priority: priority.map(Self.icalPriority), recurrence: rule))
         case .event:
             var endDate: Date?
@@ -93,7 +93,7 @@ public struct BridgeItem: Codable, Equatable, Sendable {
                 _ = try BridgeDates.parseEnd(end, start: startDate, id: id, calendar: calendar)
             }
             out.events.append(Event(
-                title: trimmedTitle, notes: finalNotes, start: startDate, end: endDate, isAllDay: startAllDay,
+                id: id, title: trimmedTitle, notes: finalNotes, start: startDate, end: endDate, isAllDay: startAllDay,
                 location: location.flatMap(FormFields.trimmedOrNil), recurrence: rule, url: url))
         }
     }
