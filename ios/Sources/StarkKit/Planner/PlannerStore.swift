@@ -145,6 +145,45 @@ public final class PlannerStore: ObservableObject {
         rebuild()
     }
 
+    /// Imports a batch (the Claude Code bridge) all-or-nothing and idempotently.
+    ///
+    /// Every month a one-off item lands in is loaded first; if any of them cannot be read,
+    /// this throws `ImportFailure.unreadableMonth` before anything is changed. Recurring items
+    /// go to `recurring.ics`, which `start` has already loaded, so they need no month. An id
+    /// already present anywhere in the store (recurring masters, loaded months, completed
+    /// copies), or repeated earlier in the same call, counts as `alreadyPresent` and is skipped.
+    /// A write that fails after the pre-check follows the existing path: `error` is set and
+    /// `PlannerFile` keeps the content in its pending-write queue for `retryPendingWrites`.
+    public func importItems(events newEvents: [Event], reminders newReminders: [Reminder]) throws -> ImportOutcome {
+        var months = Set<YearMonth>()
+        for event in newEvents where event.recurrence == nil { months.insert(YearMonth(date: event.start)) }
+        for reminder in newReminders where reminder.recurrence == nil { months.insert(YearMonth(date: reminder.dueDate ?? Date())) }
+        for month in months.sorted() {
+            loadMonth(month)
+            if !loadedMonths.contains(month) { throw ImportFailure.unreadableMonth(month.fileName) }
+        }
+
+        var seen = Set(events.map(\.id)).union(reminders.map(\.id))
+        var outcome = ImportOutcome(added: 0, alreadyPresent: 0)
+        for event in newEvents {
+            if seen.insert(event.id).inserted {
+                addEvent(event)
+                outcome.added += 1
+            } else {
+                outcome.alreadyPresent += 1
+            }
+        }
+        for reminder in newReminders {
+            if seen.insert(reminder.id).inserted {
+                addReminder(reminder)
+                outcome.added += 1
+            } else {
+                outcome.alreadyPresent += 1
+            }
+        }
+        return outcome
+    }
+
     public func deleteEvent(id: String) {
         let recurringCountBefore = recurringEvents.count
         recurringEvents.removeAll { $0.id == id }
@@ -599,4 +638,19 @@ public final class PlannerStore: ObservableObject {
             self.error = "Couldn't save changes: \(error.localizedDescription)"
         }
     }
+}
+
+public struct ImportOutcome: Equatable, Sendable {
+    public var added: Int
+    public var alreadyPresent: Int
+
+    public init(added: Int, alreadyPresent: Int) {
+        self.added = added
+        self.alreadyPresent = alreadyPresent
+    }
+}
+
+public enum ImportFailure: Error, Equatable {
+    /// The month file (e.g. "2028-01.ics") exists but could not be read.
+    case unreadableMonth(String)
 }
