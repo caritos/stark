@@ -15,7 +15,9 @@ let store = KeychainSecretStore(service: "com.caritos.stark-claude", account: "p
 let usage = """
 usage: stark-claude pair            (secret from stdin, or a hidden prompt)
        stark-claude add <file|->    (JSON: {"label": "...", "items": [...]})
+       stark-claude today [--date yyyy-MM-dd]   (best effort: pulls the app's data from an unlocked phone, prints that day's agenda)
 times are read in the phone's time zone (this Mac's zone is only used for a pre-check).
+"today" and --date use this Mac's calendar and time zone, which may differ from the phone's.
 """
 
 do {
@@ -52,6 +54,24 @@ do {
             print("Sent \(report.batchesSent) of \(report.batchesTotal) batches (the phone does not confirm and may lock mid-send; check Stark for the 'Added N items' banner).")
             print("Times are read in the phone's time zone; this Mac's zone (\(TimeZone.current.identifier)) was used only for the pre-check.")
         }
+    case "today":
+        var rest = Array(args.dropFirst())
+        var day: Date?
+        if let i = rest.firstIndex(of: "--date") {
+            guard i + 1 < rest.count else { fail(usage, code: 2) }
+            day = try TodayCommand.parseDay(rest[i + 1])
+            rest.removeSubrange(i...(i + 1))
+        }
+        guard rest.isEmpty else { fail(usage, code: 2) }
+        let runner = FoundationProcessRunner(timeout: 120)
+        let command = TodayCommand(runner: runner, device: DeviceResolver(runner: runner, environment: env),
+                                   makeTempDirectory: {
+            let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("stark-claude-\(UUID().uuidString)")
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false,
+                                                    attributes: [.posixPermissions: 0o700])
+            return url
+        }, now: { Date() })
+        print(try command.run(day: day))
     default:
         fail(usage, code: 2)
     }

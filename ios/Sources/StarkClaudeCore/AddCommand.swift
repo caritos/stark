@@ -93,7 +93,7 @@ public struct AddCommand {
         }
         for url in urls {
             // Re-checked before every batch: the phone can lock mid-send.
-            do { try requireUnlocked(deviceID) } catch let e as CLIError { throw fail(e) }
+            do { try PhoneLock.requireUnlocked(runner: runner, deviceID: deviceID) } catch let e as CLIError { throw fail(e) }
             var args = ["devicectl", "device", "process", "launch", "--device", deviceID,
                         "--payload-url", url.absoluteString]
             if terminateExisting { args.append("--terminate-existing") }
@@ -110,22 +110,6 @@ public struct AddCommand {
             sent += 1
         }
         return AddReport(itemIDs: ids, batchesSent: sent, batchesTotal: urls.count)
-    }
-
-    /// devicectl reports success but silently drops the URL when the phone is locked, so check first.
-    private func requireUnlocked(_ deviceID: String) throws {
-        let prefix = "couldn't check whether the phone is unlocked"
-        let r: ProcessResult
-        do { r = try runner.run("xcrun", ["devicectl", "device", "info", "lockState", "--device", deviceID]) }
-        catch CLIError.launchFailed(let m) { throw CLIError.launchFailed("\(prefix): \(m)") }
-        catch { throw CLIError.launchFailed("\(prefix): \(error)") }
-        guard r.status == 0 else {
-            throw CLIError.launchFailed("\(prefix): \(String(r.stderr.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300)))")
-        }
-        if r.stdout.contains("passcodeRequired: true") { throw CLIError.phoneLocked }
-        guard r.stdout.contains("passcodeRequired: false") else {
-            throw CLIError.launchFailed("\(prefix): unrecognised devicectl output")
-        }
     }
 
     private static func describe(_ error: Error) -> String {
