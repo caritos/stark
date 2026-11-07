@@ -1,6 +1,6 @@
 # Claude Code bridge: add tasks and events to Stark from the Mac
 
-Date: 2026-11-07. Status: draft, awaiting approval.
+Date: 2026-11-07. Status: approved 2026-11-07; implemented on branch claude-bridge-impl, device verification of the shipped build pending.
 
 ## Intent and why
 

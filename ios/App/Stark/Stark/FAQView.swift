@@ -45,6 +45,18 @@ struct FAQView: View {
             too: a task becomes an event, and its priority is dropped.
             """
         ),
+        Entry(
+            question: "What is the Claude Code bridge?",
+            answer: """
+            An optional way to add tasks and events from Claude Code on your Mac. It does \
+            nothing until you pair it (Settings > Claude Code). Stark makes no network \
+            connection for this: the Mac talks to your phone over your USB or Wi-Fi link to \
+            the phone. A stark://add link is only accepted when it is signed with the pairing \
+            secret, which stays in the Keychain on this phone and never leaves it (it is not in \
+            backups). Requests are added immediately when you tell Claude to add them. To reset \
+            pairing, tap Settings > Claude Code > Reset pairing.
+            """
+        ),
     ]
 
     var body: some View {

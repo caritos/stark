@@ -61,7 +61,7 @@ func TestPublicPagesHaveBodyText(t *testing.T) {
 func TestPrivacyDatedAndMentionsData(t *testing.T) {
 	body := get(Handler(), http.MethodGet, "/privacy").Body.String()
 	// Stark's policy: dated, says the app collects nothing, where the data lives, and how to ask.
-	for _, want := range []string{"LAST UPDATED: SEPTEMBER 2026", "collects no data", "on your device", "iCloud Backup", "support@caritos.com"} {
+	for _, want := range []string{"LAST UPDATED: NOVEMBER 2026", "CLAUDE CODE BRIDGE", "collects no data", "on your device", "iCloud Backup", "support@caritos.com"} {
 		if !strings.Contains(strings.ToLower(body), strings.ToLower(want)) {
 			t.Errorf("privacy missing %q", want)
 		}
