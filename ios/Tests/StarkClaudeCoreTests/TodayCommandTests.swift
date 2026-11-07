@@ -87,7 +87,31 @@ final class PullRunner: ProcessRunning, @unchecked Sendable {
 
     @Test func emptyDay() throws {
         let r = PullRunner(); let dirs = Dirs()
+        r.files["2026-11.ics"] = ics(reminders: [Reminder(title: "Not today", dueDate: at(2026, 11, 20, 10, 0))])
         #expect(try make(r, dirs: dirs).run(day: nil) == "2026-11-07\n- (none)")
+        gone(dirs)
+    }
+
+    @Test func emptyPullIsRefused() {
+        for sub in [nil, "Documents"] as [String?] {
+            let r = PullRunner(); let dirs = Dirs()
+            r.subfolder = sub
+            r.files["notes.txt"] = Data("x".utf8)  // not a planner file
+            do { _ = try make(r, dirs: dirs).run(day: nil); Issue.record("expected throw") }
+            catch let e as CLIError {
+                #expect(e == .pullRefused("no Stark data found on the phone (wrong app, or nothing saved yet?)"))
+            } catch { Issue.record("wrong error \(error)") }
+            gone(dirs)
+        }
+    }
+
+    @Test func plannedFarTaskFromAnotherMonthShows() throws {
+        let r = PullRunner(); let dirs = Dirs()
+        let far = Reminder(id: "far-1", title: "Far task", dueDate: at(2027, 3, 10, 10, 0))
+        r.files["2027-03.ics"] = ics(reminders: [far])
+        let plan = PlanBlock(reminderID: "far-1", occurrence: at(2027, 3, 10, 10, 0), start: at(2026, 11, 8, 9, 0), minutes: 30)
+        r.files["2026-11.ics"] = Data(ICSSerializer.serialize(events: [], reminders: [], plans: [plan]).utf8)
+        #expect(try make(r, dirs: dirs).run(day: at(2026, 11, 8)) == "2026-11-08\n- [ ] Far task")
         gone(dirs)
     }
 
@@ -101,6 +125,7 @@ final class PullRunner: ProcessRunning, @unchecked Sendable {
 
     @Test func pullArguments() throws {
         let r = PullRunner(); let dirs = Dirs()
+        r.files["recurring.ics"] = ics()
         _ = try make(r, dirs: dirs).run(day: nil)
         let c = try #require(r.pulls.first)
         #expect(c.arguments.starts(with: ["devicectl", "device", "copy", "from", "--device", "AAAA-1111",
@@ -129,7 +154,8 @@ final class PullRunner: ProcessRunning, @unchecked Sendable {
                 return try inner.run(e, a)
             }
         }
-        let ins = Inspect(PullRunner()); let dirs2 = Dirs()
+        let inner = PullRunner(); inner.files["recurring.ics"] = ics()
+        let ins = Inspect(inner); let dirs2 = Dirs()
         let cmd2 = TodayCommand(runner: ins, device: DeviceResolver(runner: ins, environment: [:]), makeTempDirectory: {
             let u = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("today-test-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: u, withIntermediateDirectories: false)

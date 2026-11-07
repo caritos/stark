@@ -64,6 +64,10 @@ public struct TodayCommand {
         if FileManager.default.fileExists(atPath: sub.path, isDirectory: &isDir), isDir.boolValue { root = sub }
 
         let file = PlannerFile(directory: root, pendingDirectory: pending)
+        let hasRecurring = FileManager.default.fileExists(atPath: root.appendingPathComponent("recurring.ics").path)
+        guard hasRecurring || !file.availableMonths().isEmpty else {
+            throw CLIError.pullRefused("no Stark data found on the phone (wrong app, or nothing saved yet?)")
+        }
         var events: [Event] = [], reminders: [Reminder] = [], plans: [PlanBlock] = []
         do {
             let recurring = try file.loadRecurring()
