@@ -22,7 +22,8 @@ struct StarkApp: App {
         let secrets = KeychainSecretStore(service: "com.caritos.todo-txt.bridge", account: "pairing")
         self.secrets = secrets
         bridge = ClaudeBridge(store: store, secrets: secrets,
-                              replay: BridgeReplayGuard(store: UserDefaultsReplayStore(), now: Date.init))
+                              replay: BridgeReplayGuard(store: UserDefaultsReplayStore(), now: Date.init),
+                              calendar: .autoupdatingCurrent)
         _pending = StateObject(wrappedValue: PendingCompletions(commit: { id, occurrence in
             store.completeReminder(id: id, on: occurrence)
         }))

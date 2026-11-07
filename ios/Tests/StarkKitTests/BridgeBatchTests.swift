@@ -288,3 +288,25 @@ private func date(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ min: Int = 0) ->
         #expect(!desc.contains(String(repeating: "z", count: 20)))
     }
 }
+
+@Test func countAndUntilTogetherThrow() {
+    let rec = BridgeRecurrence(freq: .daily, interval: nil, byDay: nil, until: "2026-12-01", count: 3)
+    #expect(throws: BridgeError.countAndUntil(id: "x")) { try batch([item("x", recurrence: rec)]).models(calendar: ny) }
+    #expect(BridgeError.countAndUntil(id: "x").description.contains("\"x\""))
+}
+
+@Test func locationAndURLLengthCaps() throws {
+    let okLoc = String(repeating: "a", count: 500)
+    _ = try batch([item("x", kind: .event, start: "2026-11-10T09:00", location: okLoc)]).models(calendar: ny)
+    #expect(throws: BridgeError.locationTooLong(id: "x")) {
+        try batch([item("x", kind: .event, start: "2026-11-10T09:00", location: okLoc + "a")]).models(calendar: ny)
+    }
+    let okURL = "https://example.com/" + String(repeating: "a", count: 1980)
+    #expect(okURL.count == 2000)
+    _ = try batch([item("x", kind: .event, start: "2026-11-10T09:00", url: okURL)]).models(calendar: ny)
+    #expect(throws: BridgeError.urlTooLong(id: "x")) {
+        try batch([item("x", kind: .event, start: "2026-11-10T09:00", url: okURL + "a")]).models(calendar: ny)
+    }
+    #expect(BridgeError.locationTooLong(id: "x").description.contains("\"x\""))
+    #expect(BridgeError.urlTooLong(id: "x").description.contains("\"x\""))
+}

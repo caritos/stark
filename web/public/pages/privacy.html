@@ -34,7 +34,7 @@
     <p>Stark does not ask for access to your contacts, calendars, photos, location, or notifications.</p>
 
     <h2>CLAUDE CODE BRIDGE</h2>
-    <p>Stark has an optional bridge that lets Claude Code on your Mac add reminders and events. It does nothing until you pair it. Stark itself makes no network connection for it: your Mac talks to your phone over your USB or Wi-Fi link to the phone. A <strong>stark://add</strong> link is only accepted when it is signed with a pairing secret that stays in the Keychain on your phone. The secret never leaves the phone and is not included in backups. You can reset pairing at any time in Settings &gt; Claude Code.</p>
+    <p>Stark has an optional bridge that lets Claude Code on your Mac add reminders and events. It does nothing until you pair it. Stark itself makes no network connection for it: your Mac talks to your phone over your USB or Wi-Fi link to the phone. A <strong>stark://add</strong> link is only accepted when it is signed with a pairing secret. The secret is kept in this phone's Keychain (not in backups) and, once you pair, in your Mac's login Keychain; Stark never sends it anywhere else. If you ask Claude for your schedule, the Mac reads a temporary copy of your Stark data over the cable or Wi-Fi link to the phone, the copy is deleted afterwards, and Claude Code sees that day's items. You can reset pairing at any time in Settings &gt; Claude Code.</p>
 
     <h2>LINKS</h2>
     <p>If you tap a link in Stark, such as an event's URL or a link in Settings, it opens in your browser. That site's own privacy policy applies to your visit.</p>

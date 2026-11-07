@@ -5,6 +5,8 @@ public struct BridgeBatch: Codable, Equatable, Sendable {
     public static let maxItems = 200
     public static let maxTitle = 500
     public static let maxNotes = 5000
+    public static let maxLocation = 500
+    public static let maxURL = 2000
 
     public var v: Int
     public var batch: String
@@ -70,7 +72,9 @@ public struct BridgeItem: Codable, Equatable, Sendable {
         guard !trimmedTitle.isEmpty else { throw BridgeError.emptyTitle(id: id) }
         guard title.count <= BridgeBatch.maxTitle else { throw BridgeError.titleTooLong(id: id) }
         if let notes, notes.count > BridgeBatch.maxNotes { throw BridgeError.notesTooLong(id: id) }
+        if let location, location.count > BridgeBatch.maxLocation { throw BridgeError.locationTooLong(id: id) }
         if let url {
+            guard url.count <= BridgeBatch.maxURL else { throw BridgeError.urlTooLong(id: id) }
             guard let comps = URLComponents(string: url), let scheme = comps.scheme?.lowercased(),
                   scheme == "http" || scheme == "https", let host = comps.host, !host.isEmpty
             else { throw BridgeError.badURL(id: id) }
@@ -122,6 +126,7 @@ public struct BridgeRecurrence: Codable, Equatable, Sendable {
     }
 
     fileprivate func rule(id: String, start: Date, calendar: Calendar) throws -> RecurrenceRule {
+        if count != nil, until != nil { throw BridgeError.countAndUntil(id: id) }
         if let interval, !(1...999).contains(interval) { throw BridgeError.badInterval(id: id) }
         if let count, !(1...1000).contains(count) { throw BridgeError.badCount(id: id) }
         let parsedDays: [Weekday]? = try byDay.map { names in
@@ -182,6 +187,9 @@ public enum BridgeError: Error, Equatable, CustomStringConvertible {
     case badInterval(id: String)
     case badCount(id: String)
     case badURL(id: String)
+    case countAndUntil(id: String)
+    case locationTooLong(id: String)
+    case urlTooLong(id: String)
     case malformed
     case itemTooLarge(id: String)
 
@@ -204,6 +212,9 @@ public enum BridgeError: Error, Equatable, CustomStringConvertible {
         case .badInterval(let id): return "Claude batch rejected: item \"\(id)\" has a repeat interval below 1."
         case .badCount(let id): return "Claude batch rejected: item \"\(id)\" has a repeat count below 1."
         case .badURL(let id): return "Claude batch rejected: item \"\(id)\" has a link that is not http or https."
+        case .countAndUntil(let id): return "Claude batch rejected: item \"\(id)\" repeats with both a count and an end date (use one)."
+        case .locationTooLong(let id): return "Claude batch rejected: item \"\(id)\" has a location over \(BridgeBatch.maxLocation) characters."
+        case .urlTooLong(let id): return "Claude batch rejected: item \"\(id)\" has a link over \(BridgeBatch.maxURL) characters."
         case .malformed: return "Claude batch rejected: the link is damaged or unreadable."
         case .itemTooLarge(let id): return "Claude batch rejected: item \"\(id)\" is too large to send."
         }

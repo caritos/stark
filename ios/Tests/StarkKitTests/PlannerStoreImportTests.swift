@@ -24,6 +24,7 @@ struct PlannerStoreImportTests {
     @MainActor
     func routesAndPersists() throws {
         let (store, file, root) = makeStore()
+        defer { try? FileManager.default.removeItem(at: root) }
         start(store, around: today)
         let event = Event(id: "e1", title: "Dentist", start: DateMath.date(from: "2026-09-17"))
         let one = Reminder(id: "r1", title: "Call", dueDate: DateMath.date(from: "2026-09-18"))
@@ -47,6 +48,7 @@ struct PlannerStoreImportTests {
     @MainActor
     func idempotent() throws {
         let (store, file, root) = makeStore()
+        defer { try? FileManager.default.removeItem(at: root) }
         start(store, around: today)
         let event = Event(id: "e1", title: "Dentist", start: DateMath.date(from: "2026-09-17"))
         let weekly = Reminder(id: "r2", title: "Trash", dueDate: DateMath.date(from: "2026-09-19"), recurrence: RecurrenceRule(frequency: .weekly))
@@ -68,7 +70,8 @@ struct PlannerStoreImportTests {
     @Test("a duplicate id inside one call is counted alreadyPresent")
     @MainActor
     func duplicateWithinCall() throws {
-        let (store, _, _) = makeStore()
+        let (store, _, root) = makeStore()
+        defer { try? FileManager.default.removeItem(at: root) }
         start(store, around: today)
         let a = Reminder(id: "dup", title: "A", dueDate: DateMath.date(from: "2026-09-18"))
         let b = Reminder(id: "dup", title: "B", dueDate: DateMath.date(from: "2026-09-18"))
@@ -82,7 +85,8 @@ struct PlannerStoreImportTests {
     @Test("an id that exists as a completed copy counts as already present")
     @MainActor
     func completedCopyCounts() throws {
-        let (store, _, _) = makeStore()
+        let (store, _, root) = makeStore()
+        defer { try? FileManager.default.removeItem(at: root) }
         start(store, around: today)
         store.addReminder(Reminder(id: "done1", title: "Old", dueDate: DateMath.date(from: "2026-09-02"), isCompleted: true, completedDate: DateMath.date(from: "2026-09-02")))
 
@@ -94,7 +98,8 @@ struct PlannerStoreImportTests {
     @Test("a month outside the started window is loaded first and its existing items are kept")
     @MainActor
     func loadsFarMonth() throws {
-        let (store, file, _) = makeStore()
+        let (store, file, root) = makeStore()
+        defer { try? FileManager.default.removeItem(at: root) }
         try file.saveMonth(YearMonth(year: 2027, month0: 2), events: [Event(id: "old", title: "Existing", start: DateMath.date(from: "2027-03-05"))], reminders: [])
         start(store, around: today)
         #expect(!store.events.contains { $0.id == "old" })
@@ -111,6 +116,7 @@ struct PlannerStoreImportTests {
     @MainActor
     func unreadableMonthIsAllOrNothing() throws {
         let (store, _, root) = makeStore()
+        defer { try? FileManager.default.removeItem(at: root) }
         start(store, around: today)
         let docs = root.appendingPathComponent("docs")
         try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
@@ -132,6 +138,7 @@ struct PlannerStoreImportTests {
     @MainActor
     func injectionRoundTrip() throws {
         let (store, file, root) = makeStore()
+        defer { try? FileManager.default.removeItem(at: root) }
         start(store, around: today)
         let nasty = "a\nb, c; d \\ e\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nSUMMARY:forged 🎯"
         let event = Event(id: "e1", title: nasty, notes: nasty, start: DateMath.date(from: "2026-09-17"), location: nasty)

@@ -203,7 +203,7 @@ struct ContentView: View {
     private func handleBridge(_ url: URL) {
         guard !storeLoadFailed else {
             // Not handed to the bridge, so nothing is imported and no batch is recorded.
-            showNotice("Stark couldn't load your data, so the request wasn't added. Try again.")
+            showNotice("Stark couldn't load your data, so the request wasn't added. Force-quit Stark, then send again.")
             return
         }
         guard let text = bridge.handle(url).notice else { return }

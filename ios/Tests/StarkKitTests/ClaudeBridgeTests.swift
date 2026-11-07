@@ -8,11 +8,15 @@ struct ClaudeBridgeTests {
     private let now = DateMath.date(from: "2026-09-01")
 
     @MainActor
-    private struct Rig {
+    private final class Rig {
         let bridge: ClaudeBridge
         let store: PlannerStore
         let root: URL
         let replay: BridgeReplayGuard
+        init(bridge: ClaudeBridge, store: PlannerStore, root: URL, replay: BridgeReplayGuard) {
+            self.bridge = bridge; self.store = store; self.root = root; self.replay = replay
+        }
+        deinit { try? FileManager.default.removeItem(at: root) }
     }
 
     @MainActor

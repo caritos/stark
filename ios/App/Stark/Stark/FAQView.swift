@@ -52,9 +52,12 @@ struct FAQView: View {
             nothing until you pair it (Settings > Claude Code). Stark makes no network \
             connection for this: the Mac talks to your phone over your USB or Wi-Fi link to \
             the phone. A stark://add link is only accepted when it is signed with the pairing \
-            secret, which stays in the Keychain on this phone and never leaves it (it is not in \
-            backups). Requests are added immediately when you tell Claude to add them. To reset \
-            pairing, tap Settings > Claude Code > Reset pairing.
+            secret. The secret is kept in this phone's Keychain (not in backups) and, once you \
+            pair, in your Mac's login Keychain; Stark never sends it anywhere else. Requests \
+            are added immediately when you tell Claude to add them. When you ask Claude for \
+            your schedule, the Mac reads a temporary copy of your Stark data over the cable or \
+            Wi-Fi link to the phone, the copy is deleted afterwards, and Claude Code sees that \
+            day's items. To reset pairing, tap Settings > Claude Code > Reset pairing.
             """
         ),
     ]

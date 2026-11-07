@@ -18,7 +18,7 @@ struct ClaudeCodeSettingsView: View {
         List {
             Section {
                 LabeledContent("Status") {
-                    Text(errorText != nil ? "Unavailable" : (secret == nil ? "Not paired" : "Paired"))
+                    Text(errorText != nil ? "Unavailable" : (secret == nil ? "No secret yet" : "Secret ready"))
                 }
                 if let secret {
                     Toggle("Show secret", isOn: $reveal)

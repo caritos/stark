@@ -6,7 +6,7 @@ Turn the tasks and events we have just discussed (or `$ARGUMENTS`, if given) int
 
 ## Permissions
 
-This needs two Bash permissions: `Bash(stark-claude:*)` and `Bash(xcrun devicectl:*)` (the CLI runs `devicectl` itself). A sandboxed session may block `devicectl` and the Mac login Keychain (where the pairing secret lives); if a command fails for that reason, say so and tell me which permission or sandbox setting to change. Do not work around it.
+This needs one Bash permission: `Bash(stark-claude:*)`. The CLI runs `xcrun devicectl` itself as a child process, so `Bash(xcrun devicectl:*)` is not needed. A sandboxed session may still block that child process and the Mac login Keychain (where the pairing secret lives); if a command fails for that reason, say so and tell me which sandbox setting to change. Do not work around it.
 
 ## Before sending
 
@@ -49,9 +49,10 @@ Fields per item:
 - `kind`: `reminder` or `event` (required). `title` (required, at most 500 characters). `start` (required): `yyyy-MM-dd` for a date-only item (an all-day event, or a reminder with no time) or `yyyy-MM-ddTHH:mm` (24-hour).
 - Optional: `notes` (at most 5000 characters), `end` (events only; `yyyy-MM-ddTHH:mm`, or just `HH:mm` on the start day; ignored on an all-day event), `location` and `url` (events only in practice; `url` must be http or https), `priority` (`low`, `medium` or `high`; reminders only), `recurrence`.
 - `recurrence`: `{ "freq": "daily|weekly|monthly|yearly", "interval": n, "byDay": ["mon","tue","wed","thu","fri","sat","sun"], "until": "yyyy-MM-dd", "count": n }`. Only `freq` is required. `until` may not be before the start.
-- `id` is optional and normally left out. The CLI derives a deterministic id from each item's content, so sending the same file again is recognised by the phone as "Already added" and does not duplicate anything. (Two identical items in one file get distinct ids.) Changing any field of an item makes it a new item.
+- A reminder ignores `location`, `url` and `end`; an event ignores `priority`. They are dropped silently, so do not rely on them. A timed event whose `end` is not after its `start` gets no end. An all-day event (date-only `start`) has no end. `location` is at most 500 characters and `url` at most 2000. `recurrence` may not have both `until` and `count`.
+- `id` is optional and normally left out. The CLI derives a deterministic id from each item's content, so sending the same file again is recognised by the phone as "Already added" and does not duplicate anything (items are matched by id). The catch: an item I deleted on the phone comes back if the file is sent again. (Two identical items in one file get distinct ids.) Changing any field of an item makes it a new item.
 - Times are read in the phone's time zone, not this Mac's. A local time that does not exist (the daylight-saving gap) is rejected for the whole batch.
-- Up to 200 items go in one request; larger files are split into batches automatically. Each batch is all-or-nothing on the phone: one bad item rejects its whole batch, and the phone shows a banner naming the item.
+- Up to 200 items go in one batch; larger files are split into batches automatically. Each batch is all-or-nothing on the phone: one bad item rejects its whole batch, and the phone shows a banner naming the item.
 - `label` (top level, optional): lowercase letters, digits and dashes, at most 32 characters (anything else is cleaned up). It is added to each item's notes as `%label`, so I can find the whole batch with Search in Stark. Always give a short, descriptive label.
 
 ## Sending
