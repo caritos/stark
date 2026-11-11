@@ -172,15 +172,15 @@ EXCL=(':!docs/superpowers' ':!.claude/skills' ':!web/scripts/layout.test.sh' ':!
 if [ "$HOST" -eq 1 ]; then EXCL+=(':!ios' ':!android'); fi
 stale_report() {
   {
-    git grep -nE 'web/e2e' -- . "${EXCL[@]}"
+    git grep -I -nE 'web/e2e' -- . "${EXCL[@]}"
     # scripts, deploy files, docs and the binary written without web/ in front of them
-    git grep -nE "${NOPFX}scripts/(deploy|deploy-app|smoke|restore|pull-backups|install-backup-agent|gen-api|gen-api-preflight|rename|build-id|layout|backup-pull|clean-app)[.a-z-]*" -- . "${EXCL[@]}"
-    git grep -nE "${NOPFX}deploy/(\\.env|nginx|[A-Za-z0-9_-]+\\.(service|timer))" -- . "${EXCL[@]}"
-    git grep -nE "${NOPFX}dist/(app|$NAME)([^A-Za-z0-9_]|\$)|[ \`(=:]\\.(/deploy|/scripts/|/dist/)|(cd|bash|sh) +(deploy|scripts)( |/|\$)" -- . "${EXCL[@]}"
-    git grep -nE "${NOPFX}docs/(deploy|https|backups|testing)\\.md" -- . "${EXCL[@]}"
-    git grep -nE "${NOPFX}\\.env\\.example" -- . "${EXCL[@]}"
+    git grep -I -nE "${NOPFX}scripts/(deploy|deploy-app|smoke|restore|pull-backups|install-backup-agent|gen-api|gen-api-preflight|rename|build-id|layout|backup-pull|clean-app)[.a-z-]*" -- . "${EXCL[@]}"
+    git grep -I -nE "${NOPFX}deploy/(\\.env|nginx|[A-Za-z0-9_-]+\\.(service|timer))" -- . "${EXCL[@]}"
+    git grep -I -nE "${NOPFX}dist/(app|$NAME)([^A-Za-z0-9_]|\$)|[ \`(=:]\\.(/deploy|/scripts/|/dist/)|(cd|bash|sh) +(deploy|scripts)( |/|\$)" -- . "${EXCL[@]}"
+    git grep -I -nE "${NOPFX}docs/(deploy|https|backups|testing)\\.md" -- . "${EXCL[@]}"
+    git grep -I -nE "${NOPFX}\\.env\\.example" -- . "${EXCL[@]}"
     # the binary now lives in dist/: a root binary reference such as `./<name> serve`
-    git grep -nE "(^|[^A-Za-z0-9_./-])\\./$NAME(\$|[^A-Za-z0-9_/.-]|\\.([^A-Za-z]|\$))" -- README.md AGENTS.md CLAUDE.md 'web/docs/*.md' ':!docs/superpowers'
+    git grep -I -nE "(^|[^A-Za-z0-9_./-])\\./$NAME(\$|[^A-Za-z0-9_/.-]|\\.([^A-Za-z]|\$))" -- README.md AGENTS.md CLAUDE.md 'web/docs/*.md' ':!docs/superpowers'
   } 2>/dev/null | sort -u | awk -F: -v ranges="$DONE_RANGES" 'BEGIN { n = split(ranges, r, " ") }
       { for (i = 1; i <= n; i++) { split(r[i], x, ","); if ($1 == x[1] && $2 > x[2] && $2 < x[3]) next } print }'
 }
