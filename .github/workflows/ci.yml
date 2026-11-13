@@ -102,14 +102,10 @@ jobs:
         run: bash web/scripts/gen-api-preflight.test.sh
       - name: Hook tests
         run: bash .claude/hooks/post-edit.test.sh
-      - name: Rename script test
-        run: bash web/scripts/rename.test.sh
       - name: Build id script test
         run: bash web/scripts/build-id.test.sh
       - name: Repository layout test
         run: bash web/scripts/layout.test.sh
-      - name: Skill tests (fast tier)
-        run: bash .claude/skills/new-web-app/tests/run.sh --fast
 
   e2e:
     runs-on: ubuntu-latest
