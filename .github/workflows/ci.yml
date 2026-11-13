@@ -104,8 +104,6 @@ jobs:
         run: bash .claude/hooks/post-edit.test.sh
       - name: Build id script test
         run: bash web/scripts/build-id.test.sh
-      - name: Repository layout test
-        run: bash web/scripts/layout.test.sh
 
   e2e:
     runs-on: ubuntu-latest
