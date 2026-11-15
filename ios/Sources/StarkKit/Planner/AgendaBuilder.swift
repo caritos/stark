@@ -21,12 +21,18 @@ public struct AgendaItem: Identifiable, Equatable {
     /// A planned row's `displayDate` is the plan's start.
     public let plan: PlanBlock?
 
-    public init(kind: Kind, occurrence: Date, displayDate: Date, isOverdue: Bool, plan: PlanBlock? = nil) {
+    /// Set only on read-only Apple Calendar / Reminders overlay rows; nil for Stark's own rows.
+    /// Not part of `id`.
+    public let appleSource: AppleSource?
+
+    public init(kind: Kind, occurrence: Date, displayDate: Date, isOverdue: Bool, plan: PlanBlock? = nil,
+                appleSource: AppleSource? = nil) {
         self.kind = kind
         self.occurrence = occurrence
         self.displayDate = displayDate
         self.isOverdue = isOverdue
         self.plan = plan
+        self.appleSource = appleSource
     }
 
     /// Stable row id. A planned copy appends `-plan-<plan id>`, so it never collides with the
