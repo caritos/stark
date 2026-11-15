@@ -400,6 +400,8 @@ public final class ItemRouter {
     /// The sidecar is written first; if the local store then refuses, the Apple half is saved and
     /// `.local` is thrown (retrying rewrites the same blocks, since this is a replace). Each planned
     /// Apple reminder's external id is read through the repository and recorded with the blocks.
+    /// An unreadable sidecar throws `.sidecar` only when the save has Apple blocks; a day with
+    /// only Stark's own blocks is still saved.
     public func replacePlans(on day: Date, with blocks: [PlanBlock]) async throws {
         var appleBlocks: [PlanBlock] = []
         var appleRefs: [String: AppleItemRef] = [:]
@@ -415,7 +417,14 @@ public final class ItemRouter {
                 localBlocks.append(block)
             }
         }
-        let storedApple = try await sidecarRead { try await sidecar.plans(on: day) }
+        let storedApple: [PlanBlock]
+        do {
+            storedApple = try await sidecarRead { try await sidecar.plans(on: day) }
+        } catch where appleBlocks.isEmpty {
+            // An unreadable sidecar can't hold this save's blocks anyway: a day with only Stark's
+            // own blocks still saves them (the planner showed no Apple blocks for it either).
+            storedApple = []
+        }
         if !(appleBlocks.isEmpty && storedApple.isEmpty) && appleBlocks != storedApple {
             var externalIDs: [String: String] = [:]
             for ref in appleRefs.values {

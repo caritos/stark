@@ -109,6 +109,14 @@ struct ItemRouterTests {
         let local: FakeLocalStore
         let sidecar: ItemSidecar
         let counter: Counter
+        let sidecarURL: URL
+
+        /// Makes the sidecar file unreadable (not JSON).
+        func breakSidecar() throws {
+            try FileManager.default.createDirectory(at: sidecarURL.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+            try Data("not json".utf8).write(to: sidecarURL)
+        }
     }
 
     private func harness(repo: (any ItemRepository)? = nil, fake: FakeItemRepository? = nil,
@@ -125,7 +133,7 @@ struct ItemRouterTests {
                                 destinations: destinations, calendar: days,
                                 now: { Date(timeIntervalSince1970: 1_800_000_000) })
         router.onDidWrite = { counter.writes += 1 }
-        return Harness(router: router, repo: fake, local: local, sidecar: sidecar, counter: counter)
+        return Harness(router: router, repo: fake, local: local, sidecar: sidecar, counter: counter, sidecarURL: url)
     }
 
     // MARK: Origin
@@ -410,6 +418,31 @@ struct ItemRouterTests {
         h.local.replacePlansResult = false
         let own = PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6), start: at(6, 10), minutes: 30)
         await #expect(throws: ItemRouterError.self) { try await h.router.replacePlans(on: at(6), with: [own]) }
+    }
+
+    @Test("an unreadable sidecar does not block a day with only Stark's own blocks")
+    func unreadableSidecarKeepsLocalPlanSaves() async throws {
+        let h = harness()
+        try h.breakSidecar()
+        let own = PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6), start: at(6, 10), minutes: 30)
+        try await h.router.replacePlans(on: at(6), with: [own])
+        #expect(h.local.calls == ["replacePlans [\"pl\"]"])
+        #expect(h.counter.writes == 0)
+    }
+
+    @Test("an unreadable sidecar still refuses a save with Apple blocks, and writes nothing")
+    func unreadableSidecarRefusesApplePlanSaves() async throws {
+        let h = harness()
+        try h.breakSidecar()
+        let apple = PlanBlock(id: "pa", reminderID: "apple-R1", occurrence: at(6), start: at(6, 9), minutes: 30)
+        let own = PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6), start: at(6, 10), minutes: 30)
+        await #expect {
+            try await h.router.replacePlans(on: at(6), with: [apple, own])
+        } throws: { error in
+            if case .sidecar = error as? ItemRouterError { return true }
+            return false
+        }
+        #expect(h.local.calls.isEmpty)
     }
 
     // MARK: Convert
