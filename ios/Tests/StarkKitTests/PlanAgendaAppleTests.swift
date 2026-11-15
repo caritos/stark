@@ -42,13 +42,18 @@ struct PlanAgendaAppleTests {
         #expect(r.id == "apple-far")
     }
 
-    @Test func completedOrUndatedAppleRemindersAreNeverSynthesized() {
+    /// Task 9b fix round 1 (controller decision): a PLANNED undated reminder now appears on its
+    /// planned day, so only the completed one stays out (was "completed or undated").
+    @Test func completedAppleRemindersAreNeverSynthesizedButAPlannedUndatedOneIs() {
         let snapshot = AppleSnapshot(events: [], reminders: [apple("done", due: at(6, 1, year: 2027), done: true),
                                                              apple("undated", due: nil)])
         let plans = [
             PlanBlock(id: "p1", reminderID: "apple-done", occurrence: at(6, 1, year: 2027), start: at(11, 3, 9), minutes: 30),
             PlanBlock(id: "p2", reminderID: "apple-undated", occurrence: .distantFuture, start: at(11, 3, 11), minutes: 30),
         ]
-        #expect(applyPlans([], plans: plans, today: today, apple: snapshot, calendar: cal).isEmpty)
+        let out = applyPlans([], plans: plans, today: today, apple: snapshot, calendar: cal)
+        #expect(out.map(\.id).count == 1)
+        #expect(out.first?.plan?.id == "p2")
+        #expect(out.first?.displayDate == at(11, 3, 11))
     }
 }

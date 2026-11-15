@@ -58,7 +58,8 @@ public struct DayDensity: Equatable, Sendable {
 /// so an empty month is `[:]`. A dictionary rather than a dense array because most days of a
 /// typical month are empty, and callers look days up by number either way.
 ///
-/// `apple` (default empty) adds the read-only Apple Calendar / Reminders rows via `mergeAppleItems`.
+/// `apple` (default empty) adds the read-only Apple Calendar / Reminders rows via `mergeAppleItems`;
+/// `plans` (default none) are applied after it, as in the agenda.
 ///
 /// The month's bounds and the day-of-month keys come from `calendar`; the whole day is covered
 /// (start of day 1 through the last second of the last day) and days are stepped with the
@@ -72,7 +73,8 @@ public func dayDensity(
     month: YearMonth,
     today: Date = Date(),
     calendar: Calendar = Calendar(identifier: .gregorian),
-    apple: AppleSnapshot = AppleSnapshot(events: [], reminders: [])
+    apple: AppleSnapshot = AppleSnapshot(events: [], reminders: []),
+    plans: [PlanBlock] = []
 ) -> [Int: DayDensity] {
     guard let firstDay = calendar.date(from: DateComponents(year: month.year, month: month.month0 + 1, day: 1)),
           let firstOfNext = calendar.date(byAdding: .month, value: 1, to: firstDay) else { return [:] }
@@ -81,7 +83,9 @@ public func dayDensity(
 
     var result: [Int: DayDensity] = [:]
     let base = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
-    for item in mergeAppleItems(base, snapshot: apple, in: range, today: today, calendar: calendar) {
+    // `plans` (default none) as in the agenda (`agendaWithApple`); with none this is the merge alone.
+    for item in agendaWithApple(local: base, snapshot: apple, plans: plans, range: range, today: today,
+                                reminders: reminders, calendar: calendar) {
         // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
         // this month; they belong to another month's cell.
         guard range.contains(item.displayDate) else { continue }

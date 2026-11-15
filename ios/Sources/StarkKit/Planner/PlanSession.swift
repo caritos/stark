@@ -57,6 +57,27 @@ public struct PlanSession {
         return failed
     }
 
+    /// True when an editable day's blocks to save differ from `saved`'s (blocks compared by id,
+    /// reminder, occurrence, start and length, order ignored); a day without changes on one side
+    /// counts as "nothing to save" there. These are edits made while `saved` was being written,
+    /// which a closing planner would lose.
+    public func hasEdits(since saved: PlanSession, today: Date) -> Bool {
+        struct Key: Hashable {
+            let id: String, reminderID: String, occurrence: Date, start: Date, minutes: Int
+            init(_ b: PlanBlock) {
+                id = b.id; reminderID = b.reminderID; occurrence = b.occurrence; start = b.start; minutes = b.minutes
+            }
+        }
+        func keys(_ draft: PlanDraft?) -> Set<Key>? {
+            guard let draft, draft.hasChanges else { return nil }
+            return Set(draft.blocksToSave.map(Key.init))
+        }
+        let days = Set(drafts.keys).union(saved.drafts.keys)
+        return days.contains { day in
+            PlannerDays.isEditable(day, today: today, calendar: calendar) && keys(drafts[day]) != keys(saved.drafts[day])
+        }
+    }
+
     /// `saveAll` for an async writer (`ItemRouter.replacePlans`): the same days in the same
     /// order, one write at a time; returns the days whose write failed.
     public func saveAll(today: Date, writing write: (Date, [PlanBlock]) async -> Bool) async -> [Date] {

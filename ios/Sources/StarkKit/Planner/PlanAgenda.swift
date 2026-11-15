@@ -31,8 +31,10 @@ import Foundation
 /// Apple reminders: a planned copy of an Apple row (`appleSource` set, id `apple-<identifier>`)
 /// keeps its `appleSource`. `apple` (default empty) adds the snapshot's open DATED reminders to
 /// the synthesis lookup above, as one-offs (an Apple reminder carries no recurrence: it is
-/// Apple's single open occurrence); a synthesized row carries its `AppleSource`. Undated Apple
-/// reminders are never synthesized (they stay out of the agenda, spec Decision 3).
+/// Apple's single open occurrence); a synthesized row carries its `AppleSource`. An open undated
+/// Apple reminder appears only when PLANNED (a plan with the `.distantFuture` occurrence the
+/// planner's "No date" rows carry, matched by id): one planned row on `plan.start`, not overdue,
+/// occurrence `.distantFuture`. Unplanned ones stay out of the agenda (spec Decision 3).
 public func applyPlans(_ items: [AgendaItem], plans: [PlanBlock], today: Date,
                        reminders: [Reminder] = [], apple: AppleSnapshot = .empty,
                        calendar: Calendar = Calendar(identifier: .gregorian)) -> [AgendaItem] {
@@ -83,6 +85,28 @@ public func applyPlans(_ items: [AgendaItem], plans: [PlanBlock], today: Date,
             result.append(AgendaItem(kind: .reminder(r), occurrence: due, displayDate: plan.start,
                                      isOverdue: calendar.startOfDay(for: due) < todayStart, plan: plan,
                                      appleSource: appleSources[r.id]))
+            changed = true
+        }
+    }
+    // A PLANNED undated Apple reminder shows on its planned day like any planned task (unplanned
+    // ones stay out of the agenda, spec Decision 3). The planner plans the "No date" row, whose
+    // occurrence is the `.distantFuture` sentinel, so only such plans match; by id, open only.
+    let undatedPlans = live.filter { $0.occurrence == .distantFuture }
+    if !undatedPlans.isEmpty {
+        var listed = Set(result.compactMap { item -> String? in
+            if case .reminder(let r) = item.kind { return r.id } else { return nil }
+        })
+        let undated = Dictionary(
+            apple.reminders.filter { !$0.isCompleted && $0.due == nil }
+                .map { a -> (String, (Reminder, AppleSource)) in
+                    let value = appleReminderValue(a, calendar: calendar)
+                    return (value.0.id, value)
+                },
+            uniquingKeysWith: { first, _ in first })
+        for plan in undatedPlans {
+            guard let (r, source) = undated[plan.reminderID], listed.insert(r.id).inserted else { continue }
+            result.append(AgendaItem(kind: .reminder(r), occurrence: .distantFuture, displayDate: plan.start,
+                                     isOverdue: false, plan: plan, appleSource: source))
             changed = true
         }
     }
