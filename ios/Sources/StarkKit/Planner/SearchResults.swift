@@ -26,8 +26,12 @@ public enum SearchResults {
     /// pathological rule can't make this an unbounded scan.
     private static let occurrenceWindowDays = 3650
 
-    /// `apple` (default empty) adds the read-only Apple items: one row each, dated by the item's own
-    /// date (a date-only reminder at local midnight, an undated reminder at `.distantPast`).
+    /// `apple` (default empty) adds the Apple items: one row each, dated by the item's own date (a
+    /// date-only reminder at local midnight, an undated reminder at `.distantPast`), with the same
+    /// ids and `AppleSource` as the agenda (`appleReminderValue`). The engine applies NO window of
+    /// its own to Apple items: every event and reminder in `apple` is searched, completed and
+    /// undated reminders included. The caller passes a snapshot of events within two years either
+    /// side of today and ALL reminders (spec Decision 10), not the agenda's display snapshot.
     public static func find(events: [Event], reminders: [Reminder], apple: AppleSnapshot = AppleSnapshot(events: [], reminders: []), query: String, today: Date = Date()) -> [AgendaItem] {
         guard !query.isEmpty else { return [] }
         var results: [AgendaItem] = []
@@ -47,18 +51,14 @@ public enum SearchResults {
                               isAllDay: item.isAllDay, location: item.location, url: item.url)
             guard matches(event, query: query) else { continue }
             let source = AppleSource(calendarID: item.calendar.id, calendarTitle: item.calendar.title,
-                                     colorHex: item.calendar.colorHex, isReminder: false)
+                                     colorHex: item.calendar.colorHex, isReminder: false,
+                                     isWritable: item.calendar.isWritable)
             results.append(AgendaItem(kind: .event(event), occurrence: item.start, displayDate: item.start, isOverdue: false, appleSource: source))
         }
         for item in apple.reminders {
-            let due = item.due.map { item.dueHasTime ? $0 : calendar.startOfDay(for: $0) }
-            let reminder = Reminder(id: "apple-\(item.id)", title: item.title, notes: item.notes, dueDate: due,
-                                    isCompleted: item.isCompleted, completedDate: item.isCompleted ? due : nil,
-                                    priority: item.priority, completedAt: item.completedAt)
+            let (reminder, source) = appleReminderValue(item, calendar: calendar)
             guard matches(reminder, query: query) else { continue }
-            let source = AppleSource(calendarID: item.calendar.id, calendarTitle: item.calendar.title,
-                                     colorHex: item.calendar.colorHex, isReminder: true)
-            let date = due ?? .distantPast
+            let date = reminder.dueDate ?? .distantPast
             results.append(AgendaItem(kind: .reminder(reminder), occurrence: date, displayDate: date, isOverdue: false, appleSource: source))
         }
 
