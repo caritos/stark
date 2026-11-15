@@ -23,10 +23,20 @@ public struct PlanCacheState: Equatable, Sendable {
         failure = nil
     }
 
-    /// Records a failed read. Returns the message to show in the error banner for the first
-    /// failure of a run, nil for the repeats (each refresh would show it again otherwise).
+    /// What the planner shows while a failed first read keeps it locked (nil otherwise). Opening
+    /// the planner reads the file again.
+    public var plannerNotice: String? {
+        hasLoaded || failure == nil ? nil : Self.lockedNotice
+    }
+
+    public static let lockedNotice = "Couldn't read Stark's plan file. Close and reopen the planner to try again."
+
+    /// Records a failed read. Returns the message to show in the main error banner for the first
+    /// failure of a run (before any good read, the planner's `lockedNotice`; after one, the
+    /// reason), nil for the repeats (each refresh would show it again otherwise).
     public mutating func failed(_ message: String) -> String? {
         defer { failure = message }
-        return failure == nil ? message : nil
+        guard failure == nil else { return nil }
+        return hasLoaded ? message : Self.lockedNotice
     }
 }

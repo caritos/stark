@@ -37,7 +37,8 @@ final class PlanCache {
     }
 
     /// Re-reads the sidecar. An unreadable sidecar keeps what was shown, is logged, and shows in
-    /// the main error banner once (until a read succeeds again).
+    /// the main error banner once (until a read succeeds again); before any good read the planner
+    /// also shows `PlanCacheState.plannerNotice` for as long as it is locked.
     func refresh() async {
         do {
             let plans = try await router.applePlans(in: Date.distantPast...Date.distantFuture)
@@ -48,7 +49,7 @@ final class PlanCache {
         } catch {
             Self.log.error("Reading Apple plans failed: \(error.localizedDescription, privacy: .public)")
             if let message = state.failed(error.routerMessage) {
-                onLoadFailure?(message + (state.hasLoaded ? "" : " The planner can't change plans until it can be read."))
+                onLoadFailure?(message)
             }
         }
     }

@@ -113,7 +113,10 @@ struct PlannerView: View {
             Group {
                 if isEditable {
                     VStack(spacing: 0) {
-                        if let storeError = store.error { storeErrorBanner(storeError) }
+                        if let notice = planCache.state.plannerNotice { lockedNotice(notice) }
+                        if let storeError = store.error, storeError != planCache.state.plannerNotice {
+                            storeErrorBanner(storeError)
+                        }
                         if let saveError { saveErrorBanner(saveError) }
                         if let model, !model.allDayEvents.isEmpty {
                             banner(model.allDayEvents)
@@ -499,6 +502,18 @@ struct PlannerView: View {
     /// store-error bar; a tap dismisses it.
     private func saveErrorBanner(_ message: String) -> some View {
         errorBanner(message) { saveError = nil }
+    }
+
+    /// Shown while a failed first read of the plan file keeps the planner locked
+    /// (`PlanCacheState.plannerNotice`); not dismissable, since the lock stays until a read works.
+    private func lockedNotice(_ message: String) -> some View {
+        Text(message)
+            .font(Fonts.mono(12))
+            .foregroundStyle(Colors.text)
+            .padding(Spacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Colors.accent)
+            .accessibilityAddTraits(.isStaticText)
     }
 
     /// The store's own error (a month file that failed to read), which `ContentView`'s bar
