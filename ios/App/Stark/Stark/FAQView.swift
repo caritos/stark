@@ -46,18 +46,19 @@ struct FAQView: View {
             """
         ),
         Entry(
-            question: "Can Stark show my Apple Calendar and Reminders?",
+            question: "Does Stark use my Apple Calendar and Reminders?",
             answer: """
-            Yes, if you turn it on: Settings > Apple Calendar and Reminders. It is off by \
-            default, and iOS asks for calendar and reminders access only when you turn it on. \
-            Stark then reads your Apple events and reminders on the device and shows them in \
-            the agenda, the month and year dots and Search. They are read-only: Stark cannot \
-            edit, complete or delete them, so open them in Calendar or Reminders to change \
-            them. You choose which calendars and lists show. Nothing is copied into Stark's \
-            files and nothing is sent anywhere; no network connection is added. Reminders \
-            without a date are not shown. The day export, for today and yesterday, includes \
-            the Apple items shown that day. Stark's own items stay stored separately, and an \
-            item that exists in both places appears twice.
+            Yes. Stark shows your Calendar events and Reminders in the agenda, the month and \
+            year dots and Search, and saves what you add, edit, complete or delete in Stark to \
+            Calendar and Reminders. iOS asks for access the first time you tap Allow Access on \
+            Stark's main screen, after Stark says what it is for. New events go to your default \
+            calendar and new to-dos to your default list; choose them in Settings > Apple \
+            Calendar and Reminders, where you also choose which calendars and lists show (the \
+            default ones always show). If you use iCloud, it syncs these items like any other \
+            calendar item; Stark itself sends nothing anywhere and adds no network connection. \
+            Reminders without a date are not shown in the agenda. The day export, for today and \
+            yesterday, includes the Apple items shown that day. Stark's own older items stay \
+            stored separately, and an item that exists in both places appears twice.
             """
         ),
         Entry(
