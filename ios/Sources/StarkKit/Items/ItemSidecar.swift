@@ -1,17 +1,17 @@
 // ios/Sources/StarkKit/Items/ItemSidecar.swift
 import Foundation
 
-/// Identifies one outcome mark: an Apple item identifier plus its external identifier (used to
-/// re-match when the identifier changes) and the local calendar day, `yyyy-MM-dd`.
-public struct OutcomeKey: Codable, Hashable, Sendable {
+/// One outcome mark for an Apple item. The day it belongs to is derived from `record.date`
+/// at read time (see `ItemSidecar`), never stored.
+public struct OutcomeEntry: Codable, Equatable, Sendable {
     public var identifier: String
     public var externalID: String?
-    public var day: String
+    public var record: EventOutcomeRecord
 
-    public init(identifier: String, externalID: String?, day: String) {
+    public init(identifier: String, externalID: String?, record: EventOutcomeRecord) {
         self.identifier = identifier
         self.externalID = externalID
-        self.day = day
+        self.record = record
     }
 }
 
@@ -23,7 +23,8 @@ public struct SidecarData: Codable, Equatable, Sendable {
     public var version: Int
     /// A block's `reminderID` holds the Apple identifier of the reminder it plans.
     public var plans: [PlanBlock]
-    public var outcomes: [OutcomeKey: EventOutcomeRecord]
+    /// Written sorted by (identifier, externalID, date) so identical data gives identical bytes.
+    public var outcomes: [OutcomeEntry]
     /// Bridge item id -> Apple identifier.
     public var bridgeLedger: [String: String]
     /// Apple identifier -> external identifier, for re-matching plans and ledger entries.
@@ -32,7 +33,7 @@ public struct SidecarData: Codable, Equatable, Sendable {
     public init(
         version: Int = SidecarData.currentVersion,
         plans: [PlanBlock] = [],
-        outcomes: [OutcomeKey: EventOutcomeRecord] = [:],
+        outcomes: [OutcomeEntry] = [],
         bridgeLedger: [String: String] = [:],
         externalIDs: [String: String] = [:]
     ) {
@@ -55,6 +56,10 @@ public typealias SidecarWriter = @Sendable (Data, URL) throws -> Void
 
 /// The local sidecar file. Missing file = empty data; any other failure throws.
 /// A missing Apple item never deletes records: orphans stay until the user acts.
+///
+/// Day rule: an outcome belongs to the calendar day of its `record.date` in the injected calendar
+/// at READ time (`calendar.isDate(_:inSameDayAs:)`); a plan block belongs to the day of its `start`
+/// the same way. Nothing day-shaped is stored, so a time-zone change re-buckets by the new zone.
 public actor ItemSidecar {
     private let fileURL: URL
     private let calendar: Calendar
@@ -93,21 +98,20 @@ public actor ItemSidecar {
     public func update(_ change: (inout SidecarData) -> Void) throws {
         var data = try load()
         change(&data)
+        data.outcomes.sort(by: Self.outcomeOrder)
         try writer(try Self.encoder.encode(data), fileURL)
     }
 
     // MARK: Plans
 
     public func plans(on day: Date) throws -> [PlanBlock] {
-        let key = dayKey(day)
-        return try load().plans.filter { dayKey($0.start) == key }
+        return try load().plans.filter { calendar.isDate($0.start, inSameDayAs: day) }
     }
 
     /// Replaces only `day`'s blocks. `externalIDs` maps Apple identifier -> external identifier.
     public func replacePlans(on day: Date, with blocks: [PlanBlock], externalIDs: [String: String] = [:]) throws {
-        let key = dayKey(day)
         try update { data in
-            data.plans.removeAll { dayKey($0.start) == key }
+            data.plans.removeAll { calendar.isDate($0.start, inSameDayAs: day) }
             data.plans.append(contentsOf: blocks)
             data.externalIDs.merge(externalIDs) { _, new in new }
         }
@@ -126,25 +130,27 @@ public actor ItemSidecar {
     // MARK: Outcomes
 
     public func outcome(for identifier: String, externalID: String?, on day: Date) throws -> EventOutcomeRecord? {
-        let data = try load()
-        let key = dayKey(day)
-        if let hit = data.outcomes.first(where: { $0.key.identifier == identifier && $0.key.day == key }) {
-            return hit.value
-        }
+        let sameDay = try load().outcomes.filter { calendar.isDate($0.record.date, inSameDayAs: day) }
+        let newestFirst = { (list: [OutcomeEntry]) in list.sorted { Self.outcomeOrder($1, $0) } }
+        if let hit = newestFirst(sameDay.filter { $0.identifier == identifier }).first { return hit.record }
         guard let externalID else { return nil }
-        return data.outcomes.first(where: { $0.key.externalID == externalID && $0.key.day == key })?.value
+        return newestFirst(sameDay.filter { $0.externalID == externalID }).first?.record
     }
 
-    /// Idempotent by (identifier, day); `nil` clears. Matches an existing mark by identifier or external id.
+    /// Idempotent by (identifier, same day as `day`); `nil` clears. Replaces any mark for the same
+    /// identifier or external id that day. A nil `externalID` keeps the one already stored.
     public func setOutcome(_ record: EventOutcomeRecord?, for identifier: String, externalID: String?, on day: Date) throws {
-        let key = dayKey(day)
         try update { data in
-            let existing = data.outcomes.keys.filter {
-                $0.day == key && ($0.identifier == identifier || (externalID != nil && $0.externalID == externalID))
+            let matches = { (e: OutcomeEntry) in
+                self.calendar.isDate(e.record.date, inSameDayAs: day)
+                    && (e.identifier == identifier || (externalID != nil && e.externalID == externalID))
             }
-            for old in existing { data.outcomes[old] = nil }
+            let kept = externalID
+                ?? data.outcomes.first { matches($0) && $0.identifier == identifier && $0.externalID != nil }?.externalID
+                ?? data.outcomes.first { matches($0) && $0.externalID != nil }?.externalID
+            data.outcomes.removeAll(where: matches)
             if let record {
-                data.outcomes[OutcomeKey(identifier: identifier, externalID: externalID, day: key)] = record
+                data.outcomes.append(OutcomeEntry(identifier: identifier, externalID: kept, record: record))
             }
         }
     }
@@ -164,28 +170,49 @@ public actor ItemSidecar {
 
     // MARK: Identifier changes
 
-    /// Rewrites every stored reference to `oldID` (plans, outcome keys, ledger, external-id map).
-    /// Used when a re-match finds the item under a new identifier, and by phase 2.
+    /// Rewrites every stored reference to `oldID` (plans, outcomes, ledger, external-id map).
+    /// Collisions with records already under `newID` keep one record deterministically: for outcomes
+    /// the newest by `record.date` per day (an existing non-nil external id wins over nil); for the
+    /// external-id map the value already stored for `newID`.
     public func remap(oldID: String, newID: String) throws {
         try update { data in
             for i in data.plans.indices where data.plans[i].reminderID == oldID {
                 data.plans[i].reminderID = newID
             }
-            for key in data.outcomes.keys where key.identifier == oldID {
-                var moved = key
-                moved.identifier = newID
-                data.outcomes[moved] = data.outcomes.removeValue(forKey: key)
+            var merged: [OutcomeEntry] = []
+            var moved: [OutcomeEntry] = []
+            for var e in data.outcomes {
+                if e.identifier == oldID { e.identifier = newID; moved.append(e) } else { merged.append(e) }
             }
+            for e in moved {
+                if let i = merged.firstIndex(where: {
+                    $0.identifier == newID && self.calendar.isDate($0.record.date, inSameDayAs: e.record.date)
+                }) {
+                    let existing = merged[i]
+                    var winner = Self.outcomeOrder(existing, e) ? e : existing
+                    winner.externalID = existing.externalID ?? e.externalID
+                    merged[i] = winner
+                } else {
+                    merged.append(e)
+                }
+            }
+            data.outcomes = merged
             for (item, id) in data.bridgeLedger where id == oldID { data.bridgeLedger[item] = newID }
-            if let ext = data.externalIDs.removeValue(forKey: oldID) { data.externalIDs[newID] = ext }
+            if let ext = data.externalIDs.removeValue(forKey: oldID), data.externalIDs[newID] == nil {
+                data.externalIDs[newID] = ext
+            }
         }
     }
 
     // MARK: Coding
 
-    private func dayKey(_ date: Date) -> String {
-        let c = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+    /// Ascending by (identifier, externalID, date, outcome) so ordering is total and deterministic.
+    private static func outcomeOrder(_ a: OutcomeEntry, _ b: OutcomeEntry) -> Bool {
+        if a.identifier != b.identifier { return a.identifier < b.identifier }
+        let ax = a.externalID ?? "", bx = b.externalID ?? ""
+        if ax != bx { return ax < bx }
+        if a.record.date != b.record.date { return a.record.date < b.record.date }
+        return a.record.outcome.rawValue < b.record.outcome.rawValue
     }
 
     private static var encoder: JSONEncoder {

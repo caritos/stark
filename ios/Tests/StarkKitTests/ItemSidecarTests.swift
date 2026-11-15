@@ -127,11 +127,12 @@ struct ItemSidecarTests {
         try await s.setOutcome(skipped, for: "E1", externalID: "X1", on: d)
         #expect(try await s.load().outcomes.count == 1)
         #expect(try await s.outcome(for: "E1", externalID: nil, on: d) == skipped)
-        try await s.setOutcome(rec, for: "E1", externalID: "X1", on: day("2026-11-17"))
+        let rec17 = EventOutcomeRecord(date: day("2026-11-17"), outcome: .attended)
+        try await s.setOutcome(rec17, for: "E1", externalID: "X1", on: day("2026-11-17"))
         #expect(try await s.load().outcomes.count == 2)
         try await s.setOutcome(nil, for: "E1", externalID: nil, on: d)
         #expect(try await s.outcome(for: "E1", externalID: "X1", on: d) == nil)
-        #expect(try await s.outcome(for: "E1", externalID: nil, on: day("2026-11-17")) == rec)
+        #expect(try await s.outcome(for: "E1", externalID: nil, on: day("2026-11-17")) == rec17)
         // Clearing again is a no-op.
         try await s.setOutcome(nil, for: "E1", externalID: nil, on: d)
         #expect(try await s.load().outcomes.count == 1)
@@ -148,9 +149,9 @@ struct ItemSidecarTests {
         #expect(try await s.outcome(for: "GONE", externalID: "Y", on: d) == nil)
         #expect(try await s.load().outcomes.count == 1)
         try await s.remap(oldID: "OLD", newID: "NEW")
-        let keys = try await s.load().outcomes.keys
-        #expect(keys.map(\.identifier) == ["NEW"])
-        #expect(keys.first?.externalID == "X1")
+        let entries = try await s.load().outcomes
+        #expect(entries.map(\.identifier) == ["NEW"])
+        #expect(entries.first?.externalID == "X1")
     }
 
     @Test("bridge ledger records and looks up, re-recording replaces, remap follows")
@@ -175,5 +176,134 @@ struct ItemSidecarTests {
         try await s.recordBridge(itemID: "b1", identifier: "ID-1", externalID: "EXT")
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(!text.contains(NSTemporaryDirectory()))
+    }
+
+    // MARK: fix round 1
+
+    private var ny: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "America/New_York")!
+        return c
+    }
+
+    private func nyDate(_ d: Int, _ h: Int, _ m: Int) -> Date {
+        ny.date(from: DateComponents(year: 2026, month: 11, day: d, hour: h, minute: m))!
+    }
+
+    @Test("setOutcome with a nil external id keeps the stored one")
+    func setOutcomeKeepsExternalID() async throws {
+        let s = sidecar(tempFile())
+        let d = day("2026-11-16")
+        try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .attended), for: "E1", externalID: "X1", on: d)
+        try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .skipped), for: "E1", externalID: nil, on: d)
+        let entries = try await s.load().outcomes
+        #expect(entries.count == 1)
+        #expect(entries.first?.externalID == "X1")
+        #expect(entries.first?.record.outcome == .skipped)
+    }
+
+    @Test("remap onto an existing outcome keeps one record, the newest, and an existing external id")
+    func remapOutcomeCollision() async throws {
+        let s = sidecar(tempFile())
+        let older = EventOutcomeRecord(date: day("2026-11-16", hour: 8), outcome: .attended)
+        let newer = EventOutcomeRecord(date: day("2026-11-16", hour: 18), outcome: .skipped)
+        try await s.setOutcome(older, for: "NEW", externalID: nil, on: older.date)
+        try await s.setOutcome(newer, for: "OLD", externalID: "X1", on: newer.date)
+        try await s.remap(oldID: "OLD", newID: "NEW")
+        let entries = try await s.load().outcomes
+        #expect(entries.count == 1)
+        #expect(entries[0].identifier == "NEW")
+        #expect(entries[0].record == newer)
+        #expect(entries[0].externalID == "X1")
+        // A different day for NEW is untouched.
+        try await s.setOutcome(EventOutcomeRecord(date: day("2026-11-20"), outcome: .attended), for: "OLD", externalID: nil, on: day("2026-11-20"))
+        try await s.remap(oldID: "OLD", newID: "NEW")
+        #expect(try await s.load().outcomes.count == 2)
+    }
+
+    @Test("remap keeps an existing external id for the new identifier and moves plans and ledger")
+    func remapExternalIDsAndRest() async throws {
+        let s = sidecar(tempFile())
+        try await s.replacePlans(on: day("2026-11-16"), with: [
+            block("p1", ref: "OLD", on: "2026-11-16"), block("p2", ref: "OTHER", on: "2026-11-16", hour: 11),
+        ], externalIDs: ["OLD": "EXT-OLD", "NEW": "EXT-NEW", "OTHER": "EXT-O"])
+        try await s.recordBridge(itemID: "b1", identifier: "OLD", externalID: nil)
+        try await s.remap(oldID: "OLD", newID: "NEW")
+        let data = try await s.load()
+        #expect(data.externalIDs == ["NEW": "EXT-NEW", "OTHER": "EXT-O"])
+        #expect(data.plans.map(\.reminderID) == ["NEW", "OTHER"])
+        #expect(data.bridgeLedger == ["b1": "NEW"])
+        try await s.replacePlans(on: day("2026-11-18"), with: [], externalIDs: ["Z": "EXT-Z"])
+        try await s.remap(oldID: "Z", newID: "Y")
+        #expect(try await s.load().externalIDs["Y"] == "EXT-Z")
+    }
+
+    @Test("encoding is deterministic and the outcome shape is readable")
+    func deterministicBytes() async throws {
+        let url = tempFile()
+        let s = sidecar(url)
+        for (i, id) in ["Z", "A", "M"].enumerated() {
+            let d = day("2026-11-1\(i + 1)")
+            try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .attended), for: id, externalID: "X\(id)", on: d)
+        }
+        let first = try Data(contentsOf: url)
+        try await s.update { _ in }
+        #expect(try Data(contentsOf: url) == first)
+        let decoded = try await s.load()
+        #expect(decoded.outcomes.map(\.identifier) == ["A", "M", "Z"])
+        let other = tempFile()
+        try await sidecar(other).update { $0 = decoded }
+        #expect(try Data(contentsOf: other) == first)
+        let text = String(decoding: first, as: UTF8.self)
+        #expect(text.contains("\"identifier\""))
+        #expect(text.contains("\"externalID\""))
+        #expect(SidecarData.currentVersion == 1)
+    }
+
+    @Test("the external id fallback is deterministic, identifier first, then newest")
+    func deterministicFallback() async throws {
+        let s = sidecar(tempFile())
+        let a = EventOutcomeRecord(date: day("2026-11-16", hour: 8), outcome: .attended)
+        let b = EventOutcomeRecord(date: day("2026-11-16", hour: 18), outcome: .skipped)
+        try await s.update { $0.outcomes = [
+            OutcomeEntry(identifier: "A", externalID: "X", record: a),
+            OutcomeEntry(identifier: "B", externalID: "X", record: b),
+        ] }
+        for _ in 0..<10 {
+            #expect(try await s.outcome(for: "NEW", externalID: "X", on: day("2026-11-16")) == b)
+        }
+        #expect(try await s.outcome(for: "A", externalID: "X", on: day("2026-11-16")) == a)
+    }
+
+    @Test("outcomes match by calendar day at read time in a non-UTC zone")
+    func outcomeNonUTCBoundary() async throws {
+        let url = tempFile()
+        let s = ItemSidecar(fileURL: url, calendar: ny)
+        let late = nyDate(16, 23, 30)
+        let rec = EventOutcomeRecord(date: late, outcome: .attended)
+        try await s.setOutcome(rec, for: "E1", externalID: nil, on: late)
+        #expect(try await s.outcome(for: "E1", externalID: nil, on: nyDate(16, 8, 0)) == rec)
+        #expect(try await s.outcome(for: "E1", externalID: nil, on: nyDate(17, 0, 30)) == nil)
+    }
+
+    /// Rule: a mark belongs to the calendar day of its stored instant in the calendar in force at read time.
+    @Test("changing the calendar's zone between write and read uses the new zone")
+    func outcomeZoneChange() async throws {
+        let url = tempFile()
+        let instant = day("2026-11-17", hour: 3) // 22:00 on Nov 16 in New York, Nov 17 in UTC
+        let rec = EventOutcomeRecord(date: instant, outcome: .attended)
+        try await ItemSidecar(fileURL: url, calendar: ny).setOutcome(rec, for: "E1", externalID: nil, on: instant)
+        let reader = ItemSidecar(fileURL: url, calendar: utc)
+        #expect(try await reader.outcome(for: "E1", externalID: nil, on: day("2026-11-17", hour: 12)) == rec)
+        #expect(try await reader.outcome(for: "E1", externalID: nil, on: day("2026-11-16", hour: 12)) == nil)
+    }
+
+    @Test("plans bucket by local day at read time in a non-UTC zone")
+    func plansNonUTCBoundary() async throws {
+        let s = ItemSidecar(fileURL: tempFile(), calendar: ny)
+        let late = PlanBlock(id: "p1", reminderID: "A", occurrence: nyDate(16, 9, 0), start: nyDate(16, 23, 30), minutes: 30)
+        try await s.replacePlans(on: nyDate(16, 12, 0), with: [late])
+        #expect(try await s.plans(on: nyDate(16, 8, 0)).map(\.id) == ["p1"])
+        #expect(try await s.plans(on: nyDate(17, 0, 30)).isEmpty)
     }
 }
