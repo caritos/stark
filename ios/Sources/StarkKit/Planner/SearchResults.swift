@@ -26,7 +26,9 @@ public enum SearchResults {
     /// pathological rule can't make this an unbounded scan.
     private static let occurrenceWindowDays = 3650
 
-    public static func find(events: [Event], reminders: [Reminder], query: String, today: Date = Date()) -> [AgendaItem] {
+    /// `apple` (default empty) adds the read-only Apple items: one row each, dated by the item's own
+    /// date (a date-only reminder at local midnight, an undated reminder at `.distantPast`).
+    public static func find(events: [Event], reminders: [Reminder], apple: AppleSnapshot = AppleSnapshot(events: [], reminders: []), query: String, today: Date = Date()) -> [AgendaItem] {
         guard !query.isEmpty else { return [] }
         var results: [AgendaItem] = []
 
@@ -37,6 +39,27 @@ public enum SearchResults {
         for reminder in reminders where matches(reminder, query: query) {
             let occurrence = representativeOccurrence(reminder: reminder, today: today)
             results.append(AgendaItem(kind: .reminder(reminder), occurrence: occurrence, displayDate: occurrence, isOverdue: false))
+        }
+
+        let calendar = Calendar(identifier: .gregorian)
+        for item in apple.events {
+            let event = Event(id: "apple-\(item.id)", title: item.title, notes: item.notes, start: item.start, end: item.end,
+                              isAllDay: item.isAllDay, location: item.location, url: item.url)
+            guard matches(event, query: query) else { continue }
+            let source = AppleSource(calendarID: item.calendar.id, calendarTitle: item.calendar.title,
+                                     colorHex: item.calendar.colorHex, isReminder: false)
+            results.append(AgendaItem(kind: .event(event), occurrence: item.start, displayDate: item.start, isOverdue: false, appleSource: source))
+        }
+        for item in apple.reminders {
+            let due = item.due.map { item.dueHasTime ? $0 : calendar.startOfDay(for: $0) }
+            let reminder = Reminder(id: "apple-\(item.id)", title: item.title, notes: item.notes, dueDate: due,
+                                    isCompleted: item.isCompleted, completedDate: item.isCompleted ? due : nil,
+                                    priority: item.priority, completedAt: item.completedAt)
+            guard matches(reminder, query: query) else { continue }
+            let source = AppleSource(calendarID: item.calendar.id, calendarTitle: item.calendar.title,
+                                     colorHex: item.calendar.colorHex, isReminder: true)
+            let date = due ?? .distantPast
+            results.append(AgendaItem(kind: .reminder(reminder), occurrence: date, displayDate: date, isOverdue: false, appleSource: source))
         }
 
         // Newest date first (issue raised as "sort by most recent created" -- there is no

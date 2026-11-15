@@ -58,6 +58,8 @@ public struct DayDensity: Equatable, Sendable {
 /// so an empty month is `[:]`. A dictionary rather than a dense array because most days of a
 /// typical month are empty, and callers look days up by number either way.
 ///
+/// `apple` (default empty) adds the read-only Apple Calendar / Reminders rows via `mergeAppleItems`.
+///
 /// The month's bounds and the day-of-month keys come from `calendar`; the whole day is covered
 /// (start of day 1 through the last second of the last day) and days are stepped with the
 /// calendar, never by 86 400 seconds, so 23- and 25-hour DST days key correctly. Note that
@@ -69,7 +71,8 @@ public func dayDensity(
     reminders: [Reminder],
     month: YearMonth,
     today: Date = Date(),
-    calendar: Calendar = Calendar(identifier: .gregorian)
+    calendar: Calendar = Calendar(identifier: .gregorian),
+    apple: AppleSnapshot = AppleSnapshot(events: [], reminders: [])
 ) -> [Int: DayDensity] {
     guard let firstDay = calendar.date(from: DateComponents(year: month.year, month: month.month0 + 1, day: 1)),
           let firstOfNext = calendar.date(byAdding: .month, value: 1, to: firstDay) else { return [:] }
@@ -77,7 +80,8 @@ public func dayDensity(
     let range = start...calendar.startOfDay(for: firstOfNext).addingTimeInterval(-1)
 
     var result: [Int: DayDensity] = [:]
-    for item in buildAgendaItems(events: events, reminders: reminders, in: range, today: today) {
+    let base = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
+    for item in mergeAppleItems(base, snapshot: apple, in: range, today: today, calendar: calendar) {
         // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
         // this month; they belong to another month's cell.
         guard range.contains(item.displayDate) else { continue }
@@ -108,9 +112,10 @@ public func gridDensity(
     month: YearMonth,
     today: Date = Date(),
     calendar: Calendar = Calendar(identifier: .gregorian),
-    plans: [PlanBlock] = []
+    plans: [PlanBlock] = [],
+    apple: AppleSnapshot = AppleSnapshot(events: [], reminders: [])
 ) -> [String: DayDensity] {
-    densityCounts(events: events, reminders: reminders, range: MonthGrid.range(for: month, calendar: calendar), today: today, calendar: calendar, plans: plans)
+    densityCounts(events: events, reminders: reminders, range: MonthGrid.range(for: month, calendar: calendar), today: today, calendar: calendar, plans: plans, apple: apple)
 }
 
 /// The counting rule shared by the grid and the year: per-day task/event counts for every row
@@ -124,13 +129,17 @@ private func densityCounts(
     range: ClosedRange<Date>,
     today: Date,
     calendar: Calendar,
-    plans: [PlanBlock] = []
+    plans: [PlanBlock] = [],
+    apple: AppleSnapshot = AppleSnapshot(events: [], reminders: [])
 ) -> [String: DayDensity] {
     var result: [String: DayDensity] = [:]
     // Timeboxing: a planned task counts like the agenda shows it, so one planned for another day
     // counts on both its normal row's day and the planned day. `reminders` lets a one-off due
     // outside `range` still count on its planned day.
-    let items = applyPlans(buildAgendaItems(events: events, reminders: reminders, in: range, today: today),
+    let base = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
+    // Read-only Apple rows are merged before plans, so they count like any other agenda row.
+    let merged = mergeAppleItems(base, snapshot: apple, in: range, today: today, calendar: calendar)
+    let items = applyPlans(merged,
                            plans: plans, today: today, reminders: reminders, calendar: calendar)
     for item in items {
         // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
@@ -169,7 +178,8 @@ public func yearDensity(
     year: Int,
     today: Date = Date(),
     calendar: Calendar = Calendar(identifier: .gregorian),
-    plans: [PlanBlock] = []
+    plans: [PlanBlock] = [],
+    apple: AppleSnapshot = AppleSnapshot(events: [], reminders: [])
 ) -> [String: DayDensity] {
-    densityCounts(events: events, reminders: reminders, range: YearGrid.range(year: year, calendar: calendar), today: today, calendar: calendar, plans: plans)
+    densityCounts(events: events, reminders: reminders, range: YearGrid.range(year: year, calendar: calendar), today: today, calendar: calendar, plans: plans, apple: apple)
 }
