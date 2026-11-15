@@ -172,10 +172,8 @@ final class AppleOverlayModel {
         // `calendars()` is a synchronous, nonisolated EventKit read: run it on the concurrent pool.
         let list = await Task.detached { provider.calendars() }.value
         calendars = list
-        // Prune only with access granted and a real list, or every calendar would turn back on.
-        guard !list.isEmpty else { return }
-        let pruned = selection.pruned(toExisting: Set(list.map(\.id)))
-        if pruned != selection { selection = pruned }
+        // The selection is never pruned: `isShown` ignores ids that no longer exist, and a
+        // partial list (an account still syncing) must not delete the user's hidden calendars.
     }
 
     private func applySelection() {
