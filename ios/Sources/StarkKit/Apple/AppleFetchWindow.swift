@@ -10,6 +10,8 @@ public struct AppleFetchWindow: Equatable, Sendable {
         case agenda
         case monthGrid
         case year
+        /// The Search sheet while it is open (`SearchWindow`, two years either side of today).
+        case search
     }
 
     private var ranges: [Screen: ClosedRange<Date>] = [:]

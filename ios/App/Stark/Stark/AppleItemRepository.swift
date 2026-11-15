@@ -105,7 +105,8 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                                    isWritable: calendar.allowsContentModifications,
                                    isInviteeOnly: Self.isInviteeOnly(master),
                                    hasUnrepresentableRepeat: unrepresentable,
-                                   externalID: master.calendarItemExternalIdentifier)
+                                   externalID: master.calendarItemExternalIdentifier,
+                                   hasAttendees: master.hasAttendees)
             case .reminder:
                 let ekReminder = try reminder(ref)
                 guard let list = ekReminder.calendar else { throw ItemRepositoryError.notFound }
@@ -422,8 +423,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
     private func guardRuleChange(of master: EKEvent, confirmed: Bool) throws {
         guard !confirmed, master.hasRecurrenceRules else { return }
         if occurrences(of: master).contains(where: \.isDetached) {
-            throw ItemRepositoryError.unrepresentable(
-                "Some occurrences of this series were changed one by one in Apple Calendar. Changing the repeat removes those changes.")
+            throw ItemRepositoryError.ruleChangeLosesEditedOccurrences
         }
     }
 

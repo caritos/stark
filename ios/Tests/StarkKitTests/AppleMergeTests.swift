@@ -27,8 +27,12 @@ struct AppleMergeTests {
     }
 
     @Test func appleItemIsReadOnlyStarkItemIsNot() {
-        let source = AppleSource(calendarID: "c1", calendarTitle: "Work", colorHex: "#FF0000", isReminder: false)
+        // Task 9: read-only means an Apple row Stark can't write; a writable one is editable.
+        let source = AppleSource(calendarID: "c1", calendarTitle: "Work", colorHex: "#FF0000", isReminder: false,
+                                 isWritable: false)
         #expect(item(source: source).isReadOnly)
+        let writable = AppleSource(calendarID: "c1", calendarTitle: "Work", colorHex: "#FF0000", isReminder: false)
+        #expect(!item(source: writable).isReadOnly)
         #expect(!item().isReadOnly)
     }
 }

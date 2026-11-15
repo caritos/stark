@@ -35,11 +35,19 @@ public final class PendingCompletions: ObservableObject {
         let cancel: @MainActor () -> Void
     }
 
+    private enum Committer {
+        case sync(@MainActor (_ reminderID: String, _ occurrence: Date) -> Void)
+        case async(@MainActor (_ reminderID: String, _ occurrence: Date) async -> Void)
+    }
+
     private let delay: TimeInterval
     private let schedule: PendingScheduler
-    private let commit: @MainActor (_ reminderID: String, _ occurrence: Date) -> Void
+    private let committer: Committer
     private var entries: [String: Entry] = [:]
     private var nextSequence = 0
+    /// Keys whose async commit has started but not returned: still shown as done, and a tap on
+    /// them starts nothing (it would complete the same occurrence twice).
+    private var committing: Set<String> = []
 
     public init(
         delay: TimeInterval = 2.5,
@@ -48,7 +56,20 @@ public final class PendingCompletions: ObservableObject {
     ) {
         self.delay = delay
         self.schedule = schedule
-        self.commit = commit
+        self.committer = .sync(commit)
+    }
+
+    /// As `init(delay:schedule:commit:)`, for a commit that writes asynchronously (`ItemRouter`):
+    /// the key stays pending until `asyncCommit` returns, so the row never flashes back to
+    /// incomplete before the write (and the reload after it) has landed.
+    public init(
+        delay: TimeInterval = 2.5,
+        schedule: @escaping PendingScheduler = PendingCompletions.liveScheduler,
+        asyncCommit: @escaping @MainActor (_ reminderID: String, _ occurrence: Date) async -> Void
+    ) {
+        self.delay = delay
+        self.schedule = schedule
+        self.committer = .async(asyncCommit)
     }
 
     /// Runs the action on the main actor after `delay` seconds; cancelling stops it.
@@ -62,11 +83,12 @@ public final class PendingCompletions: ObservableObject {
     }
 
     public func isPending(_ key: String) -> Bool {
-        entries[key] != nil
+        entries[key] != nil || committing.contains(key)
     }
 
     /// Starts a pending completion for `key`, or cancels it if one is already pending.
     public func toggle(key: String, reminderID: String, occurrence: Date) {
+        guard !committing.contains(key) else { return }
         if let existing = entries.removeValue(forKey: key) {
             existing.cancel()
             pendingKeys.remove(key)
@@ -87,11 +109,27 @@ public final class PendingCompletions: ObservableObject {
         let flushing = entries.sorted { $0.value.sequence < $1.value.sequence }
         guard !flushing.isEmpty else { return }
         entries.removeAll()
-        for (_, entry) in flushing {
-            entry.cancel()
-            commit(entry.reminderID, entry.occurrence)
+        for (_, entry) in flushing { entry.cancel() }
+        switch committer {
+        case .sync(let commit):
+            for (_, entry) in flushing { commit(entry.reminderID, entry.occurrence) }
+            pendingKeys.removeAll()
+        case .async(let commit):
+            let keys = flushing.map(\.key)
+            committing.formUnion(keys)
+            Task { @MainActor [weak self] in
+                // One after another, in tap order.
+                for (_, entry) in flushing { await commit(entry.reminderID, entry.occurrence) }
+                self?.finishCommitting(keys)
+            }
         }
-        pendingKeys.removeAll()
+    }
+
+    private func finishCommitting(_ keys: [String]) {
+        for key in keys {
+            committing.remove(key)
+            if entries[key] == nil { pendingKeys.remove(key) }
+        }
     }
 
     private func timerFired(key: String, token: UUID) {
@@ -99,7 +137,16 @@ public final class PendingCompletions: ObservableObject {
         entries[key] = nil
         // Commit before clearing the pending flag (as the Expo hook does), so the row goes
         // straight from "pending" to "committed" with no frame of looking incomplete in between.
-        commit(entry.reminderID, entry.occurrence)
-        pendingKeys.remove(key)
+        switch committer {
+        case .sync(let commit):
+            commit(entry.reminderID, entry.occurrence)
+            pendingKeys.remove(key)
+        case .async(let commit):
+            committing.insert(key)
+            Task { @MainActor [weak self] in
+                await commit(entry.reminderID, entry.occurrence)
+                self?.finishCommitting([key])
+            }
+        }
     }
 }

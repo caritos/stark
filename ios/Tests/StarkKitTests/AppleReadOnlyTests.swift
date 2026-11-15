@@ -27,7 +27,11 @@ struct AppleReadOnlyTests {
     // MARK: Detail routing (the one gate between a tap and a Stark edit sheet)
 
     @Test func appleItemRoutesToReadOnlyDetail() {
-        let item = appleEvent()
+        // Task 9: only a row from a calendar Stark can't write stays read-only.
+        let locked = AppleSource(calendarID: "c1", calendarTitle: "Work", colorHex: "#1BADF8", isReminder: false,
+                                 isWritable: false)
+        let item = AgendaItem(kind: .event(Event(id: "apple-EV1", title: "Standup", start: when)), occurrence: when,
+                              displayDate: when, isOverdue: false, appleSource: locked)
         #expect(AgendaItemDetail(item) == .readOnly(item))
         #expect(AgendaItemDetail(item).editable == nil)
     }

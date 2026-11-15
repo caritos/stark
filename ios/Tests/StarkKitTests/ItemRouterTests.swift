@@ -644,4 +644,55 @@ struct ItemRouterTests {
         let ext = try #require(newRef.externalID)
         #expect(try await h.sidecar.load().externalIDs[newRef.identifier] == ext)
     }
+
+    // MARK: Task 9a
+
+    @Test("a repeat change on a series with occurrences edited in Calendar asks first; confirming sends it")
+    func ruleChangeNeedsConfirmation() async throws {
+        let h = harness()
+        let ref = try await h.router.add(event: Event(title: "Gym", start: at(3, 7), end: at(3, 8),
+                                                      recurrence: RecurrenceRule(frequency: .daily)))
+        await h.repo.markEditedOccurrences(ref.identifier)
+        let details = try await h.router.details(id: "apple-\(ref.identifier)", kind: .event)
+        var edited = try #require(details.event)
+        edited.recurrence = RecurrenceRule(frequency: .weekly)
+        let writesBefore = h.counter.writes
+        do {
+            try await h.router.update(event: edited, original: details)
+            Issue.record("expected the rule change to be refused")
+        } catch let error as ItemRouterError {
+            #expect(error.asksToConfirmRuleChange)
+        }
+        #expect(try await h.repo.details(ref).event?.recurrence == RecurrenceRule(frequency: .daily))
+        #expect(h.counter.writes == writesBefore)
+        // A title-only edit of the same series needs no confirmation.
+        var renamed = try #require(details.event)
+        renamed.title = "Gym class"
+        try await h.router.update(event: renamed, original: details)
+        try await h.router.update(event: edited, original: details, confirmRuleChange: true)
+        #expect(try await h.repo.details(ref).event?.recurrence == RecurrenceRule(frequency: .weekly))
+    }
+
+    @Test("applePlans(in:) reads the sidecar once and returns only Apple blocks in the range, with model ids")
+    func applePlansInRange() async throws {
+        let h = harness()
+        let inside = PlanBlock(id: "a1", reminderID: "apple-R1", occurrence: at(6), start: at(6, 9), minutes: 30)
+        let later = PlanBlock(id: "a2", reminderID: "apple-R2", occurrence: at(20), start: at(20, 9), minutes: 30)
+        try await h.router.replacePlans(on: at(6), with: [inside])
+        try await h.router.replacePlans(on: at(20), with: [later])
+        h.local.storedPlans = [PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6),
+                                         start: at(6, 10), minutes: 30)]
+        let plans = try await h.router.applePlans(in: at(5, 0)...at(10, 0))
+        #expect(plans.map(\.id) == ["a1"])
+        #expect(plans.first?.reminderID == "apple-R1")
+    }
+
+    @Test("eventOutcome reads an Apple event's mark for a day from the sidecar; nil for Stark ids")
+    func eventOutcomeRead() async throws {
+        let h = harness()
+        try await h.router.setEventOutcome(id: "apple-EV1", on: at(5, 8), outcome: .attended)
+        #expect(try await h.router.eventOutcome(id: "apple-EV1", on: at(5, 20)) == .attended)
+        #expect(try await h.router.eventOutcome(id: "apple-EV1", on: at(6, 8)) == nil)
+        #expect(try await h.router.eventOutcome(id: UUID().uuidString, on: at(5, 8)) == nil)
+    }
 }

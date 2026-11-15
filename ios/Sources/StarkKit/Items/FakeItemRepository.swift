@@ -25,6 +25,8 @@ public actor FakeItemRepository: ItemRepository {
     private var reminders: [String: StoredReminder] = [:]
     private var counter = 0
     private var nextFailure: String?
+    /// Series with occurrences "edited one by one in Calendar" (`markEditedOccurrences`).
+    private var editedSeries: Set<String> = []
 
     /// `assignsExternalIDs` gives every new item an external id (`ext-<identifier>`), as iCloud does.
     public init(calendars: [AppleCalendarInfo], readOnlyCalendarIDs: Set<String> = [],
@@ -34,6 +36,10 @@ public actor FakeItemRepository: ItemRepository {
         self.assignsExternalIDs = assignsExternalIDs
         self.now = now
     }
+
+    /// Marks an event series as having occurrences edited one by one in Apple Calendar: a repeat
+    /// change without `confirmRuleChange` is then refused, as the EventKit repository does.
+    public func markEditedOccurrences(_ identifier: String) { editedSeries.insert(identifier) }
 
     /// Makes the next mutating call throw `saveFailed(message)` and change nothing.
     public func failNext(_ message: String = "injected failure") { nextFailure = message }
@@ -91,6 +97,10 @@ public actor FakeItemRepository: ItemRepository {
         try beginWrite()
         guard ref.kind == .event, var stored = events[ref.identifier] else { throw ItemRepositoryError.notFound }
         try checkWritable(stored.calendarID)
+        if patch.recurrence != .keep, !patch.confirmRuleChange, editedSeries.contains(ref.identifier),
+           patch.recurrence.applied(to: stored.event.recurrence) != stored.event.recurrence {
+            throw ItemRepositoryError.ruleChangeLosesEditedOccurrences
+        }
         var e = stored.event
         if let title = patch.title { e.title = title }
         e.notes = patch.notes.applied(to: e.notes)

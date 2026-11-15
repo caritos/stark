@@ -179,12 +179,15 @@ public struct ItemDetails: Equatable, Sendable {
     public var hasUnrepresentableRepeat: Bool
     /// The cross-device identifier (`calendarItemExternalIdentifier`), when the store has one.
     public var externalID: String?
+    /// An event with attendees: converting it deletes the original, which may notify them.
+    public var hasAttendees: Bool
 
     public init(event: Event? = nil, reminder: Reminder? = nil, dueHasTime: Bool = true,
                 reminderURL: String? = nil, calendarID: String, isWritable: Bool = true,
                 isInviteeOnly: Bool = false, hasUnrepresentableRepeat: Bool = false,
-                externalID: String? = nil) {
+                externalID: String? = nil, hasAttendees: Bool = false) {
         self.externalID = externalID
+        self.hasAttendees = hasAttendees
         self.event = event
         self.reminder = reminder
         self.dueHasTime = dueHasTime
@@ -196,11 +199,20 @@ public struct ItemDetails: Equatable, Sendable {
     }
 }
 
+extension ItemDetails {
+    /// Converting this item to the other kind deletes it in Apple; for an event with attendees that
+    /// may notify them, so the edit sheet asks first.
+    public var convertAsksFirst: Bool { event != nil && hasAttendees }
+}
+
 public enum ItemRepositoryError: Error, Equatable, Sendable {
     case notFound
     case notWritable
     case unrepresentable(String)
     case saveFailed(String)
+    /// A repeat-rule change on a series with occurrences edited one by one in Apple Calendar,
+    /// which the change would lose (spike b), sent without `EventPatch.confirmRuleChange`.
+    case ruleChangeLosesEditedOccurrences
 }
 
 /// Reads and writes Apple Calendar events and Reminders reminders. StarkKit defines it; the app

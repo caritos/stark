@@ -188,7 +188,7 @@ public final class ClaudeBridge {
             return "Couldn't add to Apple Calendar or Reminders (\(text)), so nothing was added."
         case .saveFailed(let text):
             return "Couldn't save to Apple Calendar or Reminders (\(text)), so nothing was added."
-        case .notFound, nil:
+        case .notFound, .ruleChangeLosesEditedOccurrences, nil:
             return "Couldn't save to Apple Calendar or Reminders, so nothing was added."
         }
     }

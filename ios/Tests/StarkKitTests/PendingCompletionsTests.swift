@@ -360,3 +360,79 @@ private struct Commit: Equatable {
 private final class Recorder {
     var commits: [Commit] = []
 }
+
+/// Task 9a: the commit goes through the async `ItemRouter`, so a row stays "pending" (looks done)
+/// until the write has returned; it never flashes back to incomplete in between.
+@Suite("PendingCompletions async commit")
+struct PendingCompletionsAsyncTests {
+    private let day1 = DateMath.date(from: "2026-09-21")
+    private let day2 = DateMath.date(from: "2026-09-22")
+
+    /// A commit the test releases by hand.
+    @MainActor
+    private final class Gate {
+        var started: [Commit] = []
+        var finished: [Commit] = []
+        private var continuations: [CheckedContinuation<Void, Never>] = []
+
+        func commit(_ id: String, _ occurrence: Date) async {
+            started.append(Commit(id: id, occurrence: occurrence))
+            await withCheckedContinuation { continuations.append($0) }
+            finished.append(Commit(id: id, occurrence: occurrence))
+        }
+
+        func releaseAll() {
+            let waiting = continuations
+            continuations = []
+            for c in waiting { c.resume() }
+        }
+    }
+
+    @MainActor
+    private func settle() async {
+        for _ in 0..<20 { await Task.yield() }
+    }
+
+    @Test("the key stays pending until the async commit returns, then clears")
+    @MainActor
+    func staysPendingUntilCommitted() async {
+        let scheduler = ManualScheduler()
+        let gate = Gate()
+        let pending = PendingCompletions(schedule: scheduler.schedule, asyncCommit: { await gate.commit($0, $1) })
+        pending.toggle(key: "k", reminderID: "r", occurrence: day1)
+        scheduler.fire(0)
+        await settle()
+        #expect(gate.started == [Commit(id: "r", occurrence: day1)])
+        #expect(pending.isPending("k"))
+        #expect(pending.pendingKeys == ["k"])
+        // A second tap while the write is in flight starts nothing new.
+        pending.toggle(key: "k", reminderID: "r", occurrence: day1)
+        #expect(scheduler.timers.count == 1)
+        gate.releaseAll()
+        await settle()
+        #expect(gate.finished == [Commit(id: "r", occurrence: day1)])
+        #expect(!pending.isPending("k"))
+        #expect(pending.pendingKeys.isEmpty)
+    }
+
+    @Test("flush commits every pending one in tap order; a cancelled one never commits")
+    @MainActor
+    func flushInOrder() async {
+        let scheduler = ManualScheduler()
+        let gate = Gate()
+        let pending = PendingCompletions(schedule: scheduler.schedule, asyncCommit: { await gate.commit($0, $1) })
+        pending.toggle(key: "b", reminderID: "rb", occurrence: day2)
+        pending.toggle(key: "a", reminderID: "ra", occurrence: day1)
+        pending.toggle(key: "c", reminderID: "rc", occurrence: day1)
+        pending.toggle(key: "c", reminderID: "rc", occurrence: day1)
+        pending.flush()
+        scheduler.fireAll()
+        for _ in 0..<3 {
+            await settle()
+            gate.releaseAll()
+        }
+        await settle()
+        #expect(gate.finished == [Commit(id: "rb", occurrence: day2), Commit(id: "ra", occurrence: day1)])
+        #expect(pending.pendingKeys.isEmpty)
+    }
+}

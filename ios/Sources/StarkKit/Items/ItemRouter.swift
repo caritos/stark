@@ -62,6 +62,8 @@ public enum ItemRouterError: Error, Equatable, Sendable {
             return text
         case .apple(.saveFailed(let text)):
             return "Couldn't save to Apple Calendar or Reminders: \(text)"
+        case .apple(.ruleChangeLosesEditedOccurrences):
+            return "Some occurrences of this series were changed one by one in Calendar. Changing the repeat rule removes those changes."
         case .sidecar(let text):
             return "Couldn't save Stark's plans and marks: \(text)"
         case .local(let text):
@@ -70,6 +72,14 @@ public enum ItemRouterError: Error, Equatable, Sendable {
             return "The new item was created, but the original couldn't be removed (\(reason)). Both are kept; delete the old one by hand."
         }
     }
+
+    /// The refusal the edit sheet turns into a confirmation (`ruleChangeConfirmation`) and, only
+    /// when the owner confirms, resends with `confirmRuleChange: true`.
+    public var asksToConfirmRuleChange: Bool { self == .apple(.ruleChangeLosesEditedOccurrences) }
+
+    /// The question asked before a repeat-rule change that would lose occurrences edited in Calendar.
+    public static let ruleChangeConfirmation =
+        "Changing the repeat rule will reset occurrences you edited one by one in Calendar. Change anyway?"
 }
 
 /// The write facade the views call. Apple items (`apple-` ids) go to `ItemRepository` and, for
@@ -151,15 +161,20 @@ public final class ItemRouter {
     /// stored item from `details(id:kind:)` and is required; only the fields that differ from it are
     /// written, and nothing changed means no write and no `onDidWrite`. Refused when the item can't
     /// be written, and a repeat change is refused when the stored repeat can't be represented.
-    public func update(event: Event, original: ItemDetails? = nil) async throws {
+    ///
+    /// `confirmRuleChange`: the owner confirmed that a repeat change may lose occurrences edited one
+    /// by one in Calendar; without it such a change throws `.apple(.ruleChangeLosesEditedOccurrences)`
+    /// (`asksToConfirmRuleChange`), and the edit sheet asks before resending.
+    public func update(event: Event, original: ItemDetails? = nil, confirmRuleChange: Bool = false) async throws {
         switch ItemOrigin(id: event.id, kind: .event) {
         case .local:
             local.updateEvent(event)
         case .apple(let ref):
             let original = try Self.requireDetails(original)
-            let patch = EventPatch(from: original, to: event)
+            var patch = EventPatch(from: original, to: event)
             guard patch != EventPatch() else { return }
             try Self.checkWritable(original, changesRepeat: patch.recurrence != .keep)
+            patch.confirmRuleChange = confirmRuleChange
             try await appleWrite { try await repository.update(ref, event: patch) }
         }
     }
@@ -274,6 +289,13 @@ public final class ItemRouter {
         await didWrite()
     }
 
+    /// An Apple event's attended/skipped mark on `date`'s day, from the sidecar; nil for Stark's
+    /// own events (their marks are on the `Event`) and when none is recorded.
+    public func eventOutcome(id: String, on date: Date) async throws -> EventOutcome? {
+        guard case .apple(let ref) = ItemOrigin(id: id, kind: .event) else { return nil }
+        return try await sidecarRead { try await sidecar.outcome(for: ref.identifier, externalID: nil, on: date) }?.outcome
+    }
+
     /// `ref` with its external id: as given, else read once from the repository (nothing cached).
     /// An item the repository can't read keeps nil; sidecar records never need the item to exist.
     private func withExternalID(_ ref: AppleItemRef) async -> AppleItemRef {
@@ -345,6 +367,17 @@ public final class ItemRouter {
     public func plans(on day: Date) async throws -> [PlanBlock] {
         let applePlans = try await sidecarRead { try await sidecar.plans(on: day) }
         return local.plans(on: day) + applePlans.map { block in
+            var copy = block
+            copy.reminderID = ItemOrigin.applePrefix + block.reminderID
+            return copy
+        }
+    }
+
+    /// Every Apple plan block whose start is in `range` (one sidecar read), with `apple-` reminder
+    /// ids. The agenda reads these next to the local store's own plans, so each block comes once.
+    public func applePlans(in range: ClosedRange<Date>) async throws -> [PlanBlock] {
+        let data = try await sidecarRead { try await sidecar.load() }
+        return data.plans.filter { range.contains($0.start) }.map { block in
             var copy = block
             copy.reminderID = ItemOrigin.applePrefix + block.reminderID
             return copy

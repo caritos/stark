@@ -2,32 +2,132 @@
 import Foundation
 
 extension AgendaItem {
-    /// The one gate for Apple Calendar / Reminders overlay rows: they are shown, never changed.
-    /// A read-only item must never reach a `PlannerStore` call or a Stark edit, plan, convert,
-    /// skip or complete path.
-    public var isReadOnly: Bool { appleSource != nil }
+    /// The one gate for Apple Calendar / Reminders rows Stark cannot change: an Apple row whose
+    /// calendar or list is not writable (`AppleSource.isWritable`, from the snapshot). Such a row
+    /// must never reach a router write, a Stark edit, plan, convert, skip or complete path.
+    /// Writable Apple rows are edited through `ItemRouter` (Task 9); events where the owner is only
+    /// an invitee are found when the sheet loads the stored details (`AppleEditorState`).
+    public var isReadOnly: Bool { appleSource.map { !$0.isWritable } ?? false }
+
+    /// The row as the edit sheet shows it: the STORED item (`ItemRouter.details`, with its real
+    /// repeat rule) in place of the overlay's stand-in, keeping the tapped occurrence, its day, the
+    /// plan and the source. `outcome` is the event's attended/skipped mark for the tapped day
+    /// (kept in Stark's sidecar for Apple events).
+    public func withStoredItem(_ details: ItemDetails, outcome: EventOutcome? = nil) -> AgendaItem {
+        let newKind: Kind
+        if var event = details.event {
+            if let outcome { event.outcomes = [EventOutcomeRecord(date: occurrence, outcome: outcome)] }
+            newKind = .event(event)
+        } else if let reminder = details.reminder {
+            newKind = .reminder(reminder)
+        } else {
+            return self
+        }
+        return AgendaItem(kind: newKind, occurrence: occurrence, displayDate: displayDate, isOverdue: isOverdue,
+                          plan: plan, appleSource: appleSource)
+    }
 }
 
-/// What tapping an agenda or Search row opens. The only way to get an `AgendaItem` for the
-/// Stark edit sheet is `editable`, which is nil for a read-only (Apple) item.
+/// What tapping an agenda or Search row opens. Stark's own items open the edit sheet (`edit`);
+/// Apple items in a writable calendar or list open the Apple editor (`editableApple`), which loads
+/// the stored item first; anything else is the read-only detail. `editable` stays the local-only
+/// way into the old edit path.
 public enum AgendaItemDetail: Identifiable, Equatable {
     case edit(AgendaItem)
+    case editableApple(AgendaItem, AppleItemRef)
     case readOnly(AgendaItem)
 
     public init(_ item: AgendaItem) {
-        self = item.isReadOnly ? .readOnly(item) : .edit(item)
+        if item.appleSource == nil {
+            self = .edit(item)
+        } else if !item.isReadOnly, let ref = AppleItemRef.ref(for: item) {
+            self = .editableApple(item, ref)
+        } else {
+            self = .readOnly(item)
+        }
     }
 
     public var id: String {
         switch self {
-        case .edit(let item), .readOnly(let item): return item.id
+        case .edit(let item), .readOnly(let item), .editableApple(let item, _): return item.id
         }
     }
 
-    /// The item for the Stark edit sheet, or nil when the item is read-only.
+    /// The item for Stark's own edit sheet, or nil for any Apple item.
     public var editable: AgendaItem? {
         guard case .edit(let item) = self else { return nil }
         return item
+    }
+}
+
+/// The Apple editor once the stored details are in: edit them, or show the read-only detail
+/// (the calendar can't be written, or the owner is only an invitee of the event, spec call 5).
+public enum AppleEditorState: Equatable {
+    case edit(ItemDetails)
+    case readOnly
+
+    public init(details: ItemDetails) {
+        self = details.isWritable && !details.isInviteeOnly ? .edit(details) : .readOnly
+    }
+}
+
+/// The notice after reopening a completed Apple reminder that is the completed copy of a
+/// repeating one: EventKit cannot move the series back (write spike a), so the owner is told.
+public enum UncompleteNotice {
+    public static func text(for item: AgendaItem, snapshot: AppleSnapshot) -> String? {
+        guard let source = item.appleSource, case .reminder(let reminder) = item.kind, reminder.isCompleted else {
+            return nil
+        }
+        let hasSeries = snapshot.reminders.contains {
+            $0.isRecurring && !$0.isCompleted && $0.title == reminder.title && $0.calendar.id == source.calendarID
+        }
+        return hasSeries
+            ? "Reopened the completed copy. The repeating reminder keeps its next date."
+            : nil
+    }
+}
+
+/// Where the Add screen creates its item (always Apple): needs full access, then a writable
+/// calendar (events) or list (reminders). The default destination is preselected when offered.
+public enum AddDestination {
+    public enum State: Equatable, Sendable {
+        case needsAccess
+        case noneWritable
+        case ready(selected: String?)
+    }
+
+    public static func state(hasAccess: Bool, choices: [AppleCalendarInfo], defaultID: String?) -> State {
+        guard hasAccess else { return .needsAccess }
+        guard !choices.isEmpty else { return .noneWritable }
+        return .ready(selected: choices.contains { $0.id == defaultID } ? defaultID : nil)
+    }
+
+    /// Plain-words reason Save is off, or nil when the screen can add.
+    public static func message(_ state: State, isEvent: Bool) -> String? {
+        switch state {
+        case .needsAccess:
+            return "Stark adds new items to Apple Calendar and Reminders. Allow full access in Settings to add one."
+        case .noneWritable:
+            return isEvent
+                ? "There is no calendar Stark can add events to. Add one in Apple Calendar, or check Settings."
+                : "There is no reminder list Stark can add to. Add one in Apple Reminders, or check Settings."
+        case .ready:
+            return nil
+        }
+    }
+}
+
+/// The Apple fetch range the Search sheet registers while open (spec decision 10): events within
+/// two years either side of today. Reminders are fetched whole by the overlay (every open one).
+public enum SearchWindow {
+    public static let years = 2
+
+    public static func range(around today: Date, calendar: Calendar = Calendar(identifier: .gregorian)) -> ClosedRange<Date> {
+        let start = calendar.startOfDay(for: today)
+        let lower = calendar.date(byAdding: .year, value: -years, to: start) ?? start
+        let upperDay = calendar.date(byAdding: .year, value: years, to: start) ?? start
+        let upper = calendar.date(byAdding: .day, value: 1, to: upperDay)?.addingTimeInterval(-1) ?? upperDay
+        return lower...upper
     }
 }
 
