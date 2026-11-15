@@ -12,9 +12,14 @@ import EventKit
 import Foundation
 import StarkKit
 
-/// `@unchecked Sendable`: the only stored state is one `EKEventStore`, which Apple documents as
-/// safe to use from any thread for reads. EventKit objects never leave this file.
-final class EventKitProvider: AppleItemProvider, @unchecked Sendable {
+/// `nonisolated`: the app target defaults to `@MainActor` isolation; this type must not, so
+/// EventKit reads never run on the main actor and the completion handlers (called on EventKit's
+/// queue) can call the mapping helpers. `fetch` is `@concurrent`, so under approachable
+/// concurrency (nonisolated async = caller's actor) it still runs on the concurrent pool.
+/// `@unchecked Sendable`: the only stored state is one immutable `let` holding an `EKEventStore`,
+/// which Apple documents as safe to use from any thread for reads. EventKit objects never leave
+/// this file. `calendars()` is synchronous and must be called off the main actor by the caller.
+nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable {
     /// EventKit refuses event predicates spanning more than about four years; fetch in chunks.
     private static let maxChunkYears = 4
 
@@ -46,7 +51,11 @@ final class EventKitProvider: AppleItemProvider, @unchecked Sendable {
             + store.calendars(for: .reminder).map { Self.info($0, isReminderList: true) }
     }
 
+    @concurrent
     func fetch(events: ClosedRange<Date>, reminders: ClosedRange<Date>) async throws -> AppleSnapshot {
+        #if DEBUG
+        dispatchPrecondition(condition: .notOnQueue(.main))
+        #endif
         let fetchedEvents = fetchEvents(in: events)
         let fetchedReminders = await fetchReminders(in: reminders)
         return AppleSnapshot(events: fetchedEvents, reminders: fetchedReminders)
@@ -92,6 +101,7 @@ final class EventKitProvider: AppleItemProvider, @unchecked Sendable {
 
     // MARK: - Reminders
 
+    @concurrent
     private func fetchReminders(in range: ClosedRange<Date>) async -> [AppleReminder] {
         let open = store.predicateForIncompleteReminders(withDueDateStarting: range.lowerBound,
                                                          ending: range.upperBound, calendars: nil)
@@ -103,6 +113,7 @@ final class EventKitProvider: AppleItemProvider, @unchecked Sendable {
     }
 
     /// Maps inside the completion handler so no `EKReminder` crosses a concurrency boundary.
+    @concurrent
     private func reminders(matching predicate: NSPredicate) async -> [AppleReminder] {
         await withCheckedContinuation { continuation in
             store.fetchReminders(matching: predicate) { reminders in

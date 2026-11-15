@@ -108,6 +108,7 @@ final class AppleOverlayModel {
         let provider = self.provider
         await refreshCalendars()
         do {
+            // `fetch` is `@concurrent` (protocol and witness): it leaves the main actor here.
             let result = try await provider.fetch(events: display, reminders: reminderRange)
             guard mine == generation else { return }
             fetched = result
@@ -122,6 +123,7 @@ final class AppleOverlayModel {
     private func refreshCalendars() async {
         guard access == .granted else { return }
         let provider = self.provider
+        // `calendars()` is a synchronous, nonisolated EventKit read: run it on the concurrent pool.
         let list = await Task.detached { provider.calendars() }.value
         calendars = list
         // Prune only with access granted and a real list, or every calendar would turn back on.
