@@ -114,4 +114,88 @@ extension AppleMergeTests {
         #expect(out[0].id.hasPrefix("apple-"))
         #expect(out[1] == base[0])
     }
+
+    // MARK: DST, timezone and boundary cases
+
+    private static let ny: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "America/New_York")!
+        return c
+    }()
+
+    private func nyDate(_ month: Int, _ d: Int, _ h: Int = 0, _ m: Int = 0) -> Date {
+        Self.ny.date(from: DateComponents(year: 2026, month: month, day: d, hour: h, minute: m))!
+    }
+
+    private func nyMerge(events: [AppleCalendarEvent] = [], reminders: [AppleReminder] = [], today: Date) -> [AgendaItem] {
+        let range = nyDate(3, 1)...nyDate(3, 31, 23, 59)
+        return mergeAppleItems([], snapshot: AppleSnapshot(events: events, reminders: reminders), in: range, today: today, calendar: Self.ny)
+    }
+
+    @Test func dstSpringForwardTimedEventAndDateOnlyReminderLandOnTheRightDay() {
+        // 2026-03-08: clocks jump 02:00 -> 03:00 in New York.
+        let evt = event(start: nyDate(3, 8, 3, 30), end: nyDate(3, 8, 4, 30))
+        let rem = reminder(due: nyDate(3, 8, 13, 37), hasTime: false)
+        let out = nyMerge(events: [evt], reminders: [rem], today: nyDate(3, 8, 8))
+        #expect(out.count == 2)
+        #expect(out.allSatisfy { Self.ny.component(.day, from: $0.displayDate) == 8 })
+        let r = out.first { $0.appleSource?.isReminder == true }
+        #expect(r?.occurrence == nyDate(3, 8))
+        #expect(r?.isOverdue == false)
+    }
+
+    @Test func dstAllDayEventSpanningSpringForwardGivesOneRowPerDay() {
+        let out = nyMerge(events: [event(start: nyDate(3, 7), end: nyDate(3, 9), allDay: true)], today: nyDate(3, 7, 8))
+        #expect(out.count == 3)
+        #expect(out.map { Self.ny.component(.day, from: $0.displayDate) } == [7, 8, 9])
+        #expect(out.allSatisfy { Self.ny.startOfDay(for: $0.displayDate) == $0.displayDate })
+    }
+
+    @Test func sameInstantLandsOnDifferentDaysInDifferentCalendars() {
+        // 2026-06-10 02:00 UTC is still June 9 in New York (UTC-4).
+        let instant = date(10, 2)
+        let wide = date(1, month: 5)...date(30, 23, 59, month: 7)
+        let snap = AppleSnapshot(events: [event(start: instant, end: nil)], reminders: [])
+        let utc = mergeAppleItems([], snapshot: snap, in: wide, today: date(15, 10), calendar: Self.cal)
+        let ny = mergeAppleItems([], snapshot: snap, in: wide, today: date(15, 10), calendar: Self.ny)
+        #expect(Self.cal.component(.day, from: utc[0].displayDate) == 10)
+        #expect(Self.ny.component(.day, from: ny[0].displayDate) == 9)
+        // Date-only reminder stored at that instant: start-of-day differs per calendar.
+        let remSnap = AppleSnapshot(events: [], reminders: [reminder(due: instant, hasTime: false)])
+        let ru = mergeAppleItems([], snapshot: remSnap, in: wide, today: date(15, 10), calendar: Self.cal)
+        let rn = mergeAppleItems([], snapshot: remSnap, in: wide, today: date(15, 10), calendar: Self.ny)
+        #expect(ru[0].occurrence == date(10))
+        #expect(rn[0].occurrence == Self.ny.date(from: DateComponents(year: 2026, month: 6, day: 9))!)
+    }
+
+    @Test func reminderDueEarlierTodayIsNotOverdue() {
+        let out = merge(reminders: [reminder(due: date(15, 8))])
+        #expect(out.count == 1)
+        #expect(!out[0].isOverdue)
+        #expect(out[0].displayDate == date(15, 8))
+    }
+
+    @Test func reminderDueAfterRangeDropped() {
+        #expect(merge(reminders: [reminder(due: date(5, 9, month: 7))]).isEmpty)
+    }
+
+    @Test func completedReminderOutsideRangeDropped() {
+        #expect(merge(reminders: [reminder("a", due: date(20, 9, month: 5), done: true),
+                                  reminder("b", due: date(5, 9, month: 7), done: true)]).isEmpty)
+    }
+
+    @Test func reminderExactlyAtLookbackBoundaryKept() {
+        let boundary = Self.cal.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: Self.cal.startOfDay(for: today))!
+        let out = merge(reminders: [reminder(due: boundary)])
+        #expect(out.count == 1)
+        #expect(out[0].isOverdue)
+        let justBefore = merge(reminders: [reminder(due: boundary.addingTimeInterval(-1))])
+        #expect(justBefore.isEmpty)
+    }
+
+    @Test func timedEventRunningMidnightToMidnightGivesOneRow() {
+        let out = merge(events: [event(start: date(10), end: date(11))])
+        #expect(out.count == 1)
+        #expect(out[0].displayDate == date(10))
+    }
 }
