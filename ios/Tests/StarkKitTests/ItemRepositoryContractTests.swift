@@ -42,7 +42,9 @@ enum ItemRepositoryContract {
             listID: h.listID)
         let d = try await h.repository.details(rref)
         #expect(d.reminder?.title == "Call")
-        #expect(d.reminder?.dueDate == start)
+        // Date-only drops the time of day: EventKit stores day components, so it reads back as
+        // local midnight (Stark's own date-only marker).
+        #expect(d.reminder?.dueDate == Calendar.current.startOfDay(for: start))
         #expect(d.reminder?.priority == 1)
         #expect(d.dueHasTime == false)
         #expect(d.reminderURL == "https://r.example")
@@ -133,6 +135,19 @@ enum ItemRepositoryContract {
         #expect(await h.itemCount() == before + 2)
     }
 
+    /// A later item fails after earlier ones were already saved (uncommitted): nothing stays.
+    static func batchFailureOfALaterItemRollsBack(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let before = await h.itemCount()
+        await #expect(throws: ItemRepositoryError.self) {
+            _ = try await h.repository.addBatch(
+                events: [(NewEvent(title: "Saved first", start: start), h.calendarID)],
+                reminders: [(NewReminder(title: "Fine", due: start), h.listID),
+                            (NewReminder(title: "No due", recurrence: daily), h.listID)])
+        }
+        #expect(await h.itemCount() == before)
+    }
+
     // MARK: Recurring completion (EventKit spike facts, section (a))
 
     private static let cal = Calendar.current
@@ -198,7 +213,7 @@ enum ItemRepositoryContract {
         let b = try await h.repository.addReminder(
             NewReminder(title: "Next week", due: future, recurrence: RecurrenceRule(frequency: .weekly)),
             listID: h.listID)
-        try await h.repository.complete(b, on: h.now)
+        try await h.repository.complete(b, on: future)
         try await expectAdvanced(h, b, from: future, to: shifted(future, days: 7))
     }
 
@@ -225,7 +240,8 @@ enum ItemRepositoryContract {
         #expect(first.isCompleted == false)
         #expect(first.recurrence?.count == 1)
         #expect(try await copies(of: ref, in: h).count == 1)
-        try await h.repository.complete(ref, on: h.now)
+        // The caller completes the occurrence it shows: the series' current due date.
+        try await h.repository.complete(ref, on: try #require(first.dueDate))
         let last = try #require(try await h.repository.details(ref).reminder)
         #expect(last.isCompleted)                // none left: the reminder itself completes
         #expect(try await copies(of: ref, in: h).count == 1)  // no extra copy
@@ -242,6 +258,19 @@ enum ItemRepositoryContract {
         let r = try #require(try await h.repository.details(ref).reminder)
         #expect(r.isCompleted)
         #expect(try await copies(of: ref, in: h).isEmpty)
+    }
+
+    /// A second completion of the same occurrence (double tap, the checkbox timer firing after
+    /// Done) does nothing: the series has already moved past that day.
+    static func completingTheSameOccurrenceTwiceCompletesOnce(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let due = shifted(h.now.addingTimeInterval(-3600), days: -2)
+        let ref = try await h.repository.addReminder(
+            NewReminder(title: "Twice tapped", due: due, recurrence: RecurrenceRule(frequency: .daily)),
+            listID: h.listID)
+        try await h.repository.complete(ref, on: due)
+        try await h.repository.complete(ref, on: due)
+        try await expectAdvanced(h, ref, from: due, to: shifted(due, days: 3))
     }
 
     static func notWritableCalendarThrows(_ make: () async -> RepositoryHarness) async throws {
@@ -304,6 +333,12 @@ struct FakeItemRepositoryContractTests {
     }
     @Test func notWritableCalendarThrows() async throws {
         try await ItemRepositoryContract.notWritableCalendarThrows(Self.make)
+    }
+    @Test func batchFailureOfALaterItemRollsBack() async throws {
+        try await ItemRepositoryContract.batchFailureOfALaterItemRollsBack(Self.make)
+    }
+    @Test func completingTheSameOccurrenceTwiceCompletesOnce() async throws {
+        try await ItemRepositoryContract.completingTheSameOccurrenceTwiceCompletesOnce(Self.make)
     }
 }
 

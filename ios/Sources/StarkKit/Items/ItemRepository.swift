@@ -218,6 +218,9 @@ public protocol ItemRepository: Sendable {
     func deleteOccurrence(_ ref: AppleItemRef, on date: Date) async throws
     /// Completes a reminder. A recurring one advances to its next occurrence (same ref) and leaves a
     /// separate completed copy; when no occurrence is left the reminder itself is completed.
+    /// `date` is the occurrence being completed: when a recurring reminder's current due date is
+    /// already on a later day, that occurrence was completed before and nothing happens (so a
+    /// double tap never completes the next occurrence too).
     func complete(_ ref: AppleItemRef, on date: Date) async throws
     func uncomplete(_ ref: AppleItemRef) async throws
     func writableCalendars() async throws -> [AppleCalendarInfo]

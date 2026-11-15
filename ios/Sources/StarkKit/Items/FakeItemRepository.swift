@@ -113,6 +113,7 @@ public actor FakeItemRepository: ItemRepository {
         r.notes = patch.notes.applied(to: r.notes)
         r.dueDate = patch.due.applied(to: r.dueDate)
         if let hasTime = patch.dueHasTime { stored.dueHasTime = hasTime }
+        r.dueDate = Self.dueDate(r.dueDate, hasTime: stored.dueHasTime)
         r.priority = patch.priority.applied(to: r.priority)
         r.recurrence = patch.recurrence.applied(to: r.recurrence)
         stored.url = patch.url.applied(to: stored.url)
@@ -155,6 +156,9 @@ public actor FakeItemRepository: ItemRepository {
         try checkWritable(stored.calendarID)
         var r = stored.reminder
         guard !r.isCompleted else { return }
+        // Already moved past `date`'s day: that occurrence is done (a double tap), do nothing.
+        if r.recurrence != nil, let due = r.dueDate,
+           Calendar.current.startOfDay(for: due) > Calendar.current.startOfDay(for: date) { return }
         let stamp = now()
         guard let rule = r.recurrence, let due = r.dueDate else {
             r.isCompleted = true
@@ -249,10 +253,17 @@ public actor FakeItemRepository: ItemRepository {
     private func insert(_ new: NewReminder, listID: String) -> AppleItemRef {
         let id = newID()
         reminders[id] = StoredReminder(
-            reminder: Reminder(id: id, title: new.title, notes: new.notes, dueDate: new.due,
+            reminder: Reminder(id: id, title: new.title, notes: new.notes,
+                               dueDate: Self.dueDate(new.due, hasTime: new.dueHasTime),
                                priority: new.priority, recurrence: new.recurrence),
             dueHasTime: new.dueHasTime, url: new.url, calendarID: listID)
         return AppleItemRef(kind: .reminder, identifier: id, externalID: externalID(for: id))
+    }
+
+    /// A date-only due date keeps only its day (local midnight), as EventKit's day components do.
+    private static func dueDate(_ date: Date?, hasTime: Bool) -> Date? {
+        guard let date, !hasTime else { return date }
+        return Calendar.current.startOfDay(for: date)
     }
 
     /// The first occurrence of the series strictly after `moment` (EventKit's rule: after both the
