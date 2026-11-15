@@ -62,21 +62,26 @@ final class AppleOverlayModel {
         changeTask?.cancel()
     }
 
-    /// Turning the overlay on is the only place access is requested (never at launch). The
-    /// switch stays on even if access is refused, so Settings can show the denied state; the
-    /// snapshot stays empty until access is granted.
+    /// Turning the overlay on is the only place access is requested (never at launch). Always
+    /// asks the provider, which requests only the sources still undetermined, so one left unasked
+    /// next to a denied one is asked once the user fixes the other in iOS Settings. The switch
+    /// stays on even if access is refused, so Settings can show the denied state; the snapshot
+    /// stays empty until access is granted.
     func enable() async {
         isEnabled = true
-        if provider.accessState() == .notAsked {
-            access = await provider.requestAccess()
-        } else {
-            access = provider.accessState()
-        }
+        access = await provider.requestAccess()
         if let lastRequest {
             await reload(display: lastRequest.display, today: lastRequest.today)
         } else {
             await refreshCalendars()
         }
+    }
+
+    /// The Settings screen appeared or came back to the foreground (the user may have changed
+    /// access in iOS Settings): re-read access and, when granted, the calendar list. Never asks.
+    func refreshAccess() async {
+        access = provider.accessState()
+        await refreshCalendars()
     }
 
     func disable() {

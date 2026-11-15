@@ -61,10 +61,5 @@ public func appleOpenURL(for item: AgendaItem) -> URL? {
 extension AppleSource {
     /// The calendar's colour as `0xRRGGBB`, parsed from `colorHex` ("#RRGGBB"); nil when absent
     /// or malformed.
-    public var colorRGB: UInt32? {
-        guard let hex = colorHex, hex.count == 7, hex.first == "#" else { return nil }
-        let digits = hex.dropFirst()
-        guard digits.allSatisfy(\.isHexDigit) else { return nil }
-        return UInt32(digits, radix: 16)
-    }
+    public var colorRGB: UInt32? { AppleColor.rgb(colorHex) }
 }

@@ -46,6 +46,8 @@ struct SettingsView: View {
                 Section {
                     NavigationLink("Claude Code") { ClaudeCodeSettingsView(secrets: secrets) }
                         .foregroundStyle(Colors.text)
+                    NavigationLink("Apple Calendar and Reminders") { AppleSettingsView() }
+                        .foregroundStyle(Colors.text)
                 } header: {
                     Text("Integrations")
                 }
