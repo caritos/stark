@@ -48,7 +48,7 @@ public enum AppleSettings {
     /// The access state in plain words.
     public static func statusText(_ access: AppleAccess) -> String {
         switch access {
-        case .notAsked: "Not asked yet. Stark asks for access when you turn this on."
+        case .notAsked: "Not asked yet. Stark asks on its main screen, after saying what access is for."
         case .granted: "Stark can read your calendars and reminders. It never changes them."
         case .denied: "Access is off. Allow Stark full access to Calendars and Reminders in iOS Settings."
         case .writeOnly: "Stark can only add events, not read them. Allow full access in iOS Settings."

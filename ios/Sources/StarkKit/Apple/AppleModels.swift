@@ -8,13 +8,18 @@ public struct AppleCalendarInfo: Equatable, Identifiable, Sendable {
     public let accountName: String
     public let colorHex: String?
     public let isReminderList: Bool
+    /// Stark may add, change and delete items in it (`EKCalendar.allowsContentModifications`;
+    /// false for Birthdays and subscribed calendars).
+    public let isWritable: Bool
 
-    public init(id: String, title: String, accountName: String, colorHex: String?, isReminderList: Bool) {
+    public init(id: String, title: String, accountName: String, colorHex: String?, isReminderList: Bool,
+                isWritable: Bool = true) {
         self.id = id
         self.title = title
         self.accountName = accountName
         self.colorHex = colorHex
         self.isReminderList = isReminderList
+        self.isWritable = isWritable
     }
 }
 
@@ -27,14 +32,17 @@ public struct AppleSource: Equatable, Sendable {
     /// A reminder's URL (Stark's `Reminder` has no URL field); nil for events, whose URL is on
     /// `Event.url`. Read it through `appleItemURL(_:)`.
     public let url: String?
+    /// The row's calendar or list can be written to (`AppleCalendarInfo.isWritable`).
+    public let isWritable: Bool
 
     public init(calendarID: String, calendarTitle: String, colorHex: String?, isReminder: Bool,
-                url: String? = nil) {
+                url: String? = nil, isWritable: Bool = true) {
         self.calendarID = calendarID
         self.calendarTitle = calendarTitle
         self.colorHex = colorHex
         self.isReminder = isReminder
         self.url = url
+        self.isWritable = isWritable
     }
 }
 

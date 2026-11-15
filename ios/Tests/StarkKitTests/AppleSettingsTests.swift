@@ -61,7 +61,7 @@ struct AppleSettingsTests {
 
     @Test func statusTextForEveryAccessState() {
         #expect(AppleSettings.statusText(.notAsked)
-            == "Not asked yet. Stark asks for access when you turn this on.")
+            == "Not asked yet. Stark asks on its main screen, after saying what access is for.")
         #expect(AppleSettings.statusText(.granted)
             == "Stark can read your calendars and reminders. It never changes them.")
         #expect(AppleSettings.statusText(.denied)

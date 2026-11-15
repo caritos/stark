@@ -37,7 +37,8 @@ public func mergeAppleItems(
     var spillRows: [AgendaItem] = []
     for apple in snapshot.events {
         let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
-                                 colorHex: apple.calendar.colorHex, isReminder: false)
+                                 colorHex: apple.calendar.colorHex, isReminder: false,
+                                 isWritable: apple.calendar.isWritable)
         let event = Event(id: "apple-\(apple.id)", title: apple.title, notes: apple.notes, start: apple.start,
                           end: apple.end, isAllDay: apple.isAllDay, location: apple.location, url: apple.url)
         // An end exactly at midnight is exclusive: measure the span to the last instant before it.
@@ -63,7 +64,8 @@ public func mergeAppleItems(
         guard let rawDue = apple.due else { continue }
         let due = apple.dueHasTime ? rawDue : calendar.startOfDay(for: rawDue)
         let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
-                                 colorHex: apple.calendar.colorHex, isReminder: true, url: apple.url)
+                                 colorHex: apple.calendar.colorHex, isReminder: true, url: apple.url,
+                                 isWritable: apple.calendar.isWritable)
         let reminder = Reminder(id: "apple-\(apple.id)", title: apple.title, notes: apple.notes, dueDate: due,
                                 isCompleted: apple.isCompleted, completedDate: apple.isCompleted ? due : nil,
                                 priority: apple.priority, completedAt: apple.completedAt)
