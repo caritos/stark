@@ -143,6 +143,93 @@ struct RecurrenceDescriptorTests {
         #expect(RecurrenceDescriptor(frequency: .weekly, daysOfTheWeek: [.init(.monday)]).isRepresentableInStark)
     }
 
+    // MARK: byMonthDay -1 is pinned
+
+    @Test func byMonthDayMinusOneBecomesPositionalLastDay() throws {
+        let rule = RecurrenceRule(frequency: .monthly, byMonthDay: [-1])
+        let descriptor = try RecurrenceDescriptor(rule)
+        #expect(descriptor.daysOfTheMonth == [-1])
+        let back = try descriptor.asStarkRule()
+        #expect(back.byMonthDay == nil)
+        #expect(back.byPositionalDay == [PositionalDay(position: .last, dayType: .anyDay)])
+    }
+
+    @Test func byMonthDayMinusOneAndPositionalLastDayGiveSameDates() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let anchor = calendar.date(from: DateComponents(year: 2027, month: 1, day: 31, hour: 9))!
+        let end = calendar.date(from: DateComponents(year: 2028, month: 4, day: 30, hour: 23))!
+        let plain = RecurrenceRule(frequency: .monthly, byMonthDay: [-1])
+        let positional = try RecurrenceDescriptor(plain).asStarkRule()
+        #expect(positional != plain)
+        let a = OccurrenceExpander.occurrences(anchor: anchor, rule: plain, exceptionDates: [], in: anchor...end)
+        let b = OccurrenceExpander.occurrences(anchor: anchor, rule: positional, exceptionDates: [], in: anchor...end)
+        #expect(a == b)
+        let days = a.map { calendar.dateComponents([.year, .month, .day], from: $0) }
+        #expect(days.count == 16)
+        #expect(days.contains(DateComponents(year: 2027, month: 2, day: 28)))
+        #expect(days.contains(DateComponents(year: 2028, month: 2, day: 29)))
+    }
+
+    // MARK: named weekdays with several set positions
+
+    @Test func oneWeekdayAtSeveralSetPositions() throws {
+        let d = RecurrenceDescriptor(frequency: .monthly, daysOfTheWeek: [.init(.monday)], setPositions: [1, 3])
+        #expect(try d.asStarkRule().byPositionalDay == [
+            PositionalDay(position: .first, dayType: .weekday(.monday)),
+            PositionalDay(position: .third, dayType: .weekday(.monday))])
+        #expect(d.isRepresentableInStark)
+    }
+
+    @Test func twoWeekdaysAtTheLastSetPosition() throws {
+        let d = RecurrenceDescriptor(frequency: .monthly, daysOfTheWeek: [.init(.monday), .init(.friday)], setPositions: [-1])
+        #expect(try d.asStarkRule().byPositionalDay == [
+            PositionalDay(position: .last, dayType: .weekday(.monday)),
+            PositionalDay(position: .last, dayType: .weekday(.friday))])
+    }
+
+    @Test func repeatedWeekdayIsListedOnce() throws {
+        let d = RecurrenceDescriptor(frequency: .monthly, daysOfTheWeek: [.init(.monday), .init(.monday)], setPositions: [1, 3])
+        #expect(try d.asStarkRule().byPositionalDay?.count == 2)
+    }
+
+    // MARK: conflicting Stark rules throw instead of dropping data
+
+    private func conflictReason(_ rule: RecurrenceRule) -> String? {
+        do {
+            _ = try RecurrenceDescriptor(rule)
+            return nil
+        } catch ItemRepositoryError.unrepresentable(let why) {
+            return why
+        } catch {
+            return "wrong error \(error)"
+        }
+    }
+
+    @Test func untilAndCountConflict() {
+        let why = conflictReason(RecurrenceRule(frequency: .daily, count: 3, until: day))
+        #expect(why?.contains("until") == true && why?.contains("count") == true)
+    }
+    @Test func byDayAndPositionalConflict() {
+        let why = conflictReason(RecurrenceRule(
+            frequency: .weekly, byDay: [.monday],
+            byPositionalDay: [PositionalDay(position: .first, dayType: .weekday(.monday))]))
+        #expect(why?.contains("byDay") == true && why?.contains("byPositionalDay") == true)
+    }
+    @Test func positionalAndMonthDayConflict() {
+        for positional in [PositionalDay(position: .second, dayType: .weekday(.tuesday)),
+                           PositionalDay(position: .last, dayType: .anyDay),
+                           PositionalDay(position: .last, dayType: .weekdayOnly)] {
+            let why = conflictReason(RecurrenceRule(frequency: .monthly, byMonthDay: [15], byPositionalDay: [positional]))
+            #expect(why?.contains("byMonthDay") == true && why?.contains("byPositionalDay") == true)
+        }
+    }
+    @Test func byDayOnNonWeeklyConflict() {
+        for frequency in [RecurrenceRule.Frequency.daily, .monthly, .yearly] {
+            let why = conflictReason(RecurrenceRule(frequency: frequency, byDay: [.monday]))
+            #expect(why?.contains("byDay") == true && why?.contains("weekly") == true)
+        }
+    }
+
     // MARK: priority
 
     @Test func priorityScalesAgree() {

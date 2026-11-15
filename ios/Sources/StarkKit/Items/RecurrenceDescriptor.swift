@@ -18,6 +18,9 @@ import Foundation
 /// - Monthly day 29-31: EventKit skips months that lack the day, but Stark's `OccurrenceExpander`
 ///   clamps to the last day (`min(day, daysInMonth)`). After the move to Apple, Apple's skipping is
 ///   the truth; the picker's "Last day of the month" is the clamp case.
+/// - After moving to EventKit, a monthly rule on day 29, 30 or 31 (and a yearly Feb 29) SKIPS the
+///   months that lack that day, where Stark's expander clamps to the last day; only the "last day
+///   of the month" form keeps the old behaviour.
 /// - "Last day of the month" is written as `daysOfTheMonth [-1]`; both that and "all seven weekdays
 ///   with set position -1" read back as Stark's positional last day. A bare `byMonthDay [-1]` rule
 ///   therefore comes back as the equivalent positional form.
@@ -81,6 +84,24 @@ public struct RecurrenceDescriptor: Equatable, Sendable {
         case .weekly: frequency = .weekly
         case .monthly: frequency = .monthly
         case .yearly: frequency = .yearly
+        }
+        let hasByDay = !(rule.byDay ?? []).isEmpty
+        let hasPositional = !(rule.byPositionalDay ?? []).isEmpty
+        let hasMonthDay = !(rule.byMonthDay ?? []).isEmpty
+        if rule.until != nil && rule.count != nil {
+            throw ItemRepositoryError.unrepresentable("The rule has both an until date (until) and a count (count); a repeat can have only one end.")
+        }
+        if hasByDay && hasPositional {
+            throw ItemRepositoryError.unrepresentable("The rule has both weekdays (byDay) and positional days (byPositionalDay); only one can be saved.")
+        }
+        if hasByDay && frequency != .weekly {
+            throw ItemRepositoryError.unrepresentable("Weekdays (byDay) apply only to a weekly repeat.")
+        }
+        if hasPositional && hasMonthDay {
+            throw ItemRepositoryError.unrepresentable("The rule has both days of the month (byMonthDay) and positional days (byPositionalDay); only one can be saved.")
+        }
+        if hasByDay && hasMonthDay {
+            throw ItemRepositoryError.unrepresentable("The rule has both weekdays (byDay) and days of the month (byMonthDay); only one can be saved.")
         }
         var days: [DayOfWeek] = []
         var monthDays = rule.byMonthDay ?? []
