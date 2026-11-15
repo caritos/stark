@@ -44,8 +44,9 @@ final class AppleOverlayModel {
     @ObservationIgnored private var lastRequest: (display: ClosedRange<Date>, today: Date)?
     /// Each screen's display range; reloads fetch their hull.
     @ObservationIgnored private var window = AppleFetchWindow()
-    /// Bumped on every reload/disable so a slow, older fetch cannot overwrite a newer result.
-    @ObservationIgnored private var generation = 0
+    /// Only the newest reload's result is applied, and a superseded `reload` returns only once
+    /// the newest one has landed (bounded; see `LatestReloadGate`).
+    @ObservationIgnored private let gate = LatestReloadGate()
     @ObservationIgnored private var changeTask: Task<Void, Never>?
 
     init(provider: AppleItemProvider, defaults: UserDefaults = .standard) {
@@ -80,7 +81,7 @@ final class AppleOverlayModel {
 
     func disable() {
         isEnabled = false
-        generation += 1
+        gate.invalidate()
         fetched = AppleSnapshot(events: [], reminders: [])
         snapshot = fetched
     }
@@ -109,32 +110,35 @@ final class AppleOverlayModel {
     }
 
     /// Fetches events over `display` and reminders over `display` plus the overdue lookback. The
-    /// previous snapshot stays until the new one lands; a failed fetch keeps it.
+    /// previous snapshot stays until the new one lands; a failed fetch keeps it. Returns once the
+    /// newest reload in flight has landed (or failed), not just this one's fetch, so a caller that
+    /// moves the window afterwards never shows it before its data (`LatestReloadGate`).
     func reload(display: ClosedRange<Date>, today: Date) async {
         lastRequest = (display, today)
         access = provider.accessState()
-        guard isEnabled, access == .granted else {
-            generation += 1
-            fetched = AppleSnapshot(events: [], reminders: [])
-            snapshot = fetched
-            return
-        }
-        generation += 1
-        let mine = generation
         let reminderStart = Calendar.autoupdatingCurrent.date(
             byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: display.lowerBound) ?? display.lowerBound
         let reminderRange = reminderStart...display.upperBound
         let provider = self.provider
-        await refreshCalendars()
-        do {
-            // `fetch` is `@concurrent` (protocol and witness): it leaves the main actor here.
-            let result = try await provider.fetch(events: display, reminders: reminderRange)
-            guard mine == generation else { return }
-            fetched = result
-            applySelection()
-        } catch {
-            Self.log.error("Apple overlay fetch failed: \(error.localizedDescription, privacy: .public)")
-        }
+        await gate.run(
+            active: isEnabled && access == .granted,
+            fetch: { [weak self] in
+                await self?.refreshCalendars()
+                // `fetch` is `@concurrent` (protocol and witness): it leaves the main actor here.
+                return try await provider.fetch(events: display, reminders: reminderRange)
+            },
+            apply: { [weak self] result in
+                self?.fetched = result
+                self?.applySelection()
+            },
+            failed: { error in
+                Self.log.error("Apple overlay fetch failed: \(error.localizedDescription, privacy: .public)")
+            },
+            clear: {
+                fetched = AppleSnapshot(events: [], reminders: [])
+                snapshot = fetched
+            }
+        )
     }
 
     // MARK: - Private
