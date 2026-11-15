@@ -463,6 +463,9 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                 reminder.dueDateComponents = nil
                 reminder.startDateComponents = nil
             }
+            // EventKit leaves absolute-date alerts where they were; keep them with the due date.
+            Self.shiftAlarms(of: reminder, from: current?.date,
+                             to: reminder.dueDateComponents.map { appleReminderDue($0) }?.date)
         }
 
         switch patch.recurrence {
@@ -473,6 +476,27 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         if reminder.hasRecurrenceRules, reminder.dueDateComponents == nil {
             throw ItemRepositoryError.unrepresentable("A repeating reminder must have a due date.")
         }
+    }
+
+    /// Moves the reminder's absolute-date alerts with its due date (`ReminderAlarmShift`); offset
+    /// alerts follow the due date by themselves. Absolute alerts are replaced by NEW alarms (an
+    /// absolute alert on iOS carries only its date): changing or removing the reminder's own alarm
+    /// objects, or copies of them, did not always persist on the simulator (a removed alert came
+    /// back at its original date).
+    private static func shiftAlarms(of reminder: EKReminder, from oldDue: Date?, to newDue: Date?) {
+        let alarms = reminder.alarms ?? []
+        let absolute = alarms.compactMap(\.absoluteDate)
+        guard oldDue != newDue, !absolute.isEmpty else { return }
+        var shifted = ReminderAlarmShift.shifted(absolute, oldDue: oldDue, newDue: newDue).makeIterator()
+        var result: [EKAlarm] = []
+        for alarm in alarms {
+            guard alarm.absoluteDate != nil else {
+                result.append(alarm)
+                continue
+            }
+            if let date = shifted.next() ?? nil { result.append(EKAlarm(absoluteDate: date)) }
+        }
+        reminder.alarms = result
     }
 
     private static func apply(_ patch: Patch<String>, _ set: (String?) -> Void) {
