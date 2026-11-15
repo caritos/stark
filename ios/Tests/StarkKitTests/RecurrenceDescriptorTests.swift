@@ -138,6 +138,19 @@ struct RecurrenceDescriptorTests {
             #expect(!d.isRepresentableInStark)
         }
     }
+    /// The device checklist's example of a repeat Stark can't hold (Calendar: Custom > Monthly >
+    /// On the... > fifth > Monday). Stark's `Position` has 1st-4th and last only, so both ways
+    /// EventKit can spell it are refused.
+    @Test func fifthMondayIsUnrepresentable() {
+        let weekNumber = RecurrenceDescriptor(frequency: .monthly, daysOfTheWeek: [.init(.monday, weekNumber: 5)])
+        let setPosition = RecurrenceDescriptor(frequency: .monthly, daysOfTheWeek: [.init(.monday)], setPositions: [5])
+        for d in [weekNumber, setPosition] {
+            #expect(!d.isRepresentableInStark, "\(d)")
+            #expect(reason(d)?.contains("1st to 4th and the last") == true, "\(d)")
+        }
+        // The 2nd Tuesday, by contrast, is representable (`secondTuesday`).
+        #expect(RecurrenceDescriptor(frequency: .monthly, daysOfTheWeek: [.init(.tuesday, weekNumber: 2)]).isRepresentableInStark)
+    }
     @Test func representableDescriptorsReportTrue() {
         #expect(RecurrenceDescriptor(frequency: .daily).isRepresentableInStark)
         #expect(RecurrenceDescriptor(frequency: .weekly, daysOfTheWeek: [.init(.monday)]).isRepresentableInStark)
