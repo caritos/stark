@@ -249,15 +249,36 @@ enum ItemRepositoryContract {
 
     static func completingUntilExhaustedCompletesItself(_ make: () async -> RepositoryHarness) async throws {
         let h = await make()
-        let due = shifted(h.now.addingTimeInterval(-3600), days: -1)
-        // Today's occurrence (now - 1h) already passed and tomorrow's is after UNTIL.
-        let rule = RecurrenceRule(frequency: .daily, until: h.now.addingTimeInterval(3600))
+        // Built from the start of today with fixed hours, so the outcome is the same at any time of
+        // day (a `now - 1h` due fell on yesterday in the first hour of the day). Due 09:00 two days
+        // ago, repeating daily until yesterday (noon; EventKit stores the end of that day): every
+        // occurrence up to UNTIL is already behind now, the next one (today 09:00) is after it.
+        let today = cal.startOfDay(for: h.now)
+        let due = try #require(cal.date(bySettingHour: 9, minute: 0, second: 0, of: shifted(today, days: -2)))
+        let until = try #require(cal.date(bySettingHour: 12, minute: 0, second: 0, of: shifted(today, days: -1)))
+        let rule = RecurrenceRule(frequency: .daily, until: until)
         let ref = try await h.repository.addReminder(NewReminder(title: "Until", due: due, recurrence: rule),
                                                      listID: h.listID)
         try await h.repository.complete(ref, on: h.now)
         let r = try #require(try await h.repository.details(ref).reminder)
         #expect(r.isCompleted)
         #expect(try await copies(of: ref, in: h).isEmpty)
+    }
+
+    /// The repetition guard (`complete` ignores a date before a series' current due day) is for
+    /// repeating reminders only: a one-off completes whatever `date` it is given.
+    static func completingAOneOffIgnoresTheDate(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let due = try #require(cal.date(bySettingHour: 9, minute: 0, second: 0, of: shifted(cal.startOfDay(for: h.now), days: 3)))
+        for (title, date) in [("One-off earlier", shifted(due, days: -5)), ("One-off later", shifted(due, days: 4)),
+                              ("One-off same", due)] {
+            let ref = try await h.repository.addReminder(NewReminder(title: title, due: due), listID: h.listID)
+            try await h.repository.complete(ref, on: date)
+            let r = try #require(try await h.repository.details(ref).reminder)
+            #expect(r.isCompleted, "\(title)")
+            #expect(r.dueDate == due, "\(title)")
+            #expect(try await copies(of: ref, in: h).isEmpty, "\(title)")
+        }
     }
 
     /// A second completion of the same occurrence (double tap, the checkbox timer firing after
@@ -330,6 +351,9 @@ struct FakeItemRepositoryContractTests {
     }
     @Test func completingUntilExhaustedCompletesItself() async throws {
         try await ItemRepositoryContract.completingUntilExhaustedCompletesItself(Self.make)
+    }
+    @Test func completingAOneOffIgnoresTheDate() async throws {
+        try await ItemRepositoryContract.completingAOneOffIgnoresTheDate(Self.make)
     }
     @Test func notWritableCalendarThrows() async throws {
         try await ItemRepositoryContract.notWritableCalendarThrows(Self.make)
