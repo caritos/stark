@@ -105,8 +105,15 @@ final class AppleOverlayModel {
     /// Drops any in-flight reload's result and empties the snapshot.
     private func clearSnapshot() {
         gate.invalidate()
-        fetched = AppleSnapshot(events: [], reminders: [])
-        snapshot = fetched
+        emptySnapshots()
+    }
+
+    /// Writes only when something is there: an overlay-off user reaches this on every reload, and
+    /// an unconditional write to the observed `snapshot` would redraw every screen reading it.
+    private func emptySnapshots() {
+        let empty = AppleSnapshot(events: [], reminders: [])
+        if fetched != empty { fetched = empty }
+        if snapshot != empty { snapshot = empty }
     }
 
     func setShown(_ id: String, _ shown: Bool) {
@@ -157,10 +164,7 @@ final class AppleOverlayModel {
             failed: { error in
                 Self.log.error("Apple overlay fetch failed: \(error.localizedDescription, privacy: .public)")
             },
-            clear: {
-                fetched = AppleSnapshot(events: [], reminders: [])
-                snapshot = fetched
-            }
+            clear: { self.emptySnapshots() }
         )
     }
 
@@ -178,7 +182,8 @@ final class AppleOverlayModel {
 
     private func applySelection() {
         guard isEnabled, access == .granted else {
-            snapshot = AppleSnapshot(events: [], reminders: [])
+            let empty = AppleSnapshot(events: [], reminders: [])
+            if snapshot != empty { snapshot = empty }
             return
         }
         snapshot = selection.filtered(fetched)
