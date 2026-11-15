@@ -17,7 +17,8 @@ import StarkKit
 /// runs on the main actor. `@unchecked Sendable`: the only state is the provider (itself
 /// `Sendable`, holding the one shared `EKEventStore`) and a lock. Every write runs synchronously
 /// under `writeLock`, so a batch's uncommitted saves and its `reset()` rollback can never mix with
-/// another write. EventKit objects never leave this file.
+/// another write. Every failed save or remove also resets the store under the lock, so a refused
+/// change never lingers in the shared store's memory. EventKit objects never leave this file.
 ///
 /// Identifiers: an event ref carries `eventIdentifier` (what the overlay rows carry, see
 /// `EventKitProvider.map`), a reminder ref `calendarItemIdentifier`. A detached occurrence's
@@ -42,6 +43,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                 try store.save(ekEvent, span: .futureEvents, commit: true)
             } catch {
                 ekEvent.rollback()
+                store.reset()
                 throw error
             }
             return Self.ref(for: ekEvent)
@@ -56,6 +58,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                 try store.save(ekReminder, commit: true)
             } catch {
                 ekReminder.rollback()
+                store.reset()
                 throw error
             }
             return Self.ref(for: ekReminder)
@@ -147,6 +150,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                 try store.save(master, span: .futureEvents, commit: true)
             } catch {
                 master.rollback()
+                store.reset()
                 throw error
             }
         }
@@ -162,6 +166,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                 try store.save(ekReminder, commit: true)
             } catch {
                 ekReminder.rollback()
+                store.reset()
                 throw error
             }
         }
@@ -178,11 +183,17 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
             case .event:
                 let master = try event(ref)
                 try checkWritable(master.calendar)
-                try store.remove(master, span: .futureEvents, commit: true)
+                try remove(master, span: .futureEvents)
             case .reminder:
                 let ekReminder = try reminder(ref)
                 try checkWritable(ekReminder.calendar)
-                try store.remove(ekReminder, commit: true)
+                do {
+                    try store.remove(ekReminder, commit: true)
+                } catch {
+                    ekReminder.rollback()
+                    store.reset()
+                    throw error
+                }
             }
         }
     }
@@ -242,6 +253,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                 try store.save(ekReminder, commit: true)
             } catch {
                 ekReminder.rollback()
+                store.reset()
                 throw error
             }
         }
@@ -260,6 +272,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                 try store.save(ekReminder, commit: true)
             } catch {
                 ekReminder.rollback()
+                store.reset()
                 throw error
             }
         }
@@ -267,8 +280,16 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
 
     // MARK: - Lookup and checks
 
+    /// Removes with commit; on failure rolls the event back and resets the store (as every failed
+    /// write does), so no half-applied change stays in the shared store's memory.
     private func remove(_ event: EKEvent, span: EKSpan) throws {
-        try store.remove(event, span: span, commit: true)
+        do {
+            try store.remove(event, span: span, commit: true)
+        } catch {
+            event.rollback()
+            store.reset()
+            throw error
+        }
     }
 
     /// Runs `body` under the write lock and maps every error to `ItemRepositoryError`.
