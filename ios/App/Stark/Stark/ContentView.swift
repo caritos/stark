@@ -18,6 +18,7 @@ struct ContentView: View {
     @EnvironmentObject private var pending: PendingCompletions
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(DefaultDestinationModel.self) private var destinations
+    @Environment(NoticeCenter.self) private var notices
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var showSearch = false
@@ -53,8 +54,8 @@ struct ContentView: View {
     /// not matter: bridge items go to Apple and their idempotency lives in the sidecar ledger.
     @State private var bridgeReady = false
     @State private var pendingBridgeURLs: [URL] = []
-    @State private var notice: String?
-    @State private var noticeTask: Task<Void, Never>?
+    /// Set by Add's "Open Settings": Settings opens once the Add sheet has gone.
+    @State private var openSettingsAfterAdd = false
 
     init(bridge: ClaudeBridge, secrets: SecretStore) {
         self.bridge = bridge
@@ -100,9 +101,9 @@ struct ContentView: View {
     /// `ModeHandle` row on Mac.
     private var screenContent: some View {
         VStack(spacing: 0) {
-            if let notice {
+            if let notice = notices.text {
                 Button {
-                    dismissNotice()
+                    notices.dismiss()
                 } label: {
                     Text(notice)
                         .font(.footnote)
@@ -190,7 +191,17 @@ struct ContentView: View {
         // never pushes further destinations from itself (Add/Edit are sheets, not pushes), so
         // nothing relies on the bar being there.
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: $showAdd) { AddItemView() }
+        .sheet(isPresented: $showAdd, onDismiss: {
+            if openSettingsAfterAdd {
+                openSettingsAfterAdd = false
+                showSettings = true
+            }
+        }) {
+            AddItemView(onOpenSettings: {
+                openSettingsAfterAdd = true
+                showAdd = false
+            })
+        }
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showSettings) { SettingsView(secrets: secrets) }
         .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item, today: today) }
@@ -232,27 +243,10 @@ struct ContentView: View {
     private func handleBridge(_ url: URL) {
         Task {
             let outcome = await bridge.handle(url)
-            if let text = outcome.notice { showNotice(text) }
+            if let text = outcome.notice { notices.show(text) }
             // EKEventStoreChanged is not reliable after a save (write spike f).
             if case .added = outcome { await overlay.refreshAfterWrite() }
         }
-    }
-
-    private func showNotice(_ text: String) {
-        noticeTask?.cancel()
-        notice = text
-        #if !targetEnvironment(macCatalyst)
-        UIAccessibility.post(notification: .announcement, argument: text)
-        #endif
-        noticeTask = Task {
-            try? await Task.sleep(for: .seconds(4))
-            if !Task.isCancelled { notice = nil }
-        }
-    }
-
-    private func dismissNotice() {
-        noticeTask?.cancel()
-        notice = nil
     }
 
     /// Square (hard-edged, matching the rest of the app), accent-filled, no shadow or glass

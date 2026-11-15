@@ -10,91 +10,54 @@ import StarkKit
 ///
 /// The Event / Reminder switch above the form converts the item (issue #116): the form switches
 /// to the other kind's fields at once, but nothing is stored until Save, which replaces the item
-/// under the same id in one store call (`PlannerStore.convertEvent` / `convertReminder`). While
-/// converting, the per-occurrence actions and History (which belong to the old kind) are hidden.
+/// (`ItemRouter.convertEvent` / `convertReminder`). While converting, the per-occurrence actions
+/// and History (which belong to the old kind) are hidden.
+///
+/// Every write goes through `ItemRouter`: Stark's own items go to the local store as before;
+/// Apple items (`details` set, loaded by `AppleItemEditor`) are diffed against the stored item's
+/// form baseline, so only the fields the owner changed are written (spec call 5). Apple items
+/// show no History, no reminder Skip (Apple Reminders can't skip one occurrence), and a repeat
+/// Stark can't represent is shown read-only. A failed write shows its message in the sheet's
+/// banner and the sheet stays open.
 struct EditItemView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @Environment(\.itemRouter) private var router
+    @Environment(AppleOverlayModel.self) private var overlay
+    @Environment(NoticeCenter.self) private var notices
     let item: AgendaItem
+    /// The stored Apple item this sheet edits (`ItemRouter.details`), nil for Stark's own items.
+    /// Its form baseline is the `original` every Apple update diffs against (spec call 5).
+    let details: ItemDetails?
 
-    @State private var title: String
-    @State private var date: Date
-    /// Events only. An event with no end starts with Ends equal to Starts, which stores as no end.
-    @State private var endDate: Date
-    @State private var allDay: Bool
-    /// The item's rule without its end (`withoutEnd`); the end is `repeatEnd`, applied on save,
-    /// because the repeat presets replace the whole rule and their checkmark compares whole rules.
-    @State private var recurrence: RecurrenceRule?
-    @State private var repeatEnd: RepeatEnd
-    @State private var notes: String
-    @State private var location: String
-    /// Events only; reminders have no URL.
-    @State private var url: String
-    @State private var priority: ReminderPriority
+    /// The editable fields; the logic that turns them back into an item is StarkKit's.
+    @State private var form: ItemEditForm
     @State private var showDeleteConfirm = false
     /// The kind the form describes; differs from the item's own kind while converting.
     @State private var kind: ItemKind
     @State private var showMarksConfirm = false
+    /// A router failure, shown in the sheet's banner; the sheet stays open.
+    @State private var errorMessage: String?
+    @State private var isWorking = false
+    /// A repeat change on a series with occurrences edited in Calendar: asked before resending.
+    @State private var showRuleChangeConfirm = false
+    /// Converting an Apple event with attendees deletes it (and may notify them): asked first.
+    @State private var showAttendeesConvertConfirm = false
 
     /// Which text field has focus, so the keyboard's sigil buttons know which one to append to
     /// (and stay hidden for the URL field, which must not get tags).
     private enum Field { case title, location, url, notes }
     @FocusState private var focusedField: Field?
 
-    /// The date and all-day flag the form started with, used to tell "left alone" from "edited".
-    private let initialDate: Date
-    private let initialAllDay: Bool
     /// One stable "today" for the history stats, captured when the sheet is created.
     private let sheetToday = Date()
 
-    init(item: AgendaItem) {
+    init(item: AgendaItem, details: ItemDetails? = nil) {
         self.item = item
-        let startDate: Date
-        let startEnd: Date
-        let startAllDay: Bool
-        let startRecurrence: RecurrenceRule?
-        let startNotes: String
-        let startLocation: String
-        let startURL: String
-        let startPriority: ReminderPriority
-        switch item.kind {
-        case .event(let event):
-            startDate = event.start
-            // Switching from all-day to timed drops the end (see `Event.scheduled`), so an
-            // all-day event's own end is not offered as the timed one.
-            startEnd = EventSchedule.formEnd(for: event)
-            startAllDay = event.isAllDay
-            startRecurrence = event.recurrence
-            startNotes = event.notes ?? ""
-            startLocation = event.location ?? ""
-            startURL = event.url ?? ""
-            startPriority = .none
-        case .reminder(let reminder):
-            // For a recurring reminder `dueDate` is the series' anchor, not the tapped
-            // occurrence (`item.occurrence`) — editing changes every occurrence.
-            startDate = reminder.dueDate ?? item.occurrence
-            startEnd = startDate
-            startAllDay = FormFields.isAllDay(reminder)
-            startRecurrence = reminder.recurrence
-            startNotes = reminder.notes ?? ""
-            startLocation = ""
-            startURL = ""
-            startPriority = ReminderPriority(icalValue: reminder.priority)
-        }
-        _title = State(initialValue: item.title)
-        _date = State(initialValue: startDate)
-        _endDate = State(initialValue: startEnd)
-        _allDay = State(initialValue: startAllDay)
-        _recurrence = State(initialValue: startRecurrence?.withoutEnd)
-        _repeatEnd = State(initialValue: RepeatEnd(rule: startRecurrence))
-        _notes = State(initialValue: startNotes)
-        _location = State(initialValue: startLocation)
-        _url = State(initialValue: startURL)
-        _priority = State(initialValue: startPriority)
+        self.details = details
+        _form = State(initialValue: ItemEditForm(item: item))
         if case .event = item.kind { _kind = State(initialValue: .event) } else { _kind = State(initialValue: .reminder) }
-        initialDate = startDate
-        initialAllDay = startAllDay
     }
 
     var body: some View {
@@ -103,50 +66,63 @@ struct EditItemView: View {
             // cards regardless of `.listStyle`, and the design has no rounded corners.
             List {
                 Section {
-                    TextField("Title", text: $title)
+                    TextField("Title", text: $form.title)
                         .focused($focusedField, equals: .title)
-                    TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
-                    DatePicker(dateLabel, selection: $date,
-                               displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
-                        .onChange(of: date) { oldValue, newValue in
+                    TagSuggestionRow(text: form.title) { form.title = TagAutocomplete.applying($0, to: form.title) }
+                    DatePicker(dateLabel, selection: $form.date,
+                               displayedComponents: form.allDay ? [.date] : [.date, .hourAndMinute])
+                        .onChange(of: form.date) { oldValue, newValue in
                             // Moving the start moves the end with it, so the duration is kept.
-                            endDate = EventSchedule.shiftedEnd(endDate, oldStart: oldValue, newStart: newValue)
+                            form.endDate = EventSchedule.shiftedEnd(form.endDate, oldStart: oldValue, newStart: newValue)
                             // A repeat end never precedes the start's day.
-                            repeatEnd = repeatEnd.clamped(toStartOn: newValue)
+                            form.repeatEnd = form.repeatEnd.clamped(toStartOn: newValue)
                         }
                     if isEvent {
-                        DatePicker("Ends", selection: $endDate, in: date...,
-                                   displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
+                        DatePicker("Ends", selection: $form.endDate, in: form.date...,
+                                   displayedComponents: form.allDay ? [.date] : [.date, .hourAndMinute])
                     }
-                    Toggle("All day", isOn: $allDay)
+                    Toggle("All day", isOn: $form.allDay)
 
-                    NavigationLink {
-                        RepeatPickerView(recurrence: $recurrence)
-                    } label: {
-                        HStack {
-                            Text("Repeat")
-                            Spacer()
-                            Text(recurrenceSummary).foregroundStyle(Colors.textSecondary)
+                    if hasUnrepresentableRepeat {
+                        // Never offered for editing and never part of a patch: the stored rule
+                        // has a shape Stark's picker can't express.
+                        LabeledContent("Repeat") {
+                            Text("Custom, set in \(isEvent ? "Calendar" : "Reminders")")
+                                .foregroundStyle(Colors.textSecondary)
                         }
-                    }
-
-                    if recurrence != nil {
+                        .accessibilityElement(children: .combine)
+                        .accessibilityHint("Read only. Change this repeat in Apple's app.")
+                    } else {
                         NavigationLink {
-                            RepeatEndPickerView(end: $repeatEnd, startDate: date)
+                            RepeatPickerView(recurrence: $form.recurrence)
                         } label: {
                             HStack {
-                                Text("Repeat End")
+                                Text("Repeat")
                                 Spacer()
-                                Text(repeatEnd.summary).foregroundStyle(Colors.textSecondary)
+                                Text(recurrenceSummary).foregroundStyle(Colors.textSecondary)
+                            }
+                        }
+
+                        if form.recurrence != nil {
+                            NavigationLink {
+                                RepeatEndPickerView(end: $form.repeatEnd, startDate: form.date)
+                            } label: {
+                                HStack {
+                                    Text("Repeat End")
+                                    Spacer()
+                                    Text(form.repeatEnd.summary).foregroundStyle(Colors.textSecondary)
+                                }
                             }
                         }
                     }
 
                     if isEvent {
-                        TextField("Location", text: $location)
+                        TextField("Location", text: $form.location)
                             .focused($focusedField, equals: .location)
-                        TagSuggestionRow(text: location) { location = TagAutocomplete.applying($0, to: location) }
-                        TextField("URL", text: $url)
+                        TagSuggestionRow(text: form.location) {
+                            form.location = TagAutocomplete.applying($0, to: form.location)
+                        }
+                        TextField("URL", text: $form.url)
                             .keyboardType(.URL)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
@@ -155,24 +131,27 @@ struct EditItemView: View {
                     if !isEvent {
                         // A segmented picker drops its label on iOS, so it is shown by the row.
                         LabeledContent("Priority") {
-                            Picker("Priority", selection: $priority) {
+                            Picker("Priority", selection: $form.priority) {
                                 ForEach(ReminderPriority.allCases, id: \.self) { Text($0.pickerLabel) }
                             }
                             .pickerStyle(.segmented)
                             .labelsHidden()
                         }
                     }
-                    TextField("Notes", text: $notes, axis: .vertical)
+                    TextField("Notes", text: $form.notes, axis: .vertical)
                         .lineLimit(1...6)
                         .focused($focusedField, equals: .notes)
-                    TagSuggestionRow(text: notes) { notes = TagAutocomplete.applying($0, to: notes) }
+                    TagSuggestionRow(text: form.notes) { form.notes = TagAutocomplete.applying($0, to: form.notes) }
                 } footer: {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                        if item.isRecurring {
+                        if item.isRecurring || hasUnrepresentableRepeat {
                             Text("Changes apply to every occurrence.")
                         }
                         if movesDetailsToNotes {
                             Text("Location and URL will be added to the notes.")
+                        }
+                        if let source = item.appleSource {
+                            Text("Saved in \(source.isReminder ? "Reminders" : "Calendar"): \(source.calendarTitle).")
                         }
                     }
                     .font(.footnote)
@@ -221,6 +200,7 @@ struct EditItemView: View {
                     }
                     Button("Delete", role: .destructive) { showDeleteConfirm = true }
                 }
+                .disabled(isWorking)
                 .listRowBackground(Colors.background)
             }
             // Flat list rows (not inset-grouped rounded cards) to keep hard edges.
@@ -228,9 +208,9 @@ struct EditItemView: View {
             .scrollContentBackground(.hidden)
             .background(Colors.background)
             .listRowSeparatorTint(Colors.separator)
-            .onChange(of: recurrence) { _, newValue in
+            .onChange(of: form.recurrence) { _, newValue in
                 // Repeat = Never resets the end.
-                if newValue == nil { repeatEnd = .never }
+                if newValue == nil { form.repeatEnd = .never }
             }
             .task {
                 // Full-history corpus for tag suggestions (`+`/`@`/`%`/`~`); non-blocking --
@@ -241,11 +221,16 @@ struct EditItemView: View {
                               onTap: insertSigil)
             // Same pinned switch as Add (issue #109); only for an event or an open reminder.
             .safeAreaInset(edge: .top, spacing: 0) {
-                if canConvert {
-                    KindSwitch(kind: kindSelection)
-                        .padding(.horizontal, Spacing.md)
-                        .padding(.vertical, Spacing.sm)
-                        .background(Colors.background)
+                VStack(spacing: 0) {
+                    if let errorMessage {
+                        SheetErrorBanner(text: errorMessage) { self.errorMessage = nil }
+                    }
+                    if canConvert {
+                        KindSwitch(kind: kindSelection)
+                            .padding(.horizontal, Spacing.md)
+                            .padding(.vertical, Spacing.sm)
+                            .background(Colors.background)
+                    }
                 }
             }
             .alert("Convert to Reminder?", isPresented: $showMarksConfirm) {
@@ -254,12 +239,24 @@ struct EditItemView: View {
             } message: {
                 Text(marksMessage)
             }
+            .alert("Change the repeat?", isPresented: $showRuleChangeConfirm) {
+                Button("Change", role: .destructive) { save(confirmRuleChange: true) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(ItemRouterError.ruleChangeConfirmation)
+            }
+            .alert("Convert this event?", isPresented: $showAttendeesConvertConfirm) {
+                Button("Convert", role: .destructive) { save(confirmAttendees: true) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This event has invitees. Converting creates a reminder and deletes the event from Calendar, which may notify them.")
+            }
             .navigationTitle(kind.rawValue)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Colors.background, for: .navigationBar)
             .toolbar {
                 SquareToolbarButton(systemImage: "checkmark", label: "Save", placement: .confirmationAction,
-                                    isProminent: true, isDisabled: trimmedTitle.isEmpty) { save() }
+                                    isProminent: true, isDisabled: form.trimmedTitle.isEmpty || isWorking) { save() }
                 SquareToolbarButton(systemImage: "xmark", label: "Cancel", placement: .cancellationAction) { dismiss() }
             }
             .confirmationDialog(deleteMessage, isPresented: $showDeleteConfirm, titleVisibility: .visible) {
@@ -272,17 +269,23 @@ struct EditItemView: View {
 
     private func insertSigil(_ sigil: Character) {
         switch focusedField {
-        case .title: title = TagAutocomplete.appending(sigil, to: title)
-        case .location: location = TagAutocomplete.appending(sigil, to: location)
-        case .notes: notes = TagAutocomplete.appending(sigil, to: notes)
+        case .title: form.title = TagAutocomplete.appending(sigil, to: form.title)
+        case .location: form.location = TagAutocomplete.appending(sigil, to: form.location)
+        case .notes: form.notes = TagAutocomplete.appending(sigil, to: form.notes)
         case .url, nil: break
         }
     }
 
     // MARK: Derived state
 
+    private var isApple: Bool { details != nil }
+
+    private var hasUnrepresentableRepeat: Bool { details?.hasUnrepresentableRepeat == true }
+
     /// Completion / attendance history for this item (recomputed from the store each render).
+    /// None for Apple items: Apple keeps their completions, Stark does not (spec decision 1).
     private var history: CompletionHistory? {
+        guard !isApple else { return nil }
         switch item.kind {
         case .reminder(let reminder):
             return CompletionHistory.forReminder(reminder, among: store.reminders, today: sheetToday)
@@ -310,8 +313,10 @@ struct EditItemView: View {
         }
     }
 
-    /// Attended/skipped marks an event would lose by becoming a reminder.
+    /// Attended/skipped marks an event would lose by becoming a reminder. An Apple event's marks
+    /// live in the sidecar and move to the new reminder with it, so none are lost.
     private var droppedMarks: Int {
+        guard !isApple else { return 0 }
         if case .event(let event) = item.kind { return ItemConversion.droppedMarks(converting: event) }
         return 0
     }
@@ -324,7 +329,7 @@ struct EditItemView: View {
     /// Event -> reminder with a location or URL typed: those move into the notes on save.
     private var movesDetailsToNotes: Bool {
         isConverting && originalKind == .event
-            && (FormFields.trimmedOrNil(location) != nil || FormFields.trimmedOrNil(url) != nil)
+            && (FormFields.trimmedOrNil(form.location) != nil || FormFields.trimmedOrNil(form.url) != nil)
     }
 
     /// The switch's binding: choosing Reminder for an event with marks asks first (on the tap,
@@ -344,18 +349,14 @@ struct EditItemView: View {
 
     private var dateLabel: String { isEvent ? "Starts" : "Due" }
 
-    private var trimmedTitle: String {
-        title.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     private var recurrenceSummary: String {
-        recurrence?.summary ?? "Never"
+        form.recurrence?.summary ?? "Never"
     }
 
     /// Events only: the typed URL when it is a well-formed http or https link, else nil.
     private var openableLink: URL? {
         guard isEvent,
-              let link = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let link = URL(string: form.url.trimmingCharacters(in: .whitespacesAndNewlines)),
               let scheme = link.scheme?.lowercased(),
               scheme == "http" || scheme == "https",
               let host = link.host(percentEncoded: false), !host.isEmpty
@@ -375,8 +376,10 @@ struct EditItemView: View {
         return false
     }
 
-    /// Reminders only; a recurring event's equivalent is "Remove This Occurrence" in `eventActions`.
+    /// Stark's own repeating reminders only; a recurring event's equivalent is "Remove This
+    /// Occurrence" in `eventActions`. Apple Reminders can't skip one occurrence.
     private var showsSkip: Bool {
+        guard !isApple else { return false }
         if case .reminder = item.kind { return item.isRecurring && !item.isCompleted }
         return false
     }
@@ -388,95 +391,105 @@ struct EditItemView: View {
     }
 
     private var deleteMessage: String {
-        item.isRecurring
+        if let source = item.appleSource {
+            let app = source.isReminder ? "Reminders" : "Calendar"
+            return item.isRecurring
+                ? "This deletes every occurrence from \(app)."
+                : "This deletes it from \(app)."
+        }
+        return item.isRecurring
             ? "This deletes all future occurrences."
             : "This cannot be undone."
     }
 
     // MARK: Actions
 
-    private func save() {
+    /// Runs one router call; dismisses on success, shows the message and stays open on failure.
+    private func perform(_ operation: @escaping (ItemRouter) async throws -> Void) {
+        guard let router, !isWorking else { return }
+        isWorking = true
+        errorMessage = nil
+        Task {
+            defer { isWorking = false }
+            do {
+                try await operation(router)
+                dismiss()
+            } catch let error as ItemRouterError where error.asksToConfirmRuleChange {
+                showRuleChangeConfirm = true
+            } catch {
+                errorMessage = error.routerMessage
+            }
+        }
+    }
+
+    private func save(confirmRuleChange: Bool = false, confirmAttendees: Bool = false) {
+        // Apple items diff against what an untouched form would write (spec call 5).
+        let original = details?.formBaseline()
+        let form = form
         switch (item.kind, kind) {
         case (.event(let event), .event):
-            store.updateEvent(edited(event))
+            let edited = form.edited(event)
+            perform { try await $0.update(event: edited, original: original, confirmRuleChange: confirmRuleChange) }
         case (.reminder(let reminder), .reminder):
-            store.updateReminder(edited(reminder))
+            // The sheet has no reminder URL field: pass the stored one so it is kept.
+            let edited = form.edited(reminder)
+            perform { try await $0.update(reminder: edited, url: details?.reminderURL, original: original) }
         case (.event(let event), .reminder):
+            if details?.convertAsksFirst == true && !confirmAttendees {
+                showAttendeesConvertConfirm = true
+                return
+            }
             // Apply the form to the event, then convert (location/URL go into the notes, the end
-            // and marks are dropped), then the reminder-only field: one store call, one write each.
-            var converted = ItemConversion.reminder(from: edited(event))
-            converted.priority = priority.icalValue
-            store.convertEvent(id: event.id, to: converted)
+            // and marks are dropped), then the reminder-only field.
+            var converted = ItemConversion.reminder(from: form.edited(event))
+            converted.priority = form.priority.icalValue
+            perform { try await $0.convertEvent(id: event.id, to: converted) }
         case (.reminder(let reminder), .event):
             // Priority is dropped; the form's Starts/Ends/All day and Location/URL apply (an
             // undated reminder lands all-day).
-            var converted = ItemConversion.event(fromEdited: edited(reminder), originalDueDate: reminder.dueDate,
-                                                 start: date, end: endDate, allDay: allDay)
-            converted.location = FormFields.trimmedOrNil(location)
-            converted.url = FormFields.trimmedOrNil(url)
-            store.convertReminder(id: reminder.id, to: converted)
+            var converted = ItemConversion.event(fromEdited: form.edited(reminder), originalDueDate: reminder.dueDate,
+                                                 start: form.date, end: form.endDate, allDay: form.allDay)
+            converted.location = FormFields.trimmedOrNil(form.location)
+            converted.url = FormFields.trimmedOrNil(form.url)
+            perform { try await $0.convertReminder(id: reminder.id, to: converted) }
         }
-        dismiss()
-    }
-
-    /// The event with the form's fields applied.
-    private func edited(_ event: Event) -> Event {
-        // `scheduled` stores the picked start/end (an all-day end is its last day) and drops an
-        // end that is not after the start.
-        var updated = event.scheduled(start: date, end: endDate, allDay: allDay)
-        updated.title = trimmedTitle
-        updated.recurrence = repeatEnd.applied(to: recurrence)
-        updated.notes = FormFields.trimmedOrNil(notes)
-        updated.location = FormFields.trimmedOrNil(location)
-        updated.url = FormFields.trimmedOrNil(url)
-        return updated
-    }
-
-    /// The reminder with the form's fields applied.
-    private func edited(_ reminder: Reminder) -> Reminder {
-        var updated = reminder
-        updated.title = trimmedTitle
-        // A reminder with no due date stays that way unless the user picked one.
-        if reminder.dueDate != nil || date != initialDate || allDay != initialAllDay {
-            updated.dueDate = FormFields.normalizedStart(date, allDay: allDay)
-        }
-        updated.recurrence = repeatEnd.applied(to: recurrence)
-        updated.notes = FormFields.trimmedOrNil(notes)
-        updated.priority = ReminderPriority.updated(original: reminder.priority, chosen: priority)
-        return updated
     }
 
     private func markDone() {
         guard case .reminder(let reminder) = item.kind else { return }
-        store.completeReminder(id: reminder.id, on: item.occurrence)
-        dismiss()
+        let occurrence = item.occurrence
+        perform { try await $0.complete(id: reminder.id, on: occurrence) }
     }
 
     private func markUndone() {
         guard case .reminder(let reminder) = item.kind else { return }
-        store.uncompleteReminder(id: reminder.id)
-        dismiss()
+        // Decided before the write: afterwards the snapshot no longer shows this copy completed.
+        let notice = UncompleteNotice.text(for: item, snapshot: overlay.snapshot)
+        let notices = notices
+        perform { router in
+            try await router.uncomplete(id: reminder.id)
+            if let notice { notices.show(notice) }
+        }
     }
 
     private func markOutcome(_ outcome: EventOutcome?) {
         guard case .event(let event) = item.kind else { return }
-        store.setEventOutcome(id: event.id, on: item.occurrence, outcome: outcome)
-        dismiss()
+        let occurrence = item.occurrence
+        perform { try await $0.setEventOutcome(id: event.id, on: occurrence, outcome: outcome) }
     }
 
     private func skipOccurrence() {
+        let occurrence = item.occurrence
         switch item.kind {
-        case .event(let event): store.skipEvent(id: event.id, on: item.occurrence)
-        case .reminder(let reminder): store.skipReminder(id: reminder.id, on: item.occurrence)
+        case .event(let event): perform { try await $0.skipEvent(id: event.id, on: occurrence) }
+        case .reminder(let reminder): perform { try await $0.skipReminder(id: reminder.id, on: occurrence) }
         }
-        dismiss()
     }
 
     private func delete() {
         switch item.kind {
-        case .event(let event): store.deleteEvent(id: event.id)
-        case .reminder(let reminder): store.deleteReminder(id: reminder.id)
+        case .event(let event): perform { try await $0.deleteEvent(id: event.id) }
+        case .reminder(let reminder): perform { try await $0.deleteReminder(id: reminder.id) }
         }
-        dismiss()
     }
 }

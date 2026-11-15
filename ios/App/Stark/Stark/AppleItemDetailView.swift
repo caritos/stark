@@ -2,9 +2,9 @@
 import SwiftUI
 import StarkKit
 
-/// What a tapped agenda / Search / Weekly Review row opens: the Stark edit sheet, or the
-/// read-only Apple detail. The routing is `AgendaItemDetail` (StarkKit), so a read-only item can
-/// never be handed to `EditItemView` (and through it to `PlannerStore`).
+/// What a tapped agenda / Search / Weekly Review row opens: Stark's edit sheet, the Apple editor
+/// (a row in a writable calendar or list), or the read-only Apple detail. The routing is
+/// `AgendaItemDetail` (StarkKit), so a read-only item can never be handed to `EditItemView`.
 struct AgendaItemDetailSheet: View {
     let item: AgendaItem
     /// The real today, for an overdue reminder's "N days overdue" suffix; nil shows none.
@@ -13,7 +13,94 @@ struct AgendaItemDetailSheet: View {
     var body: some View {
         switch AgendaItemDetail(item) {
         case .edit(let editable): EditItemView(item: editable)
+        case .editableApple(let row, let ref): AppleItemEditor(row: row, ref: ref, today: today)
         case .readOnly(let readOnly): AppleItemDetailView(item: readOnly, today: today)
+        }
+    }
+}
+
+/// Opens a writable Apple item for editing: loads the REAL stored item (`ItemRouter.details`, with
+/// its repeat rule and write permission; never the overlay's stand-in) and, for an event, its
+/// attended/skipped mark for the tapped day. A spinner shows until it arrives; a failure shows its
+/// message and a Close button. An item the owner can't edit after all (an invitee-only event, a
+/// calendar that turned read-only) opens the read-only detail (`AppleEditorState`).
+struct AppleItemEditor: View {
+    @Environment(\.itemRouter) private var router
+    @Environment(\.dismiss) private var dismiss
+    let row: AgendaItem
+    let ref: AppleItemRef
+    var today: Date? = nil
+
+    private enum Phase {
+        case loading
+        case failed(String)
+        case loaded(AppleEditorState, AgendaItem)
+    }
+
+    @State private var phase: Phase = .loading
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .loading:
+                placeholder {
+                    ProgressView()
+                        .tint(Colors.accent)
+                        .accessibilityLabel("Loading the item")
+                }
+            case .failed(let message):
+                placeholder {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(Colors.text)
+                        .padding(Spacing.md)
+                }
+            case .loaded(.edit(let details), let item):
+                EditItemView(item: item, details: details)
+            case .loaded(.readOnly, let item):
+                AppleItemDetailView(item: item, today: today)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func placeholder<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        NavigationStack {
+            VStack {
+                Spacer()
+                content()
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .background(Colors.background)
+            .navigationTitle(ref.kind == .event ? "Event" : "Reminder")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Colors.background, for: .navigationBar)
+            .toolbar {
+                SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
+            }
+        }
+        .tint(Colors.accent)
+        .preferredColorScheme(.dark)
+    }
+
+    private func load() async {
+        guard case .loading = phase else { return }
+        guard let router else {
+            phase = .failed("This item couldn't be loaded for editing. Close it and try again.")
+            return
+        }
+        let id = ItemOrigin.modelID(for: ref)
+        do {
+            let details = try await router.details(id: id, kind: ref.kind)
+            // The mark is Stark's own (sidecar); an unreadable sidecar only hides it.
+            var outcome: EventOutcome?
+            if ref.kind == .event { outcome = (try? await router.eventOutcome(id: id, on: row.occurrence)) ?? nil }
+            let state = AppleEditorState(details: details)
+            // The read-only detail keeps the row as the agenda showed it (the occurrence's times).
+            phase = .loaded(state, state == .readOnly ? row : row.withStoredItem(details, outcome: outcome))
+        } catch {
+            phase = .failed(error.routerMessage)
         }
     }
 }
