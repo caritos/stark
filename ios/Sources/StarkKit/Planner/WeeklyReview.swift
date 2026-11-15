@@ -19,7 +19,7 @@ public struct WeeklyReview: Equatable {
     public let weekStart: Date
     /// Start of Sunday through the last second of Saturday.
     public let range: ClosedRange<Date>
-    /// Completed reminders due in the week, by occurrence.
+    /// Completed reminders due in the week (Apple ones: completed in the week), by occurrence.
     public let completed: [AgendaItem]
     /// Incomplete reminders whose (possibly missed) occurrence is in the week, by occurrence.
     public let open: [AgendaItem]
@@ -96,11 +96,21 @@ public struct WeeklyReview: Equatable {
         return min(week.lowerBound, lookbackStart)...week.upperBound
     }
 
+    /// `apple` (default empty: local behaviour unchanged) adds Apple reminders, read only from
+    /// what Apple keeps (spec Decision 1, spike (a)):
+    /// - a completed Apple reminder counts in the week of its COMPLETION date (`completedAt`, or
+    ///   its due date when Apple gave none), and that is its row's `occurrence`. Apple leaves a
+    ///   completed copy per completion of a repeating reminder, so those count like one-offs;
+    /// - an open dated Apple reminder is open when its current due date is in the week;
+    /// - nothing is derived from a series having moved on (no invented completions), undated
+    ///   reminders are in no week, and Apple events add no attended count (outcomes live in the
+    ///   sidecar, which this engine does not read).
     public static func summary(
         events: [Event],
         reminders: [Reminder],
         weekStarting weekStart: Date,
         today: Date,
+        apple: AppleSnapshot = .empty,
         calendar: Calendar = Calendar(identifier: .gregorian)
     ) -> WeeklyReview {
         let start = calendar.startOfDay(for: weekStart)
@@ -117,6 +127,14 @@ public struct WeeklyReview: Equatable {
             case .reminder:
                 if item.isCompleted { completed.append(item) } else { open.append(item) }
             }
+        }
+        for a in apple.reminders {
+            let (reminder, source) = appleReminderValue(a, calendar: calendar)
+            let date = a.isCompleted ? (a.completedAt ?? reminder.dueDate) : reminder.dueDate
+            guard let date, week.contains(date) else { continue }
+            let row = AgendaItem(kind: .reminder(reminder), occurrence: date, displayDate: date,
+                                 isOverdue: false, appleSource: source)
+            if a.isCompleted { completed.append(row) } else { open.append(row) }
         }
         let byOccurrence: (AgendaItem, AgendaItem) -> Bool = {
             $0.occurrence != $1.occurrence ? $0.occurrence < $1.occurrence : $0.id < $1.id
