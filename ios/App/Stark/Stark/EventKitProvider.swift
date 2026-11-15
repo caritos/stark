@@ -2,9 +2,10 @@
 //  EventKitProvider.swift
 //  Stark
 //
-//  The ONLY file in the app that imports EventKit. Reads Apple Calendar events and Reminders
-//  and maps them to StarkKit's plain values; never writes. Mapping rules that need testing live in
-//  StarkKit (`appleEventEnd`, `appleReminderDue`, `AppleAccess.combined`).
+//  Reads Apple Calendar events and Reminders and maps them to StarkKit's plain values; never
+//  writes (`AppleItemRepository`, the only other file that imports EventKit, writes through the
+//  same store). Mapping rules that need testing live in StarkKit (`appleEventEnd`,
+//  `appleReminderDue`, `AppleAccess.combined`).
 //
 
 import CoreGraphics
@@ -27,9 +28,11 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
     private let storeLock = NSLock()
     private var createdStore: EKEventStore?
 
-    /// Created on first real use (an access request, `calendars()` or `fetch`), so a user who
-    /// never turns the overlay on never gets an `EKEventStore`. `accessState()` does not need it.
-    private var store: EKEventStore {
+    /// Created on first real use (an access request, `calendars()`, `fetch` or a repository
+    /// write), so nothing creates an `EKEventStore` before the access screen asked. `accessState()`
+    /// does not need it. `AppleItemRepository` shares this one store (one long-lived store per
+    /// process; the write spikes saw fresh stores stop working after about 30).
+    var store: EKEventStore {
         storeLock.withLock {
             if let createdStore { return createdStore }
             let new = EKEventStore()
@@ -164,7 +167,7 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
 
     // MARK: - Shared mapping
 
-    private static func info(_ calendar: EKCalendar, isReminderList: Bool) -> AppleCalendarInfo {
+    static func info(_ calendar: EKCalendar, isReminderList: Bool) -> AppleCalendarInfo {
         AppleCalendarInfo(id: calendar.calendarIdentifier,
                           title: calendar.title,
                           accountName: calendar.source?.title ?? "",
