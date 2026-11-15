@@ -19,6 +19,10 @@ final class PlanCache {
 
     /// Every Apple plan block, reminderID = model id (`apple-<identifier>`).
     private(set) var applePlans: [PlanBlock] = []
+    /// Whether a read has succeeded (the planner waits for it, `PlanCacheState.allowsPlanEdits`).
+    private(set) var state = PlanCacheState()
+    /// Shows a failed read in the main error banner, once per run of failures (set by `StarkApp`).
+    @ObservationIgnored var onLoadFailure: ((String) -> Void)?
 
     @ObservationIgnored private let router: ItemRouter
 
@@ -32,15 +36,20 @@ final class PlanCache {
         await refresh()
     }
 
-    /// Re-reads the sidecar. An unreadable sidecar keeps what was shown (logged): planner saves
-    /// report that error themselves.
+    /// Re-reads the sidecar. An unreadable sidecar keeps what was shown, is logged, and shows in
+    /// the main error banner once (until a read succeeds again).
     func refresh() async {
         do {
             let plans = try await router.applePlans(in: Date.distantPast...Date.distantFuture)
             // Only a real change redraws the readers.
             if plans != applePlans { applePlans = plans }
+            // Only a real change redraws the planner.
+            if !state.hasLoaded || state.failure != nil { state.loaded() }
         } catch {
             Self.log.error("Reading Apple plans failed: \(error.localizedDescription, privacy: .public)")
+            if let message = state.failed(error.routerMessage) {
+                onLoadFailure?(message + (state.hasLoaded ? "" : " The planner can't change plans until it can be read."))
+            }
         }
     }
 }

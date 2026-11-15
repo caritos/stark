@@ -118,17 +118,18 @@ struct PlannerView: View {
                         if let model, !model.allDayEvents.isEmpty {
                             banner(model.allDayEvents)
                         }
-                        // Non-interactive and dimmed while a save is writing: an edit made then
-                        // would not be in the save (the planner also stays open if one slips in).
+                        // Non-interactive and dimmed while a save is writing (an edit made then
+                        // would not be in the save; the planner also stays open if one slips in)
+                        // and until Apple reminders' plans were read once (`PlanCacheState`).
                         VStack(spacing: 0) {
                             Rectangle().fill(Colors.separator).frame(height: 1)
                             timeline
                             Rectangle().fill(Colors.separator).frame(height: 1)
                             tray
                         }
-                        .allowsHitTesting(!isSaving)
-                        .opacity(isSaving ? 0.5 : 1)
-                        .accessibilityHidden(isSaving)
+                        .allowsHitTesting(!isLocked)
+                        .opacity(isLocked ? 0.5 : 1)
+                        .accessibilityHidden(isLocked)
                     }
                 } else {
                     VStack(spacing: 0) {
@@ -152,7 +153,7 @@ struct PlannerView: View {
                     }
                 } else if isEditable {
                     SquareToolbarButton(systemImage: "checkmark", label: "Save plan", placement: .confirmationAction,
-                                        isProminent: true, isDisabled: unsavedDayCount == 0) { save() }
+                                        isProminent: true, isDisabled: unsavedDayCount == 0 || isLocked) { save() }
                 } else {
                     // Keeps the chevrons where they were while stepping into the past.
                     SquareToolbarPlaceholder(placement: .confirmationAction)
@@ -269,6 +270,11 @@ struct PlannerView: View {
 
     private var isEditable: Bool { PlannerDays.isEditable(day, today: today, calendar: Self.calendar) }
 
+    /// No touches, stepping or saving: while a save writes, and until Apple reminders' plan blocks
+    /// were read once (a draft built before has none, so saving it would wipe the day's Apple
+    /// blocks; `PlanCacheState.allowsPlanEdits`).
+    private var isLocked: Bool { isSaving || !planCache.state.allowsPlanEdits }
+
     /// Loads the months `day` needs (its week widened by the overdue lookback), then builds the
     /// draft: the one kept from an earlier visit in this session, or a fresh one from the saved
     /// plans. A past day has no draft or model; it draws from `DayHistory`.
@@ -308,7 +314,7 @@ struct PlannerView: View {
     private var header: some View {
         HStack(spacing: Spacing.sm) {
             SquareButton(systemImage: "chevron.left", label: "Previous day") { step(-1) }
-                .disabled(isSaving)
+                .disabled(isLocked)
             VStack(spacing: 1) {
                 Text(dayWord)
                     .font(Fonts.mono(12, weight: .bold))
@@ -331,7 +337,7 @@ struct PlannerView: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
             SquareButton(systemImage: "chevron.right", label: "Next day") { step(1) }
-                .disabled(isSaving)
+                .disabled(isLocked)
         }
     }
 
@@ -431,7 +437,7 @@ struct PlannerView: View {
     /// While it writes, the timeline and tray take no touches; should an edit still land in that
     /// window, the planner stays open with it (`PlanSession.hasEdits(since:)`) instead of closing.
     private func save() {
-        guard !isSaving, let router else { return }
+        guard !isSaving, planCache.state.allowsPlanEdits, let router else { return }
         syncSession()
         endLift()
         actionBlock = nil

@@ -50,6 +50,7 @@ struct StarkApp: App {
         let router = ItemRouter(repository: repository, local: store, sidecar: sidecar,
                                 destinations: destinations, calendar: .autoupdatingCurrent)
         let planCache = PlanCache(router: router)
+        planCache.onLoadFailure = { [weak store] message in store?.error = message }
         _planCache = State(initialValue: planCache)
         // EKEventStoreChanged is not reliable after a save (write spike f): reload after every write.
         router.onDidWrite = { [weak overlay, weak planCache] in
