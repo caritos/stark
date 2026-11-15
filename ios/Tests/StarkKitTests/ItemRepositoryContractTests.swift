@@ -11,6 +11,10 @@ struct RepositoryHarness {
     let listID: String
     let readOnlyCalendarID: String
     let itemCount: @Sendable () async -> Int
+    /// The repository's clock reading (what "now" is for completions). A real implementation passes `Date()`.
+    let now: Date
+    /// Every stored reminder, including completed copies (`Reminder.id` is the identifier).
+    let reminders: @Sendable () async -> [Reminder]
 }
 
 /// The behaviour every `ItemRepository` must have. Task 6 runs the same checks against the
@@ -129,6 +133,117 @@ enum ItemRepositoryContract {
         #expect(await h.itemCount() == before + 2)
     }
 
+    // MARK: Recurring completion (EventKit spike facts, section (a))
+
+    private static let cal = Calendar.current
+
+    private static func shifted(_ date: Date, days: Int) -> Date {
+        cal.date(byAdding: .day, value: days, to: date) ?? date
+    }
+
+    /// The open master plus every other reminder with the same title (the completed copies).
+    private static func copies(of ref: AppleItemRef, in h: RepositoryHarness) async throws -> [Reminder] {
+        let title = try #require(try await h.repository.details(ref).reminder).title
+        return await h.reminders().filter { $0.title == title && $0.id != ref.identifier }
+    }
+
+    private static func expectAdvanced(_ h: RepositoryHarness, _ ref: AppleItemRef, from oldDue: Date, to newDue: Date,
+                                       dueHasTime: Bool = true) async throws {
+        let master = try #require(try await h.repository.details(ref))
+        let r = try #require(master.reminder)
+        #expect(r.id == ref.identifier)          // same identifier stays open
+        #expect(r.isCompleted == false)
+        #expect(r.dueDate == newDue)
+        #expect(r.recurrence != nil)
+        #expect(master.dueHasTime == dueHasTime)
+        let copies = try await copies(of: ref, in: h)
+        #expect(copies.count == 1)               // a SEPARATE completed copy
+        let copy = try #require(copies.first)
+        #expect(copy.id != ref.identifier)
+        #expect(copy.isCompleted)
+        #expect(copy.dueDate == oldDue)
+        #expect(copy.recurrence == nil)
+    }
+
+    static func completingDailyAdvancesPastNow(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        // Due two days ago an hour before now: today's occurrence already passed, so next is due + 3 days.
+        let due = shifted(h.now.addingTimeInterval(-3600), days: -2)
+        let ref = try await h.repository.addReminder(
+            NewReminder(title: "Daily", due: due, recurrence: RecurrenceRule(frequency: .daily)), listID: h.listID)
+        try await h.repository.complete(ref, on: h.now)
+        try await expectAdvanced(h, ref, from: due, to: shifted(due, days: 3))
+    }
+
+    static func completingWeeklyAdvancesAWeek(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let due = shifted(h.now.addingTimeInterval(-3600), days: -2)
+        let ref = try await h.repository.addReminder(
+            NewReminder(title: "Weekly", due: due, recurrence: RecurrenceRule(frequency: .weekly)), listID: h.listID)
+        try await h.repository.complete(ref, on: h.now)
+        try await expectAdvanced(h, ref, from: due, to: shifted(due, days: 7))
+    }
+
+    static func completingUsesLaterOfDueAndNow(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        // now is later than due, same day: next daily occurrence is tomorrow.
+        let past = h.now.addingTimeInterval(-5 * 3600)
+        let a = try await h.repository.addReminder(
+            NewReminder(title: "Earlier today", due: past, recurrence: RecurrenceRule(frequency: .daily)),
+            listID: h.listID)
+        try await h.repository.complete(a, on: h.now)
+        try await expectAdvanced(h, a, from: past, to: shifted(past, days: 1))
+        // due in the future: the next one is after the old due date, not after now.
+        let future = shifted(h.now, days: 6)
+        let b = try await h.repository.addReminder(
+            NewReminder(title: "Next week", due: future, recurrence: RecurrenceRule(frequency: .weekly)),
+            listID: h.listID)
+        try await h.repository.complete(b, on: h.now)
+        try await expectAdvanced(h, b, from: future, to: shifted(future, days: 7))
+    }
+
+    static func completingDateOnlyTreatsTodayAsPassed(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let due = cal.startOfDay(for: shifted(h.now, days: -2))
+        let ref = try await h.repository.addReminder(
+            NewReminder(title: "Date only", due: due, dueHasTime: false,
+                        recurrence: RecurrenceRule(frequency: .daily)), listID: h.listID)
+        try await h.repository.complete(ref, on: h.now)
+        // Today's midnight is behind now, so the next occurrence is tomorrow's date, still date-only.
+        try await expectAdvanced(h, ref, from: due, to: cal.startOfDay(for: shifted(h.now, days: 1)),
+                                 dueHasTime: false)
+    }
+
+    static func completingCountLimitedSeriesCountsDown(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let due = shifted(h.now.addingTimeInterval(-3600), days: -1)
+        let ref = try await h.repository.addReminder(
+            NewReminder(title: "Twice", due: due, recurrence: RecurrenceRule(frequency: .daily, count: 2)),
+            listID: h.listID)
+        try await h.repository.complete(ref, on: h.now)
+        let first = try #require(try await h.repository.details(ref).reminder)
+        #expect(first.isCompleted == false)
+        #expect(first.recurrence?.count == 1)
+        #expect(try await copies(of: ref, in: h).count == 1)
+        try await h.repository.complete(ref, on: h.now)
+        let last = try #require(try await h.repository.details(ref).reminder)
+        #expect(last.isCompleted)                // none left: the reminder itself completes
+        #expect(try await copies(of: ref, in: h).count == 1)  // no extra copy
+    }
+
+    static func completingUntilExhaustedCompletesItself(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let due = shifted(h.now.addingTimeInterval(-3600), days: -1)
+        // Today's occurrence (now - 1h) already passed and tomorrow's is after UNTIL.
+        let rule = RecurrenceRule(frequency: .daily, until: h.now.addingTimeInterval(3600))
+        let ref = try await h.repository.addReminder(NewReminder(title: "Until", due: due, recurrence: rule),
+                                                     listID: h.listID)
+        try await h.repository.complete(ref, on: h.now)
+        let r = try #require(try await h.repository.details(ref).reminder)
+        #expect(r.isCompleted)
+        #expect(try await copies(of: ref, in: h).isEmpty)
+    }
+
     static func notWritableCalendarThrows(_ make: () async -> RepositoryHarness) async throws {
         let h = await make()
         await #expect(throws: ItemRepositoryError.notWritable) {
@@ -152,7 +267,8 @@ struct FakeItemRepositoryContractTests {
         let fake = FakeItemRepository(calendars: calendars, readOnlyCalendarIDs: ["ro"],
                                       now: { ItemRepositoryContract.start })
         return RepositoryHarness(repository: fake, calendarID: "cal", listID: "list", readOnlyCalendarID: "ro",
-                                 itemCount: { await fake.itemCount })
+                                 itemCount: { await fake.itemCount }, now: ItemRepositoryContract.start,
+                                 reminders: { await fake.allReminders })
     }
 
     @Test func addGetRoundTrip() async throws { try await ItemRepositoryContract.addGetRoundTrip(Self.make) }
@@ -168,6 +284,24 @@ struct FakeItemRepositoryContractTests {
         try await ItemRepositoryContract.completeAndUncompleteOneOff(Self.make)
     }
     @Test func batchFailureRollsBack() async throws { try await ItemRepositoryContract.batchFailureRollsBack(Self.make) }
+    @Test func completingDailyAdvancesPastNow() async throws {
+        try await ItemRepositoryContract.completingDailyAdvancesPastNow(Self.make)
+    }
+    @Test func completingWeeklyAdvancesAWeek() async throws {
+        try await ItemRepositoryContract.completingWeeklyAdvancesAWeek(Self.make)
+    }
+    @Test func completingUsesLaterOfDueAndNow() async throws {
+        try await ItemRepositoryContract.completingUsesLaterOfDueAndNow(Self.make)
+    }
+    @Test func completingDateOnlyTreatsTodayAsPassed() async throws {
+        try await ItemRepositoryContract.completingDateOnlyTreatsTodayAsPassed(Self.make)
+    }
+    @Test func completingCountLimitedSeriesCountsDown() async throws {
+        try await ItemRepositoryContract.completingCountLimitedSeriesCountsDown(Self.make)
+    }
+    @Test func completingUntilExhaustedCompletesItself() async throws {
+        try await ItemRepositoryContract.completingUntilExhaustedCompletesItself(Self.make)
+    }
     @Test func notWritableCalendarThrows() async throws {
         try await ItemRepositoryContract.notWritableCalendarThrows(Self.make)
     }
@@ -177,34 +311,6 @@ struct FakeItemRepositoryContractTests {
 struct FakeItemRepositorySemanticsTests {
     private let start = ItemRepositoryContract.start
     private var h: RepositoryHarness { FakeItemRepositoryContractTests.make() }
-
-    @Test func completingRecurringReminderAdvancesAndLeavesCopy() async throws {
-        let h = h
-        let ref = try await h.repository.addReminder(
-            NewReminder(title: "Water", due: start, recurrence: RecurrenceRule(frequency: .daily)), listID: h.listID)
-        try await h.repository.complete(ref, on: start)
-        let master = try #require(try await h.repository.details(ref).reminder)
-        #expect(master.isCompleted == false)
-        #expect(master.id == ref.identifier)
-        #expect(master.dueDate == start.addingTimeInterval(86_400))
-        #expect(master.recurrence != nil)
-        #expect(await h.itemCount() == 2)  // master plus a separate completed copy
-    }
-
-    @Test func countLimitedSeriesDecrementsThenCompletesItself() async throws {
-        let h = h
-        let ref = try await h.repository.addReminder(
-            NewReminder(title: "Twice", due: start, recurrence: RecurrenceRule(frequency: .daily, count: 2)),
-            listID: h.listID)
-        try await h.repository.complete(ref, on: start)
-        let after1 = try #require(try await h.repository.details(ref).reminder)
-        #expect(after1.recurrence?.count == 1)
-        #expect(after1.isCompleted == false)
-        try await h.repository.complete(ref, on: start)
-        let after2 = try #require(try await h.repository.details(ref).reminder)
-        #expect(after2.isCompleted)
-        #expect(await h.itemCount() == 2)  // no copy for the last one
-    }
 
     @Test func failNextThrowsOnceAndChangesNothing() async throws {
         let fake = FakeItemRepository(calendars: FakeItemRepositoryContractTests.calendars)

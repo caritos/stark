@@ -38,6 +38,9 @@ public actor FakeItemRepository: ItemRepository {
     /// Number of stored items (events plus reminders, including completed copies), for tests.
     public var itemCount: Int { events.count + reminders.count }
 
+    /// Every stored reminder, including completed copies, for tests.
+    public var allReminders: [Reminder] { reminders.values.map(\.reminder) }
+
     // MARK: ItemRepository
 
     public func addEvent(_ event: NewEvent, calendarID: String) throws -> AppleItemRef {
