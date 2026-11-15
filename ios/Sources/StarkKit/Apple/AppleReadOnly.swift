@@ -71,19 +71,30 @@ public enum AppleEditorState: Equatable {
     }
 }
 
-/// The notice after reopening a completed Apple reminder that is the completed copy of a
-/// repeating one: EventKit cannot move the series back (write spike a), so the owner is told.
+/// Unticking the completed copy of a repeating Apple reminder changes nothing: EventKit can't move
+/// the series back (write spike a), and reopening the copy would leave two open items. The views
+/// show this text INSTEAD of calling `uncomplete`; nil means "a normal uncomplete".
+///
+/// EventKit links a copy to its series only by title and list, so the item counts as a copy when
+/// the snapshot holds an OPEN, REPEATING reminder in the same list with the same title, a
+/// different identifier and a due date after the copy's (the series has moved past it). A
+/// completed one-off that happens to share a repeating reminder's title and list and is older than
+/// its due date is indistinguishable and gets the notice too (see the task-9a report).
 public enum UncompleteNotice {
+    public static let message =
+        "This is a finished occurrence of a repeating reminder. The reminder already moved to its next date, so nothing was changed."
+
     public static func text(for item: AgendaItem, snapshot: AppleSnapshot) -> String? {
-        guard let source = item.appleSource, case .reminder(let reminder) = item.kind, reminder.isCompleted else {
+        guard let source = item.appleSource, case .reminder(let reminder) = item.kind, reminder.isCompleted,
+              let ref = AppleItemRef.ref(for: item) else {
             return nil
         }
-        let hasSeries = snapshot.reminders.contains {
-            $0.isRecurring && !$0.isCompleted && $0.title == reminder.title && $0.calendar.id == source.calendarID
+        let copyDue = reminder.dueDate ?? .distantPast
+        let isCopy = snapshot.reminders.contains {
+            $0.isRecurring && !$0.isCompleted && $0.id != ref.identifier && $0.title == reminder.title
+                && $0.calendar.id == source.calendarID && ($0.due.map { $0 > copyDue } ?? false)
         }
-        return hasSeries
-            ? "Reopened the completed copy. The repeating reminder keeps its next date."
-            : nil
+        return isCopy ? message : nil
     }
 }
 

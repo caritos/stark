@@ -26,7 +26,8 @@ public enum SearchResults {
     /// pathological rule can't make this an unbounded scan.
     private static let occurrenceWindowDays = 3650
 
-    /// `apple` (default empty) adds the Apple items: one row each, dated by the item's own date (a
+    /// `apple` (default empty) adds the Apple items: one row per reminder and one per EVENT SERIES
+    /// (`representativeAppleEvents`, the nearest occurrence at or after `today`, else the latest), dated by the item's own date (a
     /// date-only reminder at local midnight, an undated reminder at `.distantPast`), with the same
     /// ids and `AppleSource` as the agenda (`appleReminderValue`). The engine applies NO window of
     /// its own to Apple items: every event and reminder in `apple` is searched, completed and
@@ -46,10 +47,14 @@ public enum SearchResults {
         }
 
         let calendar = Calendar(identifier: .gregorian)
-        for item in apple.events {
+        // Match first, then collapse each series to one row (a detached occurrence with its own
+        // title still counts on its own match).
+        let matching = apple.events.filter {
+            contains($0.title, query) || contains($0.notes, query) || contains($0.location, query)
+        }
+        for item in representativeAppleEvents(matching, today: today) {
             let event = Event(id: "apple-\(item.id)", title: item.title, notes: item.notes, start: item.start, end: item.end,
                               isAllDay: item.isAllDay, location: item.location, url: item.url)
-            guard matches(event, query: query) else { continue }
             let source = AppleSource(calendarID: item.calendar.id, calendarTitle: item.calendar.title,
                                      colorHex: item.calendar.colorHex, isReminder: false,
                                      isWritable: item.calendar.isWritable)
@@ -66,6 +71,24 @@ public enum SearchResults {
         // creation timestamp anywhere in the model or the .ics format, so this sorts by each
         // item's own date instead, descending).
         return results.sorted { $0.displayDate > $1.displayDate }
+    }
+
+    /// One Apple event per series, as for Stark's own recurring items: occurrences sharing an
+    /// identifier (a detached one adds `/RID=<n>` to it) collapse to the soonest at or after
+    /// `today`, else the latest. The caller passes only the matching occurrences.
+    static func representativeAppleEvents(_ events: [AppleCalendarEvent], today: Date) -> [AppleCalendarEvent] {
+        var bySeries: [String: [AppleCalendarEvent]] = [:]
+        var order: [String] = []
+        for event in events {
+            let series = event.id.range(of: "/RID=").map { String(event.id[..<$0.lowerBound]) } ?? event.id
+            if bySeries[series] == nil { order.append(series) }
+            bySeries[series, default: []].append(event)
+        }
+        return order.compactMap { series in
+            let occurrences = bySeries[series] ?? []
+            return occurrences.filter { $0.start >= today }.min { $0.start < $1.start }
+                ?? occurrences.max { $0.start < $1.start }
+        }
     }
 
     private static func representativeOccurrence(event: Event, today: Date) -> Date {
