@@ -79,13 +79,31 @@ final class AppleOverlayModel {
 
     /// The Settings screen appeared or came back to the foreground (the user may have changed
     /// access in iOS Settings): re-read access and, when granted, the calendar list. Never asks.
+    /// Access that became granted with the switch on reloads the last range (through the gate,
+    /// like the store-changed reload); access that was lost clears the snapshot; no change, no work.
     func refreshAccess() async {
+        let previous = access
         access = provider.accessState()
         await refreshCalendars()
+        switch AppleAccessChange.action(previous: previous, current: access, isEnabled: isEnabled) {
+        case .none:
+            break
+        case .reload:
+            if let lastRequest {
+                await reload(display: lastRequest.display, today: lastRequest.today)
+            }
+        case .clear:
+            clearSnapshot()
+        }
     }
 
     func disable() {
         isEnabled = false
+        clearSnapshot()
+    }
+
+    /// Drops any in-flight reload's result and empties the snapshot.
+    private func clearSnapshot() {
         gate.invalidate()
         fetched = AppleSnapshot(events: [], reminders: [])
         snapshot = fetched

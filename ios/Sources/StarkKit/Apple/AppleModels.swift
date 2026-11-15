@@ -105,3 +105,18 @@ public struct AppleSnapshot: Equatable, Sendable {
         self.reminders = reminders
     }
 }
+
+/// What the overlay does when access is re-read without asking (e.g. the user changed it in iOS
+/// Settings and came back). The snapshot must be empty whenever access is not granted, and must
+/// be fetched once access becomes granted with the switch on; nothing changes otherwise.
+public enum AppleAccessChange: Equatable, Sendable {
+    case none, reload, clear
+
+    public static func action(previous: AppleAccess, current: AppleAccess, isEnabled: Bool) -> AppleAccessChange {
+        // Switched off: the snapshot is already empty and must stay so.
+        guard isEnabled, previous != current else { return .none }
+        if current == .granted { return .reload }
+        if previous == .granted { return .clear }
+        return .none
+    }
+}
