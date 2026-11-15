@@ -59,15 +59,8 @@ do {
             rest.removeSubrange(i...(i + 1))
         }
         guard rest.isEmpty else { fail(usage, code: 2) }
-        let runner = FoundationProcessRunner(timeout: 120)
-        let command = TodayCommand(runner: runner, device: DeviceResolver(runner: runner, environment: env),
-                                   makeTempDirectory: {
-            let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("stark-claude-\(UUID().uuidString)")
-            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false,
-                                                    attributes: [.posixPermissions: 0o700])
-            return url
-        }, now: { Date() })
-        print(try command.run(day: day))
+        // Unavailable until the Mac tool (exit 0): it would miss the items Stark keeps in Apple.
+        print(TodayCommand().run(day: day))
     default:
         fail(usage, code: 2)
     }
