@@ -16,6 +16,8 @@ calendar+reminders app: a single timeline mixing **Events** and
 `.ics`-based storage — not a sync target for the user's actual Apple
 Calendar/Reminders (no EventKit).
 
+> Superseded 2026-11-15 by `2026-11-15-apple-overlay-design.md` for EventKit.
+
 **Ships as:** an update to the existing App Store listing ("Stark: To Do
 List & Calendar", Apple ID 6772774783), same bundle identifier
 `com.caritos.todo-txt`. `mobile/` (the Expo app) stays in the repo,
