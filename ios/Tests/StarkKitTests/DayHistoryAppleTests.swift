@@ -17,9 +17,10 @@ struct DayHistoryAppleTests {
     let other = AppleCalendarInfo(id: "L2", title: "Groceries", accountName: "iCloud", colorHex: nil, isReminderList: true)
 
     func apple(_ id: String, _ title: String, due: Date?, done: Bool = false,
-               in calendar: AppleCalendarInfo? = nil) -> AppleReminder {
+               in calendar: AppleCalendarInfo? = nil, repeating: Bool = false) -> AppleReminder {
         AppleReminder(id: id, title: title, notes: nil, due: due, dueHasTime: true, isCompleted: done,
-                      completedAt: done ? at(2026, 11, 2, 18) : nil, priority: nil, calendar: calendar ?? list)
+                      completedAt: done ? at(2026, 11, 2, 18) : nil, priority: nil, calendar: calendar ?? list,
+                      isRecurring: repeating)
     }
 
     /// A 30-minute block on Nov 2 at 09:00 for `apple-<id>`'s Nov 2 09:00 occurrence.
@@ -35,7 +36,7 @@ struct DayHistoryAppleTests {
 
     @Test func blockTheSeriesMovedPastIsDoneNeverMissed() {
         // Weekly "Stretch": completed for Nov 2, the series now reads due Nov 9.
-        let h = history([apple("r1", "Stretch", due: at(2026, 11, 9, 9))], plans: [block("r1")])
+        let h = history([apple("r1", "Stretch", due: at(2026, 11, 9, 9), repeating: true)], plans: [block("r1")])
         #expect(h.done.map(\.title) == ["Stretch"])
         #expect(h.open.isEmpty)
         #expect(DayHistory.summaryLine(stats: h.stats, isToday: false) == "1 DONE")
@@ -44,7 +45,7 @@ struct DayHistoryAppleTests {
     @Test func matchingCompletedCopyIsDone() {
         // Positive evidence: Apple's completed copy for the Nov 2 occurrence (new identifier, same
         // title, list and due day), even though the master still reads due Nov 2.
-        let h = history([apple("r1", "Stretch", due: at(2026, 11, 2, 9)),
+        let h = history([apple("r1", "Stretch", due: at(2026, 11, 2, 9), repeating: true),
                          apple("copy1", "Stretch", due: at(2026, 11, 2, 9), done: true)],
                         plans: [block("r1")])
         #expect(h.done.map(\.title) == ["Stretch"])
@@ -52,7 +53,7 @@ struct DayHistoryAppleTests {
     }
 
     @Test func copyInAnotherListOrOnAnotherDayIsNoEvidence() {
-        let h = history([apple("r1", "Stretch", due: at(2026, 11, 2, 9)),
+        let h = history([apple("r1", "Stretch", due: at(2026, 11, 2, 9), repeating: true),
                          apple("c1", "Stretch", due: at(2026, 11, 2, 9), done: true, in: other),
                          apple("c2", "Stretch", due: at(2026, 11, 1, 9), done: true)],
                         plans: [block("r1")])
@@ -61,7 +62,7 @@ struct DayHistoryAppleTests {
     }
 
     @Test func openPastOccurrenceIsMissed() {
-        let h = history([apple("r1", "Stretch", due: at(2026, 11, 2, 9))], plans: [block("r1")])
+        let h = history([apple("r1", "Stretch", due: at(2026, 11, 2, 9), repeating: true)], plans: [block("r1")])
         #expect(h.done.isEmpty)
         #expect(h.open.map(\.title) == ["Stretch"])
         #expect(DayHistory.summaryLine(stats: h.stats, isToday: false) == "1 MISSED")
@@ -81,7 +82,7 @@ struct DayHistoryAppleTests {
     @Test func weekStatsCountAppleBlocks() {
         let stats = DayHistory.weekStats(containing: day, reminders: [], plans: [], today: today,
                                          apple: AppleSnapshot(events: [], reminders: [
-                                             apple("r1", "Stretch", due: at(2026, 11, 9, 9)),
+                                             apple("r1", "Stretch", due: at(2026, 11, 9, 9), repeating: true),
                                              apple("r3", "Read", due: at(2026, 11, 2, 9)),
                                          ]),
                                          sidecarPlans: [block("r1"), block("r3")], calendar: cal)

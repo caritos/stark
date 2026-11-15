@@ -246,6 +246,8 @@ public struct DayPlanModel {
 
     /// An Apple plan reads DONE (spec Decision 1, spike (a)) when, in order:
     /// 1. the reminder itself is completed (a one-off, or a series that ended);
+    /// rules 2 and 3 only for a REPEATING reminder (`AppleReminder.isRecurring`; a one-off then
+    /// reads like a local one-off: open, MISSED on a past day, no block when its due day moved):
     /// 2. a completed copy exists for that occurrence: another completed reminder in the same list
     ///    with the same title, due on the plan's occurrence day (Apple leaves one per completion of
     ///    a repeating reminder, with a new identifier and the old due date): positive evidence;
@@ -256,6 +258,9 @@ public struct DayPlanModel {
         guard let master = appleReminder(for: plan, in: apple) else { return nil }
         let done = DoneBlock(block: plan, title: master.title)
         if master.isCompleted { return done }
+        // A one-off has no other occurrences: a later due date means it was moved, and a
+        // same-title completed reminder is another item. Rules 2 and 3 are for repeating ones.
+        guard master.isRecurring else { return nil }
         let hasCopy = apple.reminders.contains { copy in
             guard copy.isCompleted, copy.id != master.id, copy.title == master.title,
                   copy.calendar.id == master.calendar.id, let due = copy.due else { return false }

@@ -14,9 +14,11 @@ struct DayPlanModelAppleTests {
     var today: Date { at(2026, 11, 2, 10) }
     let list = AppleCalendarInfo(id: "L1", title: "Inbox", accountName: "iCloud", colorHex: nil, isReminderList: true)
 
-    func apple(_ id: String, _ title: String, due: Date? = nil, hasTime: Bool = false, done: Bool = false) -> AppleReminder {
+    func apple(_ id: String, _ title: String, due: Date? = nil, hasTime: Bool = false, done: Bool = false,
+               repeating: Bool = false) -> AppleReminder {
         AppleReminder(id: id, title: title, notes: nil, due: due, dueHasTime: hasTime, isCompleted: done,
-                      completedAt: done ? at(2026, 11, 2, 8) : nil, priority: nil, calendar: list)
+                      completedAt: done ? at(2026, 11, 2, 8) : nil, priority: nil, calendar: list,
+                      isRecurring: repeating)
     }
 
     func make(reminders: [Reminder] = [], apple: [AppleReminder], sidecar: [PlanBlock] = [],
@@ -110,7 +112,7 @@ struct DayPlanModelAppleTests {
         // A daily Apple reminder completed this morning now reads due tomorrow.
         let block = PlanBlock(id: "b1", reminderID: "apple-r1", occurrence: at(2026, 11, 2),
                               start: at(2026, 11, 2, 7), minutes: 20)
-        let model = make(apple: [apple("r1", "Stretch", due: at(2026, 11, 3))], sidecar: [block])
+        let model = make(apple: [apple("r1", "Stretch", due: at(2026, 11, 3), repeating: true)], sidecar: [block])
         #expect(model.blocks.isEmpty)
         #expect(model.doneBlocks == [DayPlanModel.DoneBlock(block: block, title: "Stretch")])
     }

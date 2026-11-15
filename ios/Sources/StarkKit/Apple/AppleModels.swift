@@ -82,10 +82,16 @@ public struct AppleReminder: Equatable, Sendable {
     public let priority: Int?
     public let calendar: AppleCalendarInfo
     public let url: String?
+    /// The reminder repeats (`EKReminder.hasRecurrenceRules`). Apple advances a repeating
+    /// reminder in place and leaves a completed copy per completion, so only for these does a
+    /// later due date or a same-title completed copy mean an earlier occurrence was done
+    /// (`DayPlanModel.appleDoneBlock`). The synthetic `Reminder` still carries no recurrence.
+    public let isRecurring: Bool
 
     public init(id: String, title: String, notes: String?, due: Date?, dueHasTime: Bool,
                 isCompleted: Bool, completedAt: Date?, priority: Int?, calendar: AppleCalendarInfo,
-                url: String? = nil) {
+                url: String? = nil, isRecurring: Bool = false) {
+        self.isRecurring = isRecurring
         self.id = id
         self.title = title
         self.notes = notes
