@@ -35,6 +35,7 @@ struct GridPagingRequest: Equatable {
 
 struct MonthGridView: View {
     @EnvironmentObject private var store: PlannerStore
+    @Environment(AppleOverlayModel.self) private var overlay
     @State private var visibleMonth = YearMonth(date: Date())
     /// The last computed density, tagged with the month it belongs to. Recomputed only when its
     /// inputs change (see `DensityInputs`), never in `body`: `body` re-runs on unrelated updates
@@ -124,11 +125,12 @@ struct MonthGridView: View {
             let events = inputs.events
             let reminders = inputs.reminders
             let plans = inputs.plans
+            let apple = inputs.apple
             let today = inputs.today
             let month = inputs.month
             let (year, month0) = (month.year, month.month0)
             let days = await Task.detached(priority: .userInitiated) {
-                gridDensity(events: events, reminders: reminders, month: YearMonth(year: year, month0: month0), today: today, plans: plans)
+                gridDensity(events: events, reminders: reminders, month: YearMonth(year: year, month0: month0), today: today, plans: plans, apple: apple)
             }.value
             guard !Task.isCancelled else { return }
             density = DensitySnapshot(month: month, days: days)
@@ -165,9 +167,12 @@ struct MonthGridView: View {
     }
 
     /// The store must have loaded every month the visible grid touches (its neighbouring days
-    /// can be in the previous or next month's file).
+    /// can be in the previous or next month's file). The Apple overlay fetches the same range
+    /// (its dots arrive with the density recompute, which is asynchronous anyway).
     private func loadVisibleMonths() {
-        store.loadMonths(covering: MonthGrid.range(for: visibleMonth))
+        let range = MonthGrid.range(for: visibleMonth)
+        store.loadMonths(covering: range)
+        Task { await overlay.reload(for: .monthGrid, display: range, today: today) }
     }
 
     /// Everything the density depends on. It is the `.task(id:)`, so the density is recomputed
@@ -178,6 +183,7 @@ struct MonthGridView: View {
         let events: [Event]
         let reminders: [Reminder]
         let plans: [PlanBlock]
+        let apple: AppleSnapshot
     }
 
     private struct DensitySnapshot {
@@ -187,7 +193,8 @@ struct MonthGridView: View {
     }
 
     private var densityInputs: DensityInputs {
-        DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders, plans: store.plans)
+        DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders, plans: store.plans,
+                      apple: overlay.snapshot)
     }
 
     private var header: some View {

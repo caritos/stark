@@ -12,6 +12,9 @@ import StarkKit
 struct StarkApp: App {
     @StateObject private var store: PlannerStore
     @StateObject private var pending: PendingCompletions
+    /// Read-only Apple Calendar / Reminders overlay. Off by default; access is only ever
+    /// requested from Settings, never at launch.
+    @State private var overlay = AppleOverlayModel(provider: EventKitProvider())
     private let bridge: ClaudeBridge
     private let secrets: SecretStore
 
@@ -34,6 +37,7 @@ struct StarkApp: App {
             ContentView(bridge: bridge, secrets: secrets)
                 .environmentObject(store)
                 .environmentObject(pending)
+                .environment(overlay)
                 #if targetEnvironment(macCatalyst)
                 .frame(minWidth: 480, minHeight: 520)
                 #endif

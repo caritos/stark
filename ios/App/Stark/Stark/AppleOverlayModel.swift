@@ -42,6 +42,8 @@ final class AppleOverlayModel {
     /// The unfiltered result of the last fetch, so a toggle refilters without refetching.
     @ObservationIgnored private var fetched = AppleSnapshot(events: [], reminders: [])
     @ObservationIgnored private var lastRequest: (display: ClosedRange<Date>, today: Date)?
+    /// Each screen's display range; reloads fetch their hull.
+    @ObservationIgnored private var window = AppleFetchWindow()
     /// Bumped on every reload/disable so a slow, older fetch cannot overwrite a newer result.
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var changeTask: Task<Void, Never>?
@@ -87,6 +89,23 @@ final class AppleOverlayModel {
         var next = selection
         if shown { next.excludedIDs.remove(id) } else { next.excludedIDs.insert(id) }
         selection = next
+    }
+
+    /// Whether a reload can change the snapshot. When false the snapshot is empty and stays empty,
+    /// so a caller that moves the window need not wait for a reload.
+    var isActive: Bool { isEnabled && provider.accessState() == .granted }
+
+    /// A screen's range changed: fetch over the hull of every screen's range (`AppleFetchWindow`),
+    /// so the month grid's reload cannot drop the agenda's items. `nil` releases the screen.
+    func reload(for screen: AppleFetchWindow.Screen, display: ClosedRange<Date>?, today: Date) async {
+        window.set(screen, display)
+        await refresh(today: today)
+    }
+
+    /// Re-fetches the current hull (foreground). Does nothing before any screen asked for data.
+    func refresh(today: Date) async {
+        guard let covering = window.covering else { return }
+        await reload(display: covering, today: today)
     }
 
     /// Fetches events over `display` and reminders over `display` plus the overdue lookback. The

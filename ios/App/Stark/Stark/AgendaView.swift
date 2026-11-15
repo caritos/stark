@@ -22,6 +22,7 @@ struct ScrollRequest: Equatable {
 struct AgendaView: View {
     @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
+    @Environment(AppleOverlayModel.self) private var overlay
     /// The real today, owned by `ContentView` (which advances it when the calendar day changes) so
     /// this view re-renders on the new day instead of reading `Date()` once and going stale.
     let today: Date
@@ -290,7 +291,10 @@ struct AgendaView: View {
         )
         let planned = applyPlans(items, plans: store.plans, today: now, reminders: store.reminders,
                                  calendar: Self.calendar)
-        return groupAgendaByDay(planned, in: range, calendar: Self.calendar)
+        // Read-only Apple Calendar / Reminders rows; the snapshot is empty while the overlay is off.
+        let merged = mergeAppleItems(planned, snapshot: overlay.snapshot, in: range, today: now,
+                                     calendar: Self.calendar)
+        return groupAgendaByDay(merged, in: range, calendar: Self.calendar)
     }
 
     private func makeRows(_ sections: [AgendaDay], todayStart: Date) -> [ListRow] {

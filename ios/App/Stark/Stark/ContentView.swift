@@ -16,6 +16,7 @@ import StarkKit
 struct ContentView: View {
     @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
+    @Environment(AppleOverlayModel.self) private var overlay
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var showSearch = false
@@ -39,6 +40,9 @@ struct ContentView: View {
     @State private var scrollPagingDate: GridPagingRequest?
     /// The day the planner (timeboxing) is open for, presented full screen; nil when closed.
     @State private var planRequest: PlanRequest?
+    /// Bumped on every agenda window move, so a move still waiting for its Apple fetch is
+    /// dropped when a newer one (or a tap inside the window) comes first.
+    @State private var windowMoveToken = 0
 
     private let bridge: ClaudeBridge
     private let secrets: SecretStore
@@ -183,10 +187,13 @@ struct ContentView: View {
             let waiting = pendingBridgeURLs
             pendingBridgeURLs = []
             for url in waiting { handleBridge(url) }
+            // Empty (and no EventKit call) unless the overlay was turned on in Settings.
+            await overlay.reload(for: .agenda, display: AgendaWindow.range(around: agendaAnchor), today: today)
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 store.retryPendingWrites()
+                Task { await overlay.refresh(today: today) }
                 followCalendarDay()
             } else {
                 // The undo window's timer doesn't survive the app being suspended or
@@ -291,9 +298,32 @@ struct ContentView: View {
         today = now
         guard wasFollowing else { return }
         store.loadMonths(covering: AgendaWindow.loadRange(around: newAnchor))
-        agendaAnchor = newAnchor
-        selectedDate = newAnchor
-        scrollRequest = ScrollRequest(date: newAnchor)
+        moveAgendaWindow(to: newAnchor) {
+            agendaAnchor = newAnchor
+            selectedDate = newAnchor
+            scrollRequest = ScrollRequest(date: newAnchor)
+        }
+    }
+
+    /// Re-centres the agenda window on `anchor` once the Apple overlay has fetched the new display
+    /// range (the store's months must already be loaded), so the window never shows a range
+    /// before its Apple items are in. `move` sets the anchor and the scroll request together.
+    /// With the overlay off or not granted the snapshot cannot change, so `move` runs at once,
+    /// exactly as before the overlay; the new range is still recorded for a later reload.
+    private func moveAgendaWindow(to anchor: Date, move: @escaping () -> Void) {
+        windowMoveToken += 1
+        let token = windowMoveToken
+        let range = AgendaWindow.range(around: anchor)
+        guard overlay.isActive else {
+            move()
+            Task { await overlay.reload(for: .agenda, display: range, today: today) }
+            return
+        }
+        Task {
+            await overlay.reload(for: .agenda, display: range, today: today)
+            guard token == windowMoveToken else { return }
+            move()
+        }
     }
 
     /// A day scrolled into view at the top of the agenda list (`AgendaView.onDayInView`,
@@ -314,7 +344,8 @@ struct ContentView: View {
     ///
     /// The re-centre and the scroll request are set in the same transaction, so `AgendaView`
     /// sees the new window and the request together and its (deferred) scroll targets a header
-    /// that exists.
+    /// that exists. With the Apple overlay on, that transaction waits for the overlay's fetch
+    /// (`moveAgendaWindow`).
     private func selectDate(_ date: Date) {
         let calendar = Calendar(identifier: .gregorian)
         let tapped = calendar.startOfDay(for: date)
@@ -323,12 +354,18 @@ struct ContentView: View {
         // of its last, while a tapped day is a noon timestamp, so compare whole days.
         let firstDay = calendar.startOfDay(for: window.lowerBound)
         let lastDay = calendar.startOfDay(for: window.upperBound)
+        selectedDate = date
         if tapped < firstDay || tapped > lastDay {
             store.loadMonths(covering: AgendaWindow.range(around: date))
-            agendaAnchor = date
+            moveAgendaWindow(to: date) {
+                agendaAnchor = date
+                scrollRequest = ScrollRequest(date: date)
+            }
+        } else {
+            // Supersedes a re-centre still waiting for its Apple fetch.
+            windowMoveToken += 1
+            scrollRequest = ScrollRequest(date: date)
         }
-        selectedDate = date
-        scrollRequest = ScrollRequest(date: date)
     }
 }
 

@@ -19,6 +19,7 @@ import StarkKit
 /// the store, or their days would silently show as empty.
 struct YearView: View {
     @EnvironmentObject private var store: PlannerStore
+    @Environment(AppleOverlayModel.self) private var overlay
     /// The year on screen. Starts as the selected day's year; the chevrons change it.
     @State private var year: Int
     /// The last computed density, tagged with the year it belongs to (see `MonthGridView`).
@@ -79,7 +80,14 @@ struct YearView: View {
         // Every month of the year the screen shows must be in the store. Runs on appear and
         // again whenever the year changes.
         .task(id: year) {
-            store.loadMonths(covering: YearGrid.range(year: year))
+            let range = YearGrid.range(year: year)
+            store.loadMonths(covering: range)
+            await overlay.reload(for: .year, display: range, today: today)
+        }
+        // Stop widening the overlay's fetch to this year once the year view is gone.
+        .onDisappear {
+            let today = today
+            Task { await overlay.reload(for: .year, display: nil, today: today) }
         }
         // Recompute when (and only when) the year, today, or the store's items change; off the
         // main actor, and a stale result (the id changed while it ran) is dropped.
@@ -93,10 +101,11 @@ struct YearView: View {
             let events = inputs.events
             let reminders = inputs.reminders
             let plans = inputs.plans
+            let apple = inputs.apple
             let today = inputs.today
             let year = inputs.year
             let days = await Task.detached(priority: .userInitiated) {
-                yearDensity(events: events, reminders: reminders, year: year, today: today, plans: plans)
+                yearDensity(events: events, reminders: reminders, year: year, today: today, plans: plans, apple: apple)
             }.value
             guard !Task.isCancelled else { return }
             density = DensitySnapshot(year: year, days: days)
@@ -111,6 +120,7 @@ struct YearView: View {
         let events: [Event]
         let reminders: [Reminder]
         let plans: [PlanBlock]
+        let apple: AppleSnapshot
     }
 
     private struct DensitySnapshot {
@@ -120,7 +130,8 @@ struct YearView: View {
     }
 
     private var densityInputs: DensityInputs {
-        DensityInputs(year: year, today: today, events: store.events, reminders: store.reminders, plans: store.plans)
+        DensityInputs(year: year, today: today, events: store.events, reminders: store.reminders, plans: store.plans,
+                      apple: overlay.snapshot)
     }
 
     private var header: some View {

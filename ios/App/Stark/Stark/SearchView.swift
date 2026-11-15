@@ -12,6 +12,7 @@ import StarkKit
 /// simplicity.
 struct SearchView: View {
     @EnvironmentObject private var store: PlannerStore
+    @Environment(AppleOverlayModel.self) private var overlay
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var isLoadingHistory = true
@@ -82,6 +83,6 @@ struct SearchView: View {
     }
 
     private var results: [AgendaItem] {
-        SearchResults.find(events: store.events, reminders: store.reminders, query: query)
+        SearchResults.find(events: store.events, reminders: store.reminders, apple: overlay.snapshot, query: query)
     }
 }
