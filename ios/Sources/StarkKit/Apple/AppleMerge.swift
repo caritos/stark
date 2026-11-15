@@ -9,7 +9,9 @@ import Foundation
 /// considered back `AgendaWindow.overdueLookbackDays` from `today`.
 ///
 /// - Events: one row per day spanned (same `spanDays` rule as `buildAgendaItems`; an all-day end is its last day, inclusive, as in Stark). A timed event
-///   ending exactly at a midnight does not spill onto that day (its end is exclusive).
+///   ending exactly at a midnight does not spill onto that day (its end is exclusive). Row ids are
+///   unique: a spill-over row that would repeat a later occurrence's own row (daily overnight
+///   series) is dropped.
 /// - Open reminders due before today (inside the lookback) are overdue, pinned to start-of-today
 ///   with the due date kept in `occurrence`; older ones are dropped.
 /// - Completed reminders show on their due day and are never overdue.
@@ -27,6 +29,12 @@ public func mergeAppleItems(
     let lookbackStart = calendar.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: todayStart) ?? todayStart
     var merged = items
 
+    // Own-day rows first, spill-over rows (k > 0) after, keeping only the first row per id. A
+    // spill-over row's occurrence is start + k days, which in a daily overnight series (22:00 to
+    // 02:00) is the next occurrence's own start, so both rows would share an id; the
+    // occurrence's own row wins.
+    var ownRows: [AgendaItem] = []
+    var spillRows: [AgendaItem] = []
     for apple in snapshot.events {
         let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
                                  colorHex: apple.calendar.colorHex, isReminder: false)
@@ -41,9 +49,14 @@ public func mergeAppleItems(
         for k in 0...span {
             let day = k == 0 ? apple.start : (calendar.date(byAdding: .day, value: k, to: apple.start) ?? apple.start)
             guard range.contains(day) else { continue }
-            merged.append(AgendaItem(kind: .event(event), occurrence: day, displayDate: day, isOverdue: false,
-                                     appleSource: source))
+            let row = AgendaItem(kind: .event(event), occurrence: day, displayDate: day, isOverdue: false,
+                                 appleSource: source)
+            if k == 0 { ownRows.append(row) } else { spillRows.append(row) }
         }
+    }
+    var emittedIDs = Set<String>()
+    for row in ownRows + spillRows where emittedIDs.insert(row.id).inserted {
+        merged.append(row)
     }
 
     for apple in snapshot.reminders {

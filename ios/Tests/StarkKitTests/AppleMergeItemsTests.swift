@@ -198,4 +198,29 @@ extension AppleMergeTests {
         #expect(out.count == 1)
         #expect(out[0].displayDate == date(10))
     }
+
+    /// A daily 22:00-02:00 series (night shifts): EventKit returns one occurrence per day, all
+    /// with the same series id. Monday's spill-over row onto Tuesday would get Tuesday 22:00 as
+    /// its occurrence, the same row id as Tuesday's own occurrence; only one row per day is kept,
+    /// and the kept row is the occurrence's own.
+    @Test func overnightDailySeriesGivesOneRowPerDayWithUniqueIds() {
+        let shifts = (10...13).map { d in event("night", start: date(d, 22), end: date(d + 1, 2)) }
+        let out = merge(events: shifts)
+        #expect(Set(out.map(\.id)).count == out.count)
+        // Own rows on the 10th to the 13th, plus the last shift's spill-over onto the 14th.
+        #expect(out.map(\.displayDate) == [date(10, 22), date(11, 22), date(12, 22), date(13, 22), date(14, 22)])
+        for d in 10...13 {
+            let row = out.first { Self.cal.isDate($0.displayDate, inSameDayAs: date(d)) }
+            guard case .event(let e)? = row?.kind else { Issue.record("no row on \(d)"); continue }
+            #expect(e.start == date(d, 22))
+            #expect(row?.occurrence == date(d, 22))
+        }
+    }
+
+    @Test func overnightDailySeriesCountsOncePerDayInDensity() {
+        let shifts = (10...13).map { d in event("night", start: date(d, 22), end: date(d + 1, 2)) }
+        let d = dayDensity(events: [], reminders: [], month: YearMonth(year: 2026, month0: 5), today: today,
+                           calendar: Self.cal, apple: AppleSnapshot(events: shifts, reminders: []))
+        for day in 10...14 { #expect(d[day] == DayDensity(tasks: 0, events: 1)) }
+    }
 }
