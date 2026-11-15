@@ -224,7 +224,8 @@ public protocol ItemRepository: Sendable {
     func complete(_ ref: AppleItemRef, on date: Date) async throws
     func uncomplete(_ ref: AppleItemRef) async throws
     func writableCalendars() async throws -> [AppleCalendarInfo]
-    /// All or nothing: if any item cannot be saved none is.
+    /// All or nothing: if any item cannot be saved none is. Returns one ref per item in input
+    /// order, events first, then reminders (the bridge ledgers each item by its position).
     func addBatch(events: [(event: NewEvent, calendarID: String)],
                   reminders: [(reminder: NewReminder, listID: String)]) async throws -> [AppleItemRef]
 }
