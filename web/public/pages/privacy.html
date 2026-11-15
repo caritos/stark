@@ -18,11 +18,17 @@
   </header>
   <main>
     <h2>THE SHORT VERSION</h2>
-    <p><strong>Stark collects no data about you.</strong> Your reminders and events stay on your device. Nothing is sent to us or any third party.</p>
+    <p><strong>Stark collects no data about you.</strong> Your reminders and events stay on your device and in your own Apple Calendar and Reminders. Stark itself makes no network connection, and nothing is sent to us or any third party.</p>
+
+    <h2>APPLE CALENDAR AND REMINDERS</h2>
+    <p>Stark keeps your events and to-dos in Apple Calendar and Reminders. It needs full access to both, and before iOS asks, Stark shows a screen that says what the access is for. You can withdraw access in iOS Settings at any time; Stark then shows that screen again and cannot add items.</p>
+    <p>Stark reads your Apple Calendar events and Apple Reminders on your device and shows them in its agenda, month and year views, Search, the planner and the Weekly Review. Stark saves what you add, edit, complete or delete in Stark to Apple Calendar and Reminders: new events go to the default calendar and new reminders to the default list you choose in Settings &gt; Apple Calendar and Reminders, where you also choose which calendars and lists show. Items on calendars you cannot change, and events you were invited to, are shown but not changed by Stark. If you use iCloud for Calendar or Reminders, Apple syncs these items to your other devices like any other item; that is handled by Apple, not by Stark.</p>
+    <p>Apple cannot hold everything Stark offers, so a small file of Stark's own on this device keeps the rest: the planner blocks you place for Apple reminders, the attended or skipped marks on Apple events, and the record of which Claude Code items were already added. It holds Apple's item identifiers and these plans and marks, not copies of your events or reminders, stays in Stark's private storage and is never sent anywhere.</p>
+    <p>Stark does not send your calendar or reminder data anywhere unless you choose to share it: the share button on today's and yesterday's header exports that day's agenda as text, Apple items included, to wherever you send it.</p>
 
     <h2>DATA STORAGE</h2>
-    <p>Stark's own reminders and events are stored in files inside Stark's private storage on your device. Stark does not use iCloud and does not sync between devices.</p>
-    <p>If you back up your device with iCloud Backup or to a computer, Apple's backup includes Stark's data along with your other apps. That backup is handled entirely by Apple using your Apple ID. We have no access to it and never receive your data.</p>
+    <p>Items Stark created before it saved to Apple Calendar and Reminders are still stored in files inside Stark's private storage on your device, and Stark still shows them and lets you change them there. Stark does not use iCloud for these files and does not sync them between devices.</p>
+    <p>If you back up your device with iCloud Backup or to a computer, Apple's backup includes Stark's files along with your other apps. That backup is handled entirely by Apple using your Apple ID. We have no access to it and never receive your data.</p>
 
     <h2>DATA COLLECTION</h2>
     <p>Stark does <strong>not</strong> collect, transmit, or store any of the following:</p>
@@ -31,13 +37,10 @@
     &mdash; Crash reports or diagnostics<br>
     &mdash; Location data<br>
     &mdash; Reminder or event content or metadata</p>
-    <p>Stark does not ask for access to your contacts, photos, location, or notifications. It asks for access to your calendars and reminders only if you turn on the optional Apple Calendar and Reminders overlay described below.</p>
+    <p>Stark does not ask for access to your contacts, photos, location, or notifications. It asks only for access to your calendars and reminders, as described above.</p>
 
     <h2>CLAUDE CODE BRIDGE</h2>
-    <p>Stark has an optional bridge that lets Claude Code on your Mac add reminders and events. It does nothing until you pair it. Stark itself makes no network connection for it: your Mac talks to your phone over your USB or Wi-Fi link to the phone. A <strong>stark://add</strong> link is only accepted when it is signed with a pairing secret. The secret is kept in this phone's Keychain (not in backups) and, once you pair, in your Mac's login Keychain; Stark never sends it anywhere else. If you ask Claude for your schedule, the Mac reads a temporary copy of your Stark data over the cable or Wi-Fi link to the phone, the copy is deleted afterwards, and Claude Code sees that day's items. You can reset pairing at any time in Settings &gt; Claude Code.</p>
-
-    <h2>APPLE CALENDAR AND REMINDERS</h2>
-    <p>This is optional and <strong>off by default</strong>: Stark does not read your calendars or reminders unless you turn it on. When you turn it on in Settings &gt; Apple Calendar and Reminders, iOS asks for access to your calendars and reminders. Only then does Stark read your Apple Calendar events and Apple Reminders on your device, and show them in its agenda, month and year views and Search, read-only. You choose which calendars and lists show. Stark does not copy this data into its own files, does not send it anywhere unless you choose to share it, and makes no network connection for it. Stark cannot edit, complete or delete Apple items; open them in Calendar or Reminders. The share button on a day exports what the agenda shows that day, so it includes any Apple items shown. Reminders without a date are not shown. Stark does not use iCloud itself; if you use iCloud for Calendar or Reminders, that is handled by Apple. You can turn the overlay off in Settings, or withdraw access in iOS Settings, at any time. Stark's own reminders and events are stored separately, as described above.</p>
+    <p>Stark has an optional bridge that lets Claude Code on your Mac add reminders and events. It does nothing until you pair it. Stark itself makes no network connection for it: your Mac talks to your phone over your USB or Wi-Fi link to the phone. A <strong>stark://add</strong> link is only accepted when it is signed with a pairing secret. The secret is kept in this phone's Keychain (not in backups) and, once you pair, in your Mac's login Keychain; Stark never sends it anywhere else. The items Claude Code adds go to Apple Calendar and Reminders, in your default calendar and list, and Stark notes each added item in its small file so that sending the same request again adds nothing. Claude Code cannot read your schedule from the phone: stark-claude today is unavailable until a Mac tool exists, so the Mac reads none of your Stark data. You can reset pairing at any time in Settings &gt; Claude Code.</p>
 
     <h2>LINKS</h2>
     <p>If you tap a link in Stark, such as an event's URL or a link in Settings, it opens in your browser. That site's own privacy policy applies to your visit.</p>

@@ -61,9 +61,27 @@ func TestPublicPagesHaveBodyText(t *testing.T) {
 func TestPrivacyDatedAndMentionsData(t *testing.T) {
 	body := get(Handler(), http.MethodGet, "/privacy").Body.String()
 	// Stark's policy: dated, says the app collects nothing, where the data lives, and how to ask.
-	for _, want := range []string{"LAST UPDATED: NOVEMBER 2026", "CLAUDE CODE BRIDGE", "APPLE CALENDAR AND REMINDERS", "unless you turn it on", "unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com"} {
-		if !strings.Contains(strings.ToLower(body), strings.ToLower(want)) {
+	// Since the Apple write path (2026-11-15) Stark WRITES to Calendar and Reminders, still makes
+	// no network connection itself, the bridge's items land in Apple, plans and attended marks
+	// for Apple items live in a small file of Stark's own on the device, and `today` is unavailable.
+	lower := strings.ToLower(body)
+	for _, want := range []string{
+		"LAST UPDATED: NOVEMBER 2026", "CLAUDE CODE BRIDGE", "APPLE CALENDAR AND REMINDERS",
+		"saves what you add, edit, complete or delete in Stark to Apple Calendar and Reminders",
+		"Stark itself makes no network connection",
+		"items Claude Code adds go to Apple Calendar and Reminders",
+		"small file of Stark's own on this device",
+		"stark-claude today is unavailable",
+		"unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com",
+	} {
+		if !strings.Contains(lower, strings.ToLower(want)) {
 			t.Errorf("privacy missing %q", want)
+		}
+	}
+	// Statements that stopped being true with the write path.
+	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only."} {
+		if strings.Contains(lower, strings.ToLower(stale)) {
+			t.Errorf("privacy still says %q", stale)
 		}
 	}
 }
