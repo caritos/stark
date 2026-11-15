@@ -4,7 +4,7 @@
 //
 //  The ONLY file in the app that imports EventKit. Reads Apple Calendar events and Reminders
 //  and maps them to StarkKit's plain values; never writes. Mapping rules that need testing live in
-//  StarkKit (`appleEventEnd`, `AppleAccess.combined`).
+//  StarkKit (`appleEventEnd`, `appleReminderDue`, `AppleAccess.combined`).
 //
 
 import CoreGraphics
@@ -124,19 +124,15 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
 
     private static func map(_ reminder: EKReminder) -> AppleReminder? {
         guard let ekCalendar = reminder.calendar else { return nil }
-        let components = reminder.dueDateComponents
-        // Undated reminders pass through with due == nil; `mergeAppleItems` drops them.
-        let due = components.flatMap { comps -> Date? in
-            var c = comps
-            if c.calendar == nil { c.calendar = Calendar.autoupdatingCurrent }
-            return c.date
-        }
+        // Undated reminders pass through with due == nil; `mergeAppleItems` drops them. The
+        // components are Gregorian values whatever the phone's calendar (`appleReminderDue`).
+        let due = reminder.dueDateComponents.map { appleReminderDue($0) }
         return AppleReminder(
             id: reminder.calendarItemIdentifier,
             title: reminder.title ?? "",
             notes: reminder.notes,
-            due: due,
-            dueHasTime: components?.hour != nil,
+            due: due?.date,
+            dueHasTime: due?.hasTime ?? false,
             isCompleted: reminder.isCompleted,
             completedAt: reminder.completionDate,
             // EventKit uses 0 for "none" and 1-9 like iCal, as Stark does.
