@@ -118,10 +118,17 @@ struct PlannerView: View {
                         if let model, !model.allDayEvents.isEmpty {
                             banner(model.allDayEvents)
                         }
-                        Rectangle().fill(Colors.separator).frame(height: 1)
-                        timeline
-                        Rectangle().fill(Colors.separator).frame(height: 1)
-                        tray
+                        // Non-interactive and dimmed while a save is writing: an edit made then
+                        // would not be in the save (the planner also stays open if one slips in).
+                        VStack(spacing: 0) {
+                            Rectangle().fill(Colors.separator).frame(height: 1)
+                            timeline
+                            Rectangle().fill(Colors.separator).frame(height: 1)
+                            tray
+                        }
+                        .allowsHitTesting(!isSaving)
+                        .opacity(isSaving ? 0.5 : 1)
+                        .accessibilityHidden(isSaving)
                     }
                 } else {
                     VStack(spacing: 0) {
@@ -136,14 +143,22 @@ struct PlannerView: View {
             .toolbarBackground(Colors.background, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) { header }
-                if isEditable {
+                if isEditable && isSaving {
+                    ToolbarItem(placement: .confirmationAction) {
+                        ProgressView()
+                            .tint(Colors.accent)
+                            .frame(width: 40, height: 40)
+                            .accessibilityLabel("Saving plan")
+                    }
+                } else if isEditable {
                     SquareToolbarButton(systemImage: "checkmark", label: "Save plan", placement: .confirmationAction,
-                                        isProminent: true, isDisabled: unsavedDayCount == 0 || isSaving) { save() }
+                                        isProminent: true, isDisabled: unsavedDayCount == 0) { save() }
                 } else {
                     // Keeps the chevrons where they were while stepping into the past.
                     SquareToolbarPlaceholder(placement: .confirmationAction)
                 }
-                SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { close() }
+                SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction,
+                                    isDisabled: isSaving) { close() }
             }
             .confirmationDialog("Discard changes to this plan?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                 Button("Discard Changes", role: .destructive) { dismiss() }
@@ -293,6 +308,7 @@ struct PlannerView: View {
     private var header: some View {
         HStack(spacing: Spacing.sm) {
             SquareButton(systemImage: "chevron.left", label: "Previous day") { step(-1) }
+                .disabled(isSaving)
             VStack(spacing: 1) {
                 Text(dayWord)
                     .font(Fonts.mono(12, weight: .bold))
@@ -315,6 +331,7 @@ struct PlannerView: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
             SquareButton(systemImage: "chevron.right", label: "Next day") { step(1) }
+                .disabled(isSaving)
         }
     }
 
@@ -411,14 +428,19 @@ struct PlannerView: View {
     /// reminders' blocks to the sidecar, Stark's own to the store). If every write succeeds the
     /// planner closes; otherwise it stays open with all drafts kept and a banner naming the
     /// failed days (and the last reason), and a retry rewrites the same blocks (a replace).
+    /// While it writes, the timeline and tray take no touches; should an edit still land in that
+    /// window, the planner stays open with it (`PlanSession.hasEdits(since:)`) instead of closing.
     private func save() {
         guard !isSaving, let router else { return }
         syncSession()
+        endLift()
+        actionBlock = nil
+        timePick = nil
         isSaving = true
-        let session = session
+        let written = session
         Task {
             var reason: String?
-            let failed = await session.saveAll(today: today, writing: { day, blocks in
+            let failed = await written.saveAll(today: today, writing: { day, blocks in
                 do {
                     try await router.replacePlans(on: day, with: blocks)
                     return true
@@ -429,8 +451,13 @@ struct PlannerView: View {
             })
             isSaving = false
             if failed.isEmpty {
-                saveError = nil
-                dismiss()
+                syncSession()
+                if session.hasEdits(since: written, today: today) {
+                    saveError = "Saved. Changes made while saving are not saved yet: tap the check again."
+                } else {
+                    saveError = nil
+                    dismiss()
+                }
             } else {
                 let days = failed.map { Self.titleFormatter.string(from: $0) }.joined(separator: ", ")
                 saveError = "Could not save the plan for \(days)" + (reason.map { ". \($0)" } ?? "")
