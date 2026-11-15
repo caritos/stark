@@ -35,7 +35,11 @@ struct StarkApp: App {
         self.repository = repository
         let overlay = AppleOverlayModel(provider: provider)
         _overlay = State(initialValue: overlay)
-        let destinations = DefaultDestinationModel(provider: provider, repository: repository)
+        let destinations = DefaultDestinationModel(provider: provider, repository: repository,
+                                                   keepShown: { [weak overlay] id in
+            // Only when hidden: an unchanged assignment would still redraw every overlay reader.
+            if overlay?.selection.isShown(id) == false { overlay?.setShown(id, true) }
+        })
         _destinations = State(initialValue: destinations)
         let sidecar = ItemSidecar(fileURL: Self.sidecarURL(), calendar: .autoupdatingCurrent)
         self.sidecar = sidecar

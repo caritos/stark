@@ -63,7 +63,7 @@ struct AppleSettingsTests {
         #expect(AppleSettings.statusText(.notAsked)
             == "Not asked yet. Stark asks on its main screen, after saying what access is for.")
         #expect(AppleSettings.statusText(.granted)
-            == "Stark can read your calendars and reminders. It never changes them.")
+            == "Stark shows your calendars and reminders and saves what you change in Stark to them.")
         #expect(AppleSettings.statusText(.denied)
             == "Access is off. Allow Stark full access to Calendars and Reminders in iOS Settings.")
         #expect(AppleSettings.statusText(.writeOnly)

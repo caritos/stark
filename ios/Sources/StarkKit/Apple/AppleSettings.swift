@@ -49,7 +49,7 @@ public enum AppleSettings {
     public static func statusText(_ access: AppleAccess) -> String {
         switch access {
         case .notAsked: "Not asked yet. Stark asks on its main screen, after saying what access is for."
-        case .granted: "Stark can read your calendars and reminders. It never changes them."
+        case .granted: "Stark shows your calendars and reminders and saves what you change in Stark to them."
         case .denied: "Access is off. Allow Stark full access to Calendars and Reminders in iOS Settings."
         case .writeOnly: "Stark can only add events, not read them. Allow full access in iOS Settings."
         }
@@ -58,6 +58,12 @@ public enum AppleSettings {
     /// A row that opens iOS Settings, the only place a refusal can be undone.
     public static func showsOpenSettings(_ access: AppleAccess) -> Bool {
         access == .denied || access == .writeOnly
+    }
+
+    /// The default calendar and list for new items are always shown, so an item added in Stark
+    /// never vanishes from view: their toggles are locked on.
+    public static func isLockedOn(_ id: String, calendarID: String?, listID: String?) -> Bool {
+        id == calendarID || id == listID
     }
 
     /// The per-calendar toggles, only when the overlay is on and can read.

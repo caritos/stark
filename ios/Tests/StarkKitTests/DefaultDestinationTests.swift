@@ -63,3 +63,13 @@ struct DefaultDestinationTests {
             == "No calendar or reminder list Stark can add to. Add one in Apple Calendar or Reminders, then choose it in Settings.")
     }
 }
+
+@Suite("AppleSettings default lock")
+struct AppleSettingsDefaultLockTests {
+    @Test func defaultCalendarAndListAreLockedOn() {
+        #expect(AppleSettings.isLockedOn("home", calendarID: "home", listID: "inbox"))
+        #expect(AppleSettings.isLockedOn("inbox", calendarID: "home", listID: "inbox"))
+        #expect(!AppleSettings.isLockedOn("work", calendarID: "home", listID: "inbox"))
+        #expect(!AppleSettings.isLockedOn("work", calendarID: nil, listID: nil))
+    }
+}

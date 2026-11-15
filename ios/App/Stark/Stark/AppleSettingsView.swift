@@ -72,9 +72,16 @@ struct AppleSettingsView: View {
                             Toggle(isOn: shownBinding(calendar.id)) {
                                 AppleCalendarToggleLabel(calendar: calendar)
                             }
+                            .disabled(isLocked(calendar.id))
                         }
                     } header: {
                         Text(group.accountName)
+                    } footer: {
+                        if group.calendars.contains(where: { isLocked($0.id) }) {
+                            Text("The default calendar and list are always shown, so items you add in Stark stay in view.")
+                                .font(.footnote)
+                                .foregroundStyle(Colors.textSecondary)
+                        }
                     }
                     .listRowBackground(Colors.background)
                 }
@@ -90,6 +97,10 @@ struct AppleSettingsView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await refresh() } }
         }
+    }
+
+    private func isLocked(_ id: String) -> Bool {
+        AppleSettings.isLockedOn(id, calendarID: destinations.calendarID, listID: destinations.listID)
     }
 
     private func refresh() async {

@@ -30,11 +30,16 @@ final class DefaultDestinationModel: DefaultDestinations {
     @ObservationIgnored private let provider: EventKitProvider
     @ObservationIgnored private let repository: any ItemRepository
     @ObservationIgnored private let defaults: UserDefaults
+    /// Makes a calendar or list visible in the overlay (the default ones are never hidden, so an
+    /// item added in Stark never vanishes from view). `AppleOverlayModel.setShown(_:true)`.
+    @ObservationIgnored private let keepShown: (String) -> Void
 
-    init(provider: EventKitProvider, repository: any ItemRepository, defaults: UserDefaults = .standard) {
+    init(provider: EventKitProvider, repository: any ItemRepository, defaults: UserDefaults = .standard,
+         keepShown: @escaping (String) -> Void) {
         self.provider = provider
         self.repository = repository
         self.defaults = defaults
+        self.keepShown = keepShown
     }
 
     /// Re-reads the writable calendars and EventKit's defaults and resolves both destinations.
@@ -56,16 +61,20 @@ final class DefaultDestinationModel: DefaultDestinations {
         calendarID = resolve(Key.calendar, system: system.calendarID, in: calendars, reminderLists: false)
         listID = resolve(Key.list, system: system.listID, in: calendars, reminderLists: true)
         error = DefaultDestination.problem(calendarID: calendarID, listID: listID)
+        // Also covers a default hidden before the toggles were locked on.
+        for id in [calendarID, listID].compactMap({ $0 }) { keepShown(id) }
     }
 
     func chooseCalendar(_ id: String) {
         defaults.set(id, forKey: Key.calendar)
+        keepShown(id)
         calendarID = id
         error = DefaultDestination.problem(calendarID: calendarID, listID: listID)
     }
 
     func chooseList(_ id: String) {
         defaults.set(id, forKey: Key.list)
+        keepShown(id)
         listID = id
         error = DefaultDestination.problem(calendarID: calendarID, listID: listID)
     }
