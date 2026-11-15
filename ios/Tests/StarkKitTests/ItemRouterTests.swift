@@ -88,19 +88,17 @@ struct ItemRouterTests {
         AppleCalendarInfo(id: "list", title: "Tasks", accountName: "iCloud", colorHex: nil, isReminderList: true),
     ]
 
-    private var utc: Calendar {
-        var c = Calendar(identifier: .gregorian)
-        c.timeZone = TimeZone(identifier: "UTC")!
-        return c
-    }
+    /// The local Gregorian calendar: `FormFields.isAllDay` (date-only due dates) reads the local
+    /// time of day, so dates built in UTC would turn into "midnight" in some zones (UTC+9 at 15:00).
+    private var days: Calendar { Calendar(identifier: .gregorian) }
 
     private func at(_ day: Int, _ hour: Int = 9) -> Date {
-        utc.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour))!
+        days.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour))!
     }
 
     /// Local midnight: Stark's marker for a date-only due date (`FormFields.isAllDay`).
     private func midnight(_ day: Int) -> Date {
-        Calendar(identifier: .gregorian).startOfDay(for: at(day, 12))
+        days.startOfDay(for: at(day, 12))
     }
 
     private final class Counter { var writes = 0 }
@@ -121,10 +119,10 @@ struct ItemRouterTests {
         let local = FakeLocalStore()
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString).appendingPathComponent("sidecar.json")
-        let sidecar = ItemSidecar(fileURL: url, calendar: utc)
+        let sidecar = ItemSidecar(fileURL: url, calendar: days)
         let counter = Counter()
         let router = ItemRouter(repository: repo ?? fake, local: local, sidecar: sidecar,
-                                destinations: destinations, calendar: utc,
+                                destinations: destinations, calendar: days,
                                 now: { Date(timeIntervalSince1970: 1_800_000_000) })
         router.onDidWrite = { counter.writes += 1 }
         return Harness(router: router, repo: fake, local: local, sidecar: sidecar, counter: counter)
