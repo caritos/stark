@@ -46,6 +46,21 @@ struct FAQView: View {
             """
         ),
         Entry(
+            question: "Can Stark show my Apple Calendar and Reminders?",
+            answer: """
+            Yes, if you turn it on: Settings > Apple Calendar and Reminders. It is off by \
+            default, and iOS asks for calendar and reminders access only when you turn it on. \
+            Stark then reads your Apple events and reminders on the device and shows them in \
+            the agenda, the month and year dots and Search. They are read-only: Stark cannot \
+            edit, complete or delete them, so open them in Calendar or Reminders to change \
+            them. You choose which calendars and lists show. Nothing is copied into Stark's \
+            files and nothing is sent anywhere; no network connection is added. Reminders \
+            without a date are not shown. The share button on a day includes the Apple items \
+            shown that day. Stark's own items stay stored separately, and an item that exists \
+            in both places appears twice.
+            """
+        ),
+        Entry(
             question: "What is the Claude Code bridge?",
             answer: """
             An optional way to add tasks and events from Claude Code on your Mac. It does \
