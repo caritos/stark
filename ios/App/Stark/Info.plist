@@ -7,6 +7,10 @@
 		<string>JetBrainsMono-Regular.ttf</string>
 		<string>JetBrainsMono-SemiBold.ttf</string>
 	</array>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Stark shows your Apple Calendar events and Reminders in its agenda. They are read on this device and never copied or sent anywhere.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Stark shows your Apple Calendar events and Reminders in its agenda. They are read on this device and never copied or sent anywhere.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -85,6 +85,15 @@ public struct AppleReminder: Equatable, Sendable {
 
 public enum AppleAccess: Equatable, Sendable {
     case notAsked, granted, denied, writeOnly
+
+    /// The overlay needs full access to BOTH events and reminders. Any denial wins, then any
+    /// write-only grant; `granted` only when both are granted; otherwise still `notAsked`.
+    public static func combined(events: AppleAccess, reminders: AppleAccess) -> AppleAccess {
+        if events == .denied || reminders == .denied { return .denied }
+        if events == .writeOnly || reminders == .writeOnly { return .writeOnly }
+        if events == .granted && reminders == .granted { return .granted }
+        return .notAsked
+    }
 }
 
 public struct AppleSnapshot: Equatable, Sendable {

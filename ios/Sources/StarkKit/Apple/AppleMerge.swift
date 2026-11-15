@@ -71,3 +71,20 @@ public func mergeAppleItems(
 
     return sortAgendaItems(merged, calendar: calendar)
 }
+
+/// Maps EventKit's end date to the `AppleCalendarEvent.end` that `mergeAppleItems` expects.
+/// Timed events pass through (a midnight end is exclusive in the merge). For an all-day event
+/// the result is the start of its INCLUSIVE last day: EventKit usually reports 23:59:59 on the
+/// last day, but an end at exactly the next midnight is stepped back a day so no extra row
+/// appears. Never earlier than the start's day.
+public func appleEventEnd(start: Date, end: Date?, isAllDay: Bool,
+                          calendar: Calendar = Calendar(identifier: .gregorian)) -> Date? {
+    guard let end else { return nil }
+    guard isAllDay else { return end }
+    let startDay = calendar.startOfDay(for: start)
+    var lastDay = calendar.startOfDay(for: end)
+    if end == lastDay, lastDay > startDay {
+        lastDay = calendar.date(byAdding: .day, value: -1, to: lastDay) ?? lastDay
+    }
+    return max(lastDay, startDay)
+}
