@@ -12,6 +12,12 @@ public struct AppleFetchWindow: Equatable, Sendable {
         case year
         /// The Search sheet while it is open (`SearchWindow`, two years either side of today).
         case search
+        /// The planner while it is open: the viewed day's `PlannerDays.loadRange`, so Apple
+        /// reminders and completed copies exist for that day and its week line.
+        case planner
+        /// Weekly Review while it is open: the reviewed week (the overlay adds the reminder
+        /// lookback), so completions exist for weeks older than the agenda's window.
+        case weeklyReview
     }
 
     private var ranges: [Screen: ClosedRange<Date>] = [:]

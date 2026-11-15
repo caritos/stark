@@ -137,10 +137,11 @@ private func densityCounts(
     // counts on both its normal row's day and the planned day. `reminders` lets a one-off due
     // outside `range` still count on its planned day.
     let base = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
-    // Read-only Apple rows are merged before plans, so they count like any other agenda row.
-    let merged = mergeAppleItems(base, snapshot: apple, in: range, today: today, calendar: calendar)
-    let items = applyPlans(merged,
-                           plans: plans, today: today, reminders: reminders, calendar: calendar)
+    // The agenda's own order (`agendaWithApple`): Apple rows merged first, then plans, with the
+    // snapshot, so an Apple reminder planned onto a day counts there even when due outside `range`.
+    // Plans are local and Apple blocks together, each once. An empty snapshot is the old path.
+    let items = agendaWithApple(local: base, snapshot: apple, plans: plans, range: range, today: today,
+                                reminders: reminders, calendar: calendar)
     for item in items {
         // buildAgendaItems can also return rows pinned to today (overdue) when today is outside
         // the range; they belong to a cell that is not in this range.

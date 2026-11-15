@@ -56,4 +56,14 @@ public struct PlanSession {
         }
         return failed
     }
+
+    /// `saveAll` for an async writer (`ItemRouter.replacePlans`): the same days in the same
+    /// order, one write at a time; returns the days whose write failed.
+    public func saveAll(today: Date, writing write: (Date, [PlanBlock]) async -> Bool) async -> [Date] {
+        var failed: [Date] = []
+        for day in changedDays where PlannerDays.isEditable(day, today: today, calendar: calendar) {
+            if let draft = drafts[day], !(await write(day, draft.blocksToSave)) { failed.append(day) }
+        }
+        return failed
+    }
 }

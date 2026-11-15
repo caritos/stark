@@ -26,6 +26,8 @@ public struct ItemEditForm: Equatable, Sendable {
     /// The date and all-day flag the form started with, used to tell "left alone" from "edited".
     public let initialDate: Date
     public let initialAllDay: Bool
+    /// The form edits a reminder that had no due date (`showsNoDate`, `addDueDate`).
+    public let startedUndated: Bool
 
     /// The form for an event (`title` is the row's title, which is the event's).
     public init(event: Event) {
@@ -42,7 +44,7 @@ public struct ItemEditForm: Equatable, Sendable {
         let start = reminder.dueDate ?? occurrence
         self.init(title: reminder.title, date: start, endDate: start, allDay: FormFields.isAllDay(reminder),
                   recurrence: reminder.recurrence, notes: reminder.notes ?? "", location: "", url: "",
-                  priority: ReminderPriority(icalValue: reminder.priority))
+                  priority: ReminderPriority(icalValue: reminder.priority), startedUndated: reminder.dueDate == nil)
     }
 
     /// The form for an agenda row.
@@ -55,7 +57,8 @@ public struct ItemEditForm: Equatable, Sendable {
     }
 
     private init(title: String, date: Date, endDate: Date, allDay: Bool, recurrence: RecurrenceRule?,
-                 notes: String, location: String, url: String, priority: ReminderPriority) {
+                 notes: String, location: String, url: String, priority: ReminderPriority,
+                 startedUndated: Bool = false) {
         self.title = title
         self.date = date
         self.endDate = endDate
@@ -68,6 +71,7 @@ public struct ItemEditForm: Equatable, Sendable {
         self.priority = priority
         self.initialDate = date
         self.initialAllDay = allDay
+        self.startedUndated = startedUndated
     }
 
     public var trimmedTitle: String { title.trimmingCharacters(in: .whitespacesAndNewlines) }

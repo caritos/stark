@@ -82,7 +82,7 @@ public enum AppleEditorState: Equatable {
 /// its due date is indistinguishable and gets the notice too (see the task-9a report).
 public enum UncompleteNotice {
     public static let message =
-        "This is a finished occurrence of a repeating reminder. The reminder already moved to its next date, so nothing was changed."
+        "This is a finished occurrence of a repeating reminder. The reminder already moved to its next date, so nothing was changed. If this was a separate reminder, reopen it in Reminders."
 
     public static func text(for item: AgendaItem, snapshot: AppleSnapshot) -> String? {
         guard let source = item.appleSource, case .reminder(let reminder) = item.kind, reminder.isCompleted,
@@ -149,8 +149,8 @@ public enum SearchWindow {
 /// - Reminder: `x-apple-reminderkit://REMCDReminder/<calendarItemIdentifier>`, the identifier
 ///   being the item id without its `apple-` prefix.
 ///
-/// Neither scheme is documented by Apple; both are to be confirmed on a device (plan Task 9) and
-/// the link removed if they do not open the app.
+/// Neither scheme is documented by Apple and neither has been confirmed on a device yet (it is on
+/// the phase 1 device checklist, plan Task 10); remove the link if they do not open the app.
 public func appleOpenURL(for item: AgendaItem) -> URL? {
     guard let source = item.appleSource else { return nil }
     switch item.kind {

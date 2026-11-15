@@ -19,6 +19,12 @@ public enum TrayPane: Int, CaseIterable, Hashable, Sendable {
         model.trayNoDate.isEmpty ? allCases : allCases + [.noDate]
     }
 
+    /// The pane to keep selected when the tray shows `panes`: `selected` while it is still shown,
+    /// else the planned day's own pane (`.noDate` empties once its last reminder is planned).
+    public static func shown(_ selected: TrayPane, among panes: [TrayPane]) -> TrayPane {
+        panes.contains(selected) ? selected : .today
+    }
+
     public func label(dayWord: String) -> String {
         switch self {
         case .past: return "PAST"
