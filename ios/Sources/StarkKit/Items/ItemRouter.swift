@@ -319,6 +319,7 @@ public final class ItemRouter {
             return nil
         case .apple(let ref):
             guard let listID = destinations.listID else { throw ItemRouterError.noDefaultDestination(.reminder) }
+            try await refuseUnrepresentableConvert(ref)
             let new = Self.newReminder(reminder, url: url)
             return try await replace(ref) { try await self.repository.addReminder(new, listID: listID) }
         }
@@ -335,8 +336,18 @@ public final class ItemRouter {
             return nil
         case .apple(let ref):
             guard let calendarID = destinations.calendarID else { throw ItemRouterError.noDefaultDestination(.event) }
+            try await refuseUnrepresentableConvert(ref)
             let new = Self.newEvent(event)
             return try await replace(ref) { try await self.repository.addEvent(new, calendarID: calendarID) }
+        }
+    }
+
+    /// A convert deletes the original; one whose repeat Stark can't represent would come back
+    /// without it, so it is refused before anything is written.
+    private func refuseUnrepresentableConvert(_ ref: AppleItemRef) async throws {
+        let source = try await apple { try await repository.details(ref) }
+        guard !source.hasUnrepresentableRepeat else {
+            throw ItemRouterError.unsupported(ItemDetails.unconvertibleReason)
         }
     }
 

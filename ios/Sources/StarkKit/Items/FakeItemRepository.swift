@@ -27,6 +27,8 @@ public actor FakeItemRepository: ItemRepository {
     private var nextFailure: String?
     /// Series with occurrences "edited one by one in Calendar" (`markEditedOccurrences`).
     private var editedSeries: Set<String> = []
+    /// Items whose details report a repeat Stark can't represent (`markUnrepresentableRepeat`).
+    private var unrepresentable: Set<String> = []
 
     /// `assignsExternalIDs` gives every new item an external id (`ext-<identifier>`), as iCloud does.
     public init(calendars: [AppleCalendarInfo], readOnlyCalendarIDs: Set<String> = [],
@@ -40,6 +42,9 @@ public actor FakeItemRepository: ItemRepository {
     /// Marks an event series as having occurrences edited one by one in Apple Calendar: a repeat
     /// change without `confirmRuleChange` is then refused, as the EventKit repository does.
     public func markEditedOccurrences(_ identifier: String) { editedSeries.insert(identifier) }
+
+    /// Makes `details` report `hasUnrepresentableRepeat` for the item (an Apple rule Stark can't hold).
+    public func markUnrepresentableRepeat(_ identifier: String) { unrepresentable.insert(identifier) }
 
     /// Makes the next mutating call throw `saveFailed(message)` and change nothing.
     public func failNext(_ message: String = "injected failure") { nextFailure = message }
@@ -83,12 +88,14 @@ public actor FakeItemRepository: ItemRepository {
             guard let stored = events[ref.identifier] else { throw ItemRepositoryError.notFound }
             return ItemDetails(event: stored.event, calendarID: stored.calendarID,
                                isWritable: !readOnlyIDs.contains(stored.calendarID),
+                               hasUnrepresentableRepeat: unrepresentable.contains(ref.identifier),
                                externalID: externalID(for: ref.identifier))
         case .reminder:
             guard let stored = reminders[ref.identifier] else { throw ItemRepositoryError.notFound }
             return ItemDetails(reminder: stored.reminder, dueHasTime: stored.dueHasTime,
                                reminderURL: stored.url, calendarID: stored.calendarID,
                                isWritable: !readOnlyIDs.contains(stored.calendarID),
+                               hasUnrepresentableRepeat: unrepresentable.contains(ref.identifier),
                                externalID: externalID(for: ref.identifier))
         }
     }

@@ -32,13 +32,20 @@ public struct AppleItemRef: Equatable, Hashable, Sendable {
         self.init(kind: kind, identifier: identifier)
     }
 
-    /// The ref for an Apple overlay row, or nil for one of Stark's own rows.
+    /// The ref for an Apple overlay row, or nil for one of Stark's own rows. Taken from the row's
+    /// MODEL id (`apple-<identifier>`), never by parsing the row id: a `.distantPast` occurrence
+    /// (an undated reminder in Search) ends the row id in a negative timestamp, which the row-id
+    /// parser would split at its minus sign.
     public static func ref(for item: AgendaItem) -> AppleItemRef? {
         guard item.appleSource != nil else { return nil }
+        let modelID: String
+        let kind: Kind
         switch item.kind {
-        case .event: return AppleItemRef(agendaItemID: item.id, kind: .event)
-        case .reminder: return AppleItemRef(agendaItemID: item.id, kind: .reminder)
+        case .event(let event): modelID = event.id; kind = .event
+        case .reminder(let reminder): modelID = reminder.id; kind = .reminder
         }
+        guard case .apple(let ref) = ItemOrigin(id: modelID, kind: kind) else { return nil }
+        return ref
     }
 }
 
@@ -203,6 +210,19 @@ extension ItemDetails {
     /// Converting this item to the other kind deletes it in Apple; for an event with attendees that
     /// may notify them, so the edit sheet asks first.
     public var convertAsksFirst: Bool { event != nil && hasAttendees }
+
+    /// Whether the edit sheet may offer Event <-> Reminder. Not for a repeat Stark can't
+    /// represent: the converted copy would lose it (its rule reads as nil) while the original
+    /// series is deleted. Not for a completed reminder (history), as for Stark's own items.
+    public var canConvert: Bool {
+        guard !hasUnrepresentableRepeat else { return false }
+        if event != nil { return true }
+        return reminder.map(ItemConversion.isConvertible) ?? false
+    }
+
+    /// Shown in place of the Event/Reminder switch when the repeat stops a convert.
+    public static let unconvertibleReason =
+        "This item repeats in a way Stark can't copy, so it can't be converted. Change it in Apple's app."
 }
 
 public enum ItemRepositoryError: Error, Equatable, Sendable {

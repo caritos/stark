@@ -48,6 +48,21 @@ public enum ItemConversion {
         return event(from: edited, undatedStart: start).scheduled(start: start, end: end, allDay: isAllDay)
     }
 
+    /// An Apple reminder converted to an event: the typed URL, else the reminder's stored URL
+    /// (the edit sheet has no reminder URL field, and the original is deleted).
+    public static func eventURL(typed: String, storedReminderURL: String?) -> String? {
+        FormFields.trimmedOrNil(typed) ?? storedReminderURL.flatMap(FormFields.trimmedOrNil)
+    }
+
+    /// An Apple event converted to a reminder: Apple reminders hold a URL, so it is kept there
+    /// (returned for `ItemRouter.convertEvent(id:to:url:)`) instead of moving into the notes;
+    /// the location still goes to the notes, as for Stark's own items.
+    public static func appleReminder(from event: Event) -> (reminder: Reminder, url: String?) {
+        var withoutURL = event
+        withoutURL.url = nil
+        return (reminder(from: withoutURL), event.url.flatMap(FormFields.trimmedOrNil))
+    }
+
     /// How many attended/skipped marks converting this event to a reminder would lose.
     public static func droppedMarks(converting event: Event) -> Int {
         event.outcomes.count

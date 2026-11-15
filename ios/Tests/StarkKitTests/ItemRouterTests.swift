@@ -695,4 +695,24 @@ struct ItemRouterTests {
         #expect(try await h.router.eventOutcome(id: "apple-EV1", on: at(6, 8)) == nil)
         #expect(try await h.router.eventOutcome(id: UUID().uuidString, on: at(5, 8)) == nil)
     }
+
+    @Test("converting an Apple item whose repeat Stark can't represent is refused and changes nothing")
+    func convertRefusedForUnrepresentableRepeat() async throws {
+        let h = harness()
+        let eventRef = try await h.router.add(event: Event(title: "Odd", start: at(3, 7)))
+        let reminderRef = try await h.router.add(reminder: Reminder(title: "Odd too", dueDate: at(3, 8)))
+        await h.repo.markUnrepresentableRepeat(eventRef.identifier)
+        await h.repo.markUnrepresentableRepeat(reminderRef.identifier)
+        let before = await h.repo.itemCount
+        let writes = h.counter.writes
+        await #expect(throws: ItemRouterError.self) {
+            try await h.router.convertEvent(id: "apple-\(eventRef.identifier)", to: Reminder(title: "Odd"))
+        }
+        await #expect(throws: ItemRouterError.self) {
+            try await h.router.convertReminder(id: "apple-\(reminderRef.identifier)", to: Event(title: "Odd too", start: at(3, 8)))
+        }
+        #expect(await h.repo.itemCount == before)
+        #expect(h.counter.writes == writes)
+        #expect(try await h.repo.details(eventRef).event?.title == "Odd")
+    }
 }
