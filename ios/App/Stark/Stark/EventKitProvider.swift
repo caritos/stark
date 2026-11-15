@@ -135,9 +135,14 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
                                                          ending: range.upperBound, calendars: nil)
         let done = store.predicateForCompletedReminders(withCompletionDateStarting: range.lowerBound,
                                                         ending: range.upperBound, calendars: nil)
+        // A due-date range never matches a reminder with no due date, so undated open ones are
+        // fetched separately (all incomplete, keeping only those without a due date) for Search
+        // and the planner's "No date" pane; the agenda drops them (`mergeAppleItems`).
+        let anyOpen = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
         let openItems = try await reminders(matching: open)
         let doneItems = try await reminders(matching: done)
-        return openItems + doneItems
+        let undatedItems = try await reminders(matching: anyOpen).filter { $0.due == nil }
+        return openItems + doneItems + undatedItems
     }
 
     /// Maps inside the completion handler so no `EKReminder` crosses a concurrency boundary.
@@ -156,7 +161,8 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
 
     private static func map(_ reminder: EKReminder) -> AppleReminder? {
         guard let ekCalendar = reminder.calendar else { return nil }
-        // Undated reminders pass through with due == nil; `mergeAppleItems` drops them. The
+        // Undated reminders pass through with due == nil; `mergeAppleItems` drops them (Search and
+        // the planner's "No date" pane use them, `undatedAppleReminders`). The
         // components are Gregorian values whatever the phone's calendar (`appleReminderDue`).
         let due = reminder.dueDateComponents.map { appleReminderDue($0) }
         return AppleReminder(
