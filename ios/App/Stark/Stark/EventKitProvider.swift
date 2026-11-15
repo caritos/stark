@@ -16,14 +16,27 @@ import StarkKit
 /// EventKit reads never run on the main actor and the completion handlers (called on EventKit's
 /// queue) can call the mapping helpers. `fetch` is `@concurrent`, so under approachable
 /// concurrency (nonisolated async = caller's actor) it still runs on the concurrent pool.
-/// `@unchecked Sendable`: the only stored state is one immutable `let` holding an `EKEventStore`,
-/// which Apple documents as safe to use from any thread for reads. EventKit objects never leave
-/// this file. `calendars()` is synchronous and must be called off the main actor by the caller.
+/// `@unchecked Sendable`: the only stored state is one `EKEventStore`, created on first use under
+/// a lock and never replaced; Apple documents the store as safe to use from any thread for reads.
+/// EventKit objects never leave this file. `calendars()` is synchronous and must be called off the
+/// main actor by the caller.
 nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable {
     /// EventKit refuses event predicates spanning more than about four years; fetch in chunks.
     private static let maxChunkYears = 4
 
-    private let store = EKEventStore()
+    private let storeLock = NSLock()
+    private var createdStore: EKEventStore?
+
+    /// Created on first real use (an access request, `calendars()` or `fetch`), so a user who
+    /// never turns the overlay on never gets an `EKEventStore`. `accessState()` does not need it.
+    private var store: EKEventStore {
+        storeLock.withLock {
+            if let createdStore { return createdStore }
+            let new = EKEventStore()
+            createdStore = new
+            return new
+        }
+    }
 
     var storeChangedNotification: Notification.Name? { .EKEventStoreChanged }
 
