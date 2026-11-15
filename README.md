@@ -15,8 +15,8 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
 - **Search** titles, notes and locations, plus tag suggestions for `+project`, `@context`, `%label` and `~person`.
 - **Plan your day**: drag tasks onto a timeline as time blocks; a Weekly Review of what got done.
 - **Private.** Events and to-dos live in Apple Calendar and Reminders (Apple syncs them through iCloud if you use it);
-  Stark itself makes no network connection. Items made before November 2026 stay in `.ics` files in the app's
-  Documents folder until a later update imports them. No account, no subscription.
+  Stark itself makes no network connection. Items made in Stark before it saved to Apple Calendar and Reminders
+  stay in `.ics` files in the app's Documents folder until a later update imports them. No account, no subscription.
 
 ## Repository layout
 

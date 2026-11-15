@@ -21,7 +21,8 @@ public struct AgendaItem: Identifiable, Equatable {
     /// A planned row's `displayDate` is the plan's start.
     public let plan: PlanBlock?
 
-    /// Set only on read-only Apple Calendar / Reminders overlay rows; nil for Stark's own rows.
+    /// Set only on Apple Calendar / Reminders rows (editable through `ItemRouter` unless their
+    /// calendar is not writable or the event is invitee-only); nil for Stark's own rows.
     /// Not part of `id`.
     public let appleSource: AppleSource?
 

@@ -114,7 +114,7 @@ struct FAQView: View {
             pair, in your Mac's login Keychain; Stark never sends it anywhere else. Requests \
             are added immediately to Apple Calendar and Reminders, in your default calendar and \
             list, and Stark notes each added item in its small file so that sending the same \
-            request again does not normally add it twice; an item you deleted stays deleted. Claude Code cannot read your schedule from the phone for now: stark-claude \
+            request again does not normally add it twice; an item Stark added to Apple and you then deleted there stays deleted. Claude Code cannot read your schedule from the phone for now: stark-claude \
             today is unavailable until a Mac tool exists. To reset pairing, tap Settings > \
             Claude Code > Reset pairing.
             """

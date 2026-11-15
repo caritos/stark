@@ -58,7 +58,7 @@ public struct DayDensity: Equatable, Sendable {
 /// so an empty month is `[:]`. A dictionary rather than a dense array because most days of a
 /// typical month are empty, and callers look days up by number either way.
 ///
-/// `apple` (default empty) adds the read-only Apple Calendar / Reminders rows via `mergeAppleItems`;
+/// `apple` (default empty) adds the Apple Calendar / Reminders rows via `mergeAppleItems`;
 /// `plans` (default none) are applied after it, as in the agenda.
 ///
 /// The month's bounds and the day-of-month keys come from `calendar`; the whole day is covered

@@ -43,8 +43,9 @@ and note for each step: works / does not work / not tried.
     (holidays, a read-only shared calendar) open read-only with no Delete. Tap Open in Calendar / Open
     in Reminders: the Apple app opens (the Reminders link is a guess; say if it does nothing).
 12. **Old items.** Items made in Stark before this build still show, open and save as before.
-13. **Convert refusal.** In Calendar make an event repeat "every 2nd Tuesday of each month" (or another
-    custom rule). In Stark its Repeat reads "Custom, set in Calendar" and there is no Event/Reminder switch.
+13. **Convert refusal.** In Calendar make an event repeat monthly **on the fifth Monday** (Custom > Monthly >
+    On the... > fifth > Monday): Stark's positions are 1st-4th and last, so it cannot hold it
+    (`RecurrenceDescriptorTests.fifthMondayIsUnrepresentable`). In Stark its Repeat reads "Custom, set in Calendar" and there is no Event/Reminder switch.
 14. **Undated reminder.** Make a reminder with no date in Reminders. In Stark it is not in the agenda but
     is in Search and in Plan's NO DATE pane. DRAG it onto today's timeline and save: it appears in
     today's agenda.

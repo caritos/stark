@@ -1,7 +1,9 @@
 // ios/Sources/StarkKit/Apple/AppleMerge.swift
 import Foundation
 
-/// Adds the read-only Apple Calendar / Reminders rows to Stark's agenda items and re-sorts.
+/// Adds the Apple Calendar / Reminders rows to Stark's agenda items and re-sorts. The rows are
+/// edited through `ItemRouter` (writable calendars); only non-writable calendars and invitee-only
+/// events stay read-only.
 ///
 /// Apple items become synthetic, never-persisted `Event` / `Reminder` values with id
 /// `apple-<id>` and no recurrence (EventKit already expands a series into occurrences), so they
