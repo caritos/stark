@@ -5,7 +5,10 @@ import StarkKit
 /// Full-history text search over titles, notes, and locations. Unlike the agenda, which only
 /// ever shows what's currently loaded (today's display window, plus whatever's been scrolled
 /// or tapped into), this screen loads every month file that exists on disk the first time it
-/// appears (`PlannerStore.loadAllMonths()`), so a search can find anything ever saved.
+/// appears (`PlannerStore.loadAllMonths()`), so a search can find anything ever saved. While it is
+/// open it also registers a two-years-either-side range with the Apple overlay's fetch window
+/// (`SearchWindow`, decision 10). A tapped result opens through `AgendaItemDetailSheet`, so an
+/// Apple item in a writable calendar or list opens its editor.
 ///
 /// One unconditional match across every relevant field, no filter/field picker -- considered
 /// during design (a Fantastical-style Title/Notes/Location/All row) and dropped for
@@ -73,8 +76,17 @@ struct SearchView: View {
                 SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
             }
             .task {
+                // Apple events two years either side of today while Search is open (decision 10);
+                // the shared fetch window keeps the agenda's own range too.
+                let now = Date()
+                async let apple: Void = overlay.reload(for: .search, display: SearchWindow.range(around: now), today: now)
                 await store.loadAllMonths()
+                await apple
                 isLoadingHistory = false
+            }
+            // Released on close so the overlay goes back to the agenda's window.
+            .onDisappear {
+                Task { await overlay.reload(for: .search, display: nil, today: Date()) }
             }
             .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item) }
         }
