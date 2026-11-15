@@ -45,6 +45,19 @@ public struct SidecarData: Codable, Equatable, Sendable {
     }
 }
 
+/// One bridge item id and the Apple item it created.
+public struct BridgeLedgerEntry: Equatable, Sendable {
+    public var itemID: String
+    public var identifier: String
+    public var externalID: String?
+
+    public init(itemID: String, identifier: String, externalID: String?) {
+        self.itemID = itemID
+        self.identifier = identifier
+        self.externalID = externalID
+    }
+}
+
 public enum ItemSidecarError: Error, Equatable, Sendable {
     /// The file was written by a newer app; refusing to read or overwrite it.
     case unsupportedVersion(Int)
@@ -171,6 +184,17 @@ public actor ItemSidecar {
         try update { data in
             data.bridgeLedger[itemID] = identifier
             if let externalID { data.externalIDs[identifier] = externalID }
+        }
+    }
+
+    /// Records several bridge items in ONE write (all or none), so a batch the bridge has just
+    /// committed to Apple is ledgered in a single atomic step.
+    public func recordBridge(_ entries: [BridgeLedgerEntry]) throws {
+        try update { data in
+            for entry in entries {
+                data.bridgeLedger[entry.itemID] = entry.identifier
+                if let externalID = entry.externalID { data.externalIDs[entry.identifier] = externalID }
+            }
         }
     }
 

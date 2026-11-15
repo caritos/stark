@@ -169,6 +169,34 @@ struct ItemSidecarTests {
         #expect(try await s.bridgedIdentifier(for: "nope") == nil)
     }
 
+    @Test("a batch of ledger entries is one write; a failed write records none of them")
+    func ledgerBatch() async throws {
+        final class Writes: @unchecked Sendable {
+            let lock = NSLock()
+            var count = 0
+            var fail = false
+        }
+        let writes = Writes()
+        let url = tempFile()
+        let s = ItemSidecar(fileURL: url, calendar: utc) { data, target in
+            writes.lock.lock(); writes.count += 1; let fail = writes.fail; writes.lock.unlock()
+            if fail { throw WriteFailed() }
+            try ItemSidecar.atomicWriter(data, target)
+        }
+        try await s.recordBridge([BridgeLedgerEntry(itemID: "a", identifier: "ID-A", externalID: "EXT-A"),
+                                  BridgeLedgerEntry(itemID: "b", identifier: "ID-B", externalID: nil)])
+        #expect(writes.count == 1)
+        let data = try await s.load()
+        #expect(data.bridgeLedger == ["a": "ID-A", "b": "ID-B"])
+        #expect(data.externalIDs == ["ID-A": "EXT-A"])
+
+        writes.fail = true
+        await #expect(throws: WriteFailed.self) {
+            try await s.recordBridge([BridgeLedgerEntry(itemID: "c", identifier: "ID-C", externalID: nil)])
+        }
+        #expect(try await s.load().bridgeLedger == ["a": "ID-A", "b": "ID-B"])
+    }
+
     @Test("the stored data holds no absolute file paths")
     func noAbsolutePaths() async throws {
         let url = tempFile()
