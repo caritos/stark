@@ -52,47 +52,59 @@ public struct DayHistory {
     /// - A plan is done when its task is completed (`DayPlanModel`'s matching), open when its
     ///   reminder still exists and is not completed, and ignored when the reminder is gone.
     /// - A `day` after `today` is empty.
+    /// - Apple (`apple`, default empty; `sidecarPlans` = `ItemRouter.plans(on:)`'s Apple blocks,
+    ///   added to `plans`): Apple events show like local ones; an Apple plan is done per
+    ///   `DayPlanModel.appleDoneBlock` (completed, a completed copy for that day, or the series moved
+    ///   past it), open (MISSED on a past day) while its reminder is still open, ignored when gone.
     public static func make(
-        day: Date, events: [Event], reminders: [Reminder], plans: [PlanBlock], today: Date,
+        day: Date, events: [Event], reminders: [Reminder], plans localPlans: [PlanBlock], today: Date,
+        apple: AppleSnapshot = .empty, sidecarPlans: [PlanBlock] = [],
         calendar: Calendar = Calendar(identifier: .gregorian)
     ) -> DayHistory {
+        let plans = localPlans + sidecarPlans
         let dayStart = calendar.startOfDay(for: day)
         guard dayStart <= calendar.startOfDay(for: today) else {
             return DayHistory(day: day, events: [], allDayEvents: [], done: [], open: [], stats: Stats())
         }
         // Events: the planner's own filtering (skipped left out, banner split, midnight workaround).
-        let planner = DayPlanModel.make(day: day, events: events, reminders: [], plans: [], today: today, calendar: calendar)
+        let planner = DayPlanModel.make(day: day, events: events, reminders: [], plans: [], today: today,
+                                        apple: AppleSnapshot(events: apple.events, reminders: []), calendar: calendar)
         let (done, open) = classify(plans.filter { calendar.isDate($0.start, inSameDayAs: dayStart) },
-                                    reminders: reminders, calendar: calendar)
+                                    reminders: reminders, apple: apple, calendar: calendar)
         return DayHistory(day: day, events: planner.events, allDayEvents: planner.allDayEvents,
                           done: done, open: open, stats: stats(done: done, open: open))
     }
 
     /// Totals for the Sunday-Saturday week containing `day` (Weekly Review's week); days after
-    /// `today` are ignored.
+    /// `today` are ignored. `apple` / `sidecarPlans` as in `make` (the caller passes the whole
+    /// week's sidecar blocks).
     public static func weekStats(
-        containing day: Date, reminders: [Reminder], plans: [PlanBlock], today: Date,
+        containing day: Date, reminders: [Reminder], plans localPlans: [PlanBlock], today: Date,
+        apple: AppleSnapshot = .empty, sidecarPlans: [PlanBlock] = [],
         calendar: Calendar = Calendar(identifier: .gregorian)
     ) -> Stats {
+        let plans = localPlans + sidecarPlans
         let dayStart = calendar.startOfDay(for: day)
         let weekday = calendar.component(.weekday, from: dayStart) // 1 = Sunday
         let sunday = calendar.date(byAdding: .day, value: -(weekday - 1), to: dayStart)!
         let week = WeeklyReview.range(forWeekStarting: sunday, calendar: calendar)
         let cutoff = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 1, to: today)!)
         let inWeek = plans.filter { week.contains($0.start) && $0.start < cutoff }
-        let (done, open) = classify(inWeek, reminders: reminders, calendar: calendar)
+        let (done, open) = classify(inWeek, reminders: reminders, apple: apple, calendar: calendar)
         return stats(done: done, open: open)
     }
 
     private static func classify(
-        _ plans: [PlanBlock], reminders: [Reminder], calendar: Calendar
+        _ plans: [PlanBlock], reminders: [Reminder], apple: AppleSnapshot, calendar: Calendar
     ) -> (done: [DayPlanModel.DoneBlock], open: [OpenBlock]) {
         var done: [DayPlanModel.DoneBlock] = []
         var open: [OpenBlock] = []
         for plan in plans.sorted(by: { ($0.start, $0.id) < ($1.start, $1.id) }) {
-            if let block = DayPlanModel.doneBlock(for: plan, reminders: reminders, calendar: calendar) {
+            if let block = DayPlanModel.doneBlock(for: plan, reminders: reminders, apple: apple, calendar: calendar) {
                 done.append(block)
             } else if let r = reminders.first(where: { $0.id == plan.reminderID && !$0.isCompleted }) {
+                open.append(OpenBlock(block: plan, title: r.title))
+            } else if let r = DayPlanModel.appleReminder(for: plan, in: apple), !r.isCompleted {
                 open.append(OpenBlock(block: plan, title: r.title))
             }
         }

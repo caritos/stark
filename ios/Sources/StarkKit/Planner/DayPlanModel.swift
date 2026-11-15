@@ -18,6 +18,10 @@ public struct DayPlanModel {
     public let trayToday: [AgendaItem]
     /// Tray items whose occurrence is after `day`, soonest first.
     public let trayFuture: [AgendaItem]
+    /// Open undated Apple reminders not planned (on `day` or elsewhere), by title: the tray's
+    /// "No date" pane (`TrayPane.noDate`). Never part of `tray`. Empty for a lapsed day and when
+    /// there are no undated Apple reminders.
+    public let trayNoDate: [AgendaItem]
     /// Open reminder rows due on `day` at a set time (not overdue, not 00:00) with no block.
     public let timed: [AgendaItem]
     /// Event rows on `day` that are all-day or multi-day (`isBannerEvent`), one per event, shown
@@ -55,8 +59,10 @@ public struct DayPlanModel {
 
     init(day: Date, tray: [AgendaItem], timed: [AgendaItem], allDayEvents: [AgendaItem],
          events: [AgendaItem], blocks: [PlanBlock], doneBlocks: [DoneBlock] = [],
+         trayNoDate: [AgendaItem] = [],
          calendar: Calendar = Calendar(identifier: .gregorian)) {
         self.day = day
+        self.trayNoDate = trayNoDate
         self.doneBlocks = doneBlocks
         self.tray = tray
         self.timed = timed
@@ -83,14 +89,31 @@ public struct DayPlanModel {
     /// - `plannedElsewhere` blocks (starting on another day, not before `today`'s day) hide the
     ///   open row they match from the tray and the timeline.
     /// - A `day` before `today`'s day has lapsed: no tray, timed tasks or blocks.
+    ///
+    /// Apple items (`apple`, default empty: local behaviour unchanged; the caller passes the
+    /// overlay's snapshot, already filtered by the calendar/list selection):
+    /// - Events and dated reminders join through `mergeAppleItems` (ids `apple-<identifier>`),
+    ///   plus every open dated reminder outside the load range, like a local one-off. An Apple
+    ///   reminder carries no recurrence (Apple's single open occurrence), so a later one is in
+    ///   `trayFuture` like any one-off.
+    /// - Open undated reminders go to `trayNoDate` (`undatedAppleReminders`), never to `tray`.
+    /// - `sidecarPlans` are `ItemRouter.plans(on:)`'s Apple blocks (reminderID = model id); they
+    ///   are added to `plans` and match rows by reminder id + occurrence day like local plans.
+    /// - Done blocks for Apple reminders follow `appleDoneBlock(for:apple:calendar:)`.
     public static func make(
-        day: Date, events: [Event], reminders: [Reminder], plans: [PlanBlock], today: Date,
+        day: Date, events: [Event], reminders: [Reminder], plans localPlans: [PlanBlock], today: Date,
         plannedElsewhere: [PlanBlock] = [],
+        apple: AppleSnapshot = .empty,
+        sidecarPlans: [PlanBlock] = [],
         calendar: Calendar = Calendar(identifier: .gregorian)
     ) -> DayPlanModel {
+        let plans = localPlans + sidecarPlans
         let dayStart = calendar.startOfDay(for: day)
         let range = AgendaWindow.loadRange(around: day, calendar: calendar)
-        let built = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
+        let localBuilt = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
+        let built = apple == .empty
+            ? localBuilt
+            : mergeAppleItems(localBuilt, snapshot: apple, in: range, today: today, calendar: calendar)
 
         func isOnDay(_ date: Date) -> Bool { calendar.isDate(date, inSameDayAs: dayStart) }
 
@@ -134,6 +157,14 @@ public struct DayPlanModel {
             open.append(AgendaItem(kind: .reminder(r), occurrence: due, displayDate: due,
                                    isOverdue: calendar.startOfDay(for: due) < todayStart))
         }
+        // Open dated Apple reminders outside the load range, as for local one-offs above.
+        for a in apple.reminders where !a.isCompleted && a.due != nil {
+            let (r, source) = appleReminderValue(a, calendar: calendar)
+            guard !listed.contains(r.id), let due = r.dueDate, !range.contains(due) else { continue }
+            open.append(AgendaItem(kind: .reminder(r), occurrence: due, displayDate: due,
+                                   isOverdue: calendar.startOfDay(for: due) < todayStart, appleSource: source))
+        }
+        let undated = undatedAppleReminders(apple, calendar: calendar)
 
         func reminderID(_ item: AgendaItem) -> String? {
             if case .reminder(let r) = item.kind { return r.id } else { return nil }
@@ -143,15 +174,17 @@ public struct DayPlanModel {
         }
 
         let blocks = plans
-            .filter { plan in isOnDay(plan.start) && open.contains { matches(plan, $0) } }
+            .filter { plan in isOnDay(plan.start) && (open + undated).contains { matches(plan, $0) } }
             .sorted { ($0.start, $0.id) < ($1.start, $1.id) }
         // A task planned on another (not lapsed) day belongs to that day, not to this tray.
         let elsewhere = plannedElsewhere.filter {
             !isOnDay($0.start) && calendar.startOfDay(for: $0.start) >= todayStart
         }
-        let unplanned = open.filter { item in
+        func isUnplanned(_ item: AgendaItem) -> Bool {
             !blocks.contains { matches($0, item) } && !elsewhere.contains { matches($0, item) }
         }
+        let unplanned = open.filter(isUnplanned)
+        let trayNoDate = undated.filter(isUnplanned)
 
         let timed = unplanned
             .filter { !$0.isOverdue && isOnDay($0.displayDate) && calendar.startOfDay(for: $0.displayDate) != $0.displayDate }
@@ -177,26 +210,62 @@ public struct DayPlanModel {
             .filter { isOnDay($0.start) && !blockIDs.contains($0.id) }
             .sorted { ($0.start, $0.id) < ($1.start, $1.id) }
             .compactMap { plan -> DoneBlock? in
-                guard let done = doneBlock(for: plan, reminders: reminders, calendar: calendar),
+                guard let done = doneBlock(for: plan, reminders: reminders, apple: apple, calendar: calendar),
                       doneSeen.insert(plan.id).inserted else { return nil }
                 return done
             }
 
         return DayPlanModel(day: day, tray: tray, timed: timed, allDayEvents: allDayEvents,
-                            events: timedEvents, blocks: blocks, doneBlocks: doneBlocks, calendar: calendar)
+                            events: timedEvents, blocks: blocks, doneBlocks: doneBlocks, trayNoDate: trayNoDate,
+                            calendar: calendar)
     }
 
     /// The plan as a done block when its task is completed: a one-off by id, a recurring
     /// occurrence by its completed copy (`seriesID` = the plan's reminder id, due on the plan's
-    /// occurrence day). nil when no completed reminder matches.
-    static func doneBlock(for plan: PlanBlock, reminders: [Reminder], calendar: Calendar) -> DoneBlock? {
+    /// occurrence day). nil when no completed reminder matches. An Apple plan (reminderID
+    /// `apple-<identifier>`) is matched against `apple` instead (`appleDoneBlock`).
+    static func doneBlock(for plan: PlanBlock, reminders: [Reminder], apple: AppleSnapshot = .empty,
+                          calendar: Calendar) -> DoneBlock? {
         let match = reminders.first { r in
             guard r.isCompleted else { return false }
             if r.id == plan.reminderID { return true }
             guard r.seriesID == plan.reminderID, let due = r.dueDate ?? r.completedDate else { return false }
             return calendar.isDate(due, inSameDayAs: plan.occurrence)
         }
-        return match.map { DoneBlock(block: plan, title: $0.title) }
+        if let match { return DoneBlock(block: plan, title: match.title) }
+        return appleDoneBlock(for: plan, apple: apple, calendar: calendar)
+    }
+
+    /// The Apple reminder this plan refers to (`apple-<identifier>`), or nil (a local plan, or the
+    /// reminder is not in the snapshot).
+    static func appleReminder(for plan: PlanBlock, in apple: AppleSnapshot) -> AppleReminder? {
+        guard plan.reminderID.hasPrefix(ItemOrigin.applePrefix) else { return nil }
+        let identifier = String(plan.reminderID.dropFirst(ItemOrigin.applePrefix.count))
+        return apple.reminders.first { $0.id == identifier }
+    }
+
+    /// An Apple plan reads DONE (spec Decision 1, spike (a)) when, in order:
+    /// 1. the reminder itself is completed (a one-off, or a series that ended);
+    /// 2. a completed copy exists for that occurrence: another completed reminder in the same list
+    ///    with the same title, due on the plan's occurrence day (Apple leaves one per completion of
+    ///    a repeating reminder, with a new identifier and the old due date): positive evidence;
+    /// 3. the series has moved past it: the reminder's current due day is after the plan's
+    ///    occurrence day (the fallback when the copy is outside the fetched snapshot).
+    /// nil otherwise (still open, or the reminder is gone).
+    static func appleDoneBlock(for plan: PlanBlock, apple: AppleSnapshot, calendar: Calendar) -> DoneBlock? {
+        guard let master = appleReminder(for: plan, in: apple) else { return nil }
+        let done = DoneBlock(block: plan, title: master.title)
+        if master.isCompleted { return done }
+        let hasCopy = apple.reminders.contains { copy in
+            guard copy.isCompleted, copy.id != master.id, copy.title == master.title,
+                  copy.calendar.id == master.calendar.id, let due = copy.due else { return false }
+            return calendar.isDate(due, inSameDayAs: plan.occurrence)
+        }
+        if hasCopy { return done }
+        if let due = master.due, calendar.startOfDay(for: due) > calendar.startOfDay(for: plan.occurrence) {
+            return done
+        }
+        return nil
     }
 
     /// Banner, not timeline: an all-day event, or a multi-day one, i.e. its end falls on a later
