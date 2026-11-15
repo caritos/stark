@@ -123,6 +123,16 @@ struct PlannerAppleWriteFixTests {
         #expect(gridDensity(events: [], reminders: [], month: month, today: today, calendar: cal, apple: snap).isEmpty)
     }
 
+    @Test("a planned undated reminder's row has no sentinel 'due' line")
+    func undatedPlanRowHasNoDueLine() {
+        let start = at(11, 6, 9)
+        let lines = PlanRowText.make(occurrence: .distantFuture, overdueText: nil,
+                                     range: start...start.addingTimeInterval(1800),
+                                     time: { _ in "T" }, monthDay: { _ in "MD" })
+        #expect(lines.primary == "T - T")
+        #expect(lines.secondary == nil)
+    }
+
     @Test("local planned items are unchanged")
     func localUnchanged() {
         let r = Reminder(id: "r", title: "R", dueDate: at(11, 20, 9))

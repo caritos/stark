@@ -28,6 +28,9 @@ public enum PlanRowText {
         var secondary: String?
         if let overdueText {
             secondary = overdueText
+        } else if occurrence == .distantFuture || occurrence == .distantPast {
+            // A planned undated Apple reminder: its occurrence is a sentinel, there is no due.
+            secondary = nil
         } else if calendar.startOfDay(for: occurrence) != occurrence {
             if calendar.isDate(occurrence, inSameDayAs: range.lowerBound) {
                 secondary = "due \(time(occurrence))"
