@@ -6,6 +6,8 @@ import StarkKit
 /// write shows its `ItemRouterError.message` here and the sheet stays open.
 struct SheetErrorBanner: View {
     let text: String
+    /// A notice (nothing failed) uses the main screen's notice strip colour, not the accent.
+    var isNotice = false
     let onDismiss: () -> Void
 
     var body: some View {
@@ -15,7 +17,7 @@ struct SheetErrorBanner: View {
                 .foregroundStyle(Colors.text)
                 .padding(Spacing.sm)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Colors.accent)
+                .background(isNotice ? Colors.separator : Colors.accent)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(text)

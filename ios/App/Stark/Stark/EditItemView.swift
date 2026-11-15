@@ -25,7 +25,6 @@ struct EditItemView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.itemRouter) private var router
     @Environment(AppleOverlayModel.self) private var overlay
-    @Environment(NoticeCenter.self) private var notices
     let item: AgendaItem
     /// The stored Apple item this sheet edits (`ItemRouter.details`), nil for Stark's own items.
     /// Its form baseline is the `original` every Apple update diffs against (spec call 5).
@@ -39,6 +38,8 @@ struct EditItemView: View {
     @State private var showMarksConfirm = false
     /// A router failure, shown in the sheet's banner; the sheet stays open.
     @State private var errorMessage: String?
+    /// A notice shown in the sheet (the main screen's strip would be hidden under it).
+    @State private var noticeMessage: String?
     @State private var isWorking = false
     /// A repeat change on a series with occurrences edited in Calendar: asked before resending.
     @State private var showRuleChangeConfirm = false
@@ -148,7 +149,11 @@ struct EditItemView: View {
                             Text("Changes apply to every occurrence.")
                         }
                         if movesDetailsToNotes {
-                            Text("Location and URL will be added to the notes.")
+                            Text(isApple ? "The location will be added to the notes."
+                                         : "Location and URL will be added to the notes.")
+                        }
+                        if details?.hasUnrepresentableRepeat == true {
+                            Text(ItemDetails.unconvertibleReason)
                         }
                         if let source = item.appleSource {
                             Text("Saved in \(source.isReminder ? "Reminders" : "Calendar"): \(source.calendarTitle).")
@@ -224,6 +229,9 @@ struct EditItemView: View {
                 VStack(spacing: 0) {
                     if let errorMessage {
                         SheetErrorBanner(text: errorMessage) { self.errorMessage = nil }
+                    }
+                    if let noticeMessage {
+                        SheetErrorBanner(text: noticeMessage, isNotice: true) { self.noticeMessage = nil }
                     }
                     if canConvert {
                         KindSwitch(kind: kindSelection)
@@ -306,7 +314,9 @@ struct EditItemView: View {
     private var isConverting: Bool { kind != originalKind }
 
     /// An event, or an open reminder: a completed one (or a series' completed copy) is history.
+    /// An Apple item also not when its repeat can't be represented (`ItemDetails.canConvert`).
     private var canConvert: Bool {
+        if let details { return details.canConvert }
         switch item.kind {
         case .event: return true
         case .reminder(let reminder): return ItemConversion.isConvertible(reminder)
@@ -326,10 +336,12 @@ struct EditItemView: View {
         return "This event has \(marks). A reminder can't keep them, so they will be removed when you save."
     }
 
-    /// Event -> reminder with a location or URL typed: those move into the notes on save.
+    /// Event -> reminder with a location or URL typed: those move into the notes on save. An
+    /// Apple reminder keeps the URL as its own URL, so only the location moves.
     private var movesDetailsToNotes: Bool {
         isConverting && originalKind == .event
-            && (FormFields.trimmedOrNil(form.location) != nil || FormFields.trimmedOrNil(form.url) != nil)
+            && (FormFields.trimmedOrNil(form.location) != nil
+                || (!isApple && FormFields.trimmedOrNil(form.url) != nil))
     }
 
     /// The switch's binding: choosing Reminder for an event with marks asks first (on the tap,
@@ -440,17 +452,30 @@ struct EditItemView: View {
                 return
             }
             // Apply the form to the event, then convert (location/URL go into the notes, the end
-            // and marks are dropped), then the reminder-only field.
-            var converted = ItemConversion.reminder(from: form.edited(event))
-            converted.priority = form.priority.icalValue
-            perform { try await $0.convertEvent(id: event.id, to: converted) }
+            // and marks are dropped), then the reminder-only field. An Apple reminder keeps the
+            // URL as its own URL instead.
+            if isApple {
+                let pair = ItemConversion.appleReminder(from: form.edited(event))
+                var converted = pair.reminder
+                converted.priority = form.priority.icalValue
+                let url = pair.url
+                perform { try await $0.convertEvent(id: event.id, to: converted, url: url) }
+            } else {
+                var converted = ItemConversion.reminder(from: form.edited(event))
+                converted.priority = form.priority.icalValue
+                perform { try await $0.convertEvent(id: event.id, to: converted) }
+            }
         case (.reminder(let reminder), .event):
             // Priority is dropped; the form's Starts/Ends/All day and Location/URL apply (an
             // undated reminder lands all-day).
             var converted = ItemConversion.event(fromEdited: form.edited(reminder), originalDueDate: reminder.dueDate,
                                                  start: form.date, end: form.endDate, allDay: form.allDay)
             converted.location = FormFields.trimmedOrNil(form.location)
-            converted.url = FormFields.trimmedOrNil(form.url)
+            // The sheet has no reminder URL field: an Apple reminder's stored URL carries over
+            // unless one was typed for the event.
+            converted.url = isApple
+                ? ItemConversion.eventURL(typed: form.url, storedReminderURL: details?.reminderURL)
+                : FormFields.trimmedOrNil(form.url)
             perform { try await $0.convertReminder(id: reminder.id, to: converted) }
         }
     }
@@ -461,15 +486,15 @@ struct EditItemView: View {
         perform { try await $0.complete(id: reminder.id, on: occurrence) }
     }
 
+    /// The completed copy of a repeating Apple reminder is never reopened (the series can't move
+    /// back): the sheet shows why and stays open. Anything else un-completes as before.
     private func markUndone() {
         guard case .reminder(let reminder) = item.kind else { return }
-        // Decided before the write: afterwards the snapshot no longer shows this copy completed.
-        let notice = UncompleteNotice.text(for: item, snapshot: overlay.snapshot)
-        let notices = notices
-        perform { router in
-            try await router.uncomplete(id: reminder.id)
-            if let notice { notices.show(notice) }
+        if let notice = UncompleteNotice.text(for: item, snapshot: overlay.snapshot) {
+            noticeMessage = notice
+            return
         }
+        perform { try await $0.uncomplete(id: reminder.id) }
     }
 
     private func markOutcome(_ outcome: EventOutcome?) {

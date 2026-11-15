@@ -280,17 +280,20 @@ struct AgendaView: View {
     /// incomplete one starts a pending completion, or cancels it if one is already pending.
     /// `item.id` (reminder id + occurrence) is the stable pending key, never a list position.
     /// Both go through the router; the pending commit completes the row's OCCURRENCE (StarkApp).
-    /// Reopening the completed copy of a repeating Apple reminder can't move the series back, so
-    /// the owner gets a notice (`UncompleteNotice`); a failure shows in the main error banner.
+    /// Unticking the completed copy of a repeating Apple reminder changes nothing and shows a
+    /// notice instead (`UncompleteNotice`); a failure shows in the main error banner.
     private func toggleComplete(_ item: AgendaItem) {
         guard !item.isReadOnly, case .reminder(let reminder) = item.kind else { return }
         if reminder.isCompleted {
+            // The completed copy of a repeating Apple reminder: a notice only, nothing changes.
+            if let notice = UncompleteNotice.text(for: item, snapshot: overlay.snapshot) {
+                notices.show(notice)
+                return
+            }
             guard let router else { return }
-            let notice = UncompleteNotice.text(for: item, snapshot: overlay.snapshot)
             Task {
                 do {
                     try await router.uncomplete(id: reminder.id)
-                    if let notice { notices.show(notice) }
                 } catch {
                     store.error = error.routerMessage
                 }
