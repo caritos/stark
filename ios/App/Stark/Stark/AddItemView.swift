@@ -202,18 +202,9 @@ struct AddItemView: View {
                     .foregroundStyle(Colors.accent)
                     .accessibilityHint("Closes Add and opens Stark's Settings.")
             }
-        } else {
-            Picker(isEvent ? "Calendar" : "List", selection: destinationBinding) {
-                if selectedDestination == nil {
-                    Text("Choose").tag(String?.none)
-                }
-                ForEach(choices) { choice in
-                    Text(choice.title).tag(Optional(choice.id))
-                }
-            }
-            .accessibilityHint(isEvent ? "The Apple calendar the event is added to."
-                                       : "The Reminders list the reminder is added to.")
         }
+        // No picker: the Event / Reminder switch above decides the kind, and the calendar or list
+        // is the default chosen in Settings.
     }
 
     private func add() {
