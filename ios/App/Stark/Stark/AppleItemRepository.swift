@@ -188,14 +188,16 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
     }
 
     /// Removes the occurrence that falls on `date`'s day with `.thisEvent`. A non-repeating event
-    /// is deleted (as `FakeItemRepository` does).
+    /// is deleted (as `FakeItemRepository` does). A detached occurrence's own ref (`/RID=`) is
+    /// matched by its `eventIdentifier` first: it keeps its ORIGINAL `occurrenceDate`, so the day
+    /// match would pick the series' regular occurrence on the day it was moved to.
     @concurrent
     func deleteOccurrence(_ ref: AppleItemRef, on date: Date) async throws {
         try locked {
             let master = try event(ref)
             try checkWritable(master.calendar)
             guard master.hasRecurrenceRules, let calendar = master.calendar else {
-                try store.remove(master, span: .thisEvent, commit: true)
+                try remove(master, span: .thisEvent)
                 return
             }
             let days = Calendar.autoupdatingCurrent
@@ -203,11 +205,14 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
             let dayEnd = days.date(byAdding: .day, value: 1, to: dayStart) ?? date
             let seriesID = Self.seriesID(master.eventIdentifier ?? ref.identifier)
             let predicate = store.predicateForEvents(withStart: dayStart, end: dayEnd, calendars: [calendar])
-            guard let occurrence = store.events(matching: predicate).first(where: { candidate in
+            let candidates = store.events(matching: predicate)
+            let exact = ref.identifier.contains("/RID=")
+                ? candidates.first { $0.eventIdentifier == ref.identifier } : nil
+            guard let occurrence = exact ?? candidates.first(where: { candidate in
                 Self.seriesID(candidate.eventIdentifier ?? "") == seriesID
                     && days.isDate(candidate.occurrenceDate ?? candidate.startDate, inSameDayAs: date)
             }) else { throw ItemRepositoryError.notFound }
-            try store.remove(occurrence, span: .thisEvent, commit: true)
+            try remove(occurrence, span: .thisEvent)
         }
     }
 
@@ -261,6 +266,10 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
     }
 
     // MARK: - Lookup and checks
+
+    private func remove(_ event: EKEvent, span: EKSpan) throws {
+        try store.remove(event, span: span, commit: true)
+    }
 
     /// Runs `body` under the write lock and maps every error to `ItemRepositoryError`.
     private func locked<T>(_ body: () throws -> T) throws -> T {

@@ -29,6 +29,8 @@ public actor FakeItemRepository: ItemRepository {
     private var editedSeries: Set<String> = []
     /// Items whose details report a repeat Stark can't represent (`markUnrepresentableRepeat`).
     private var unrepresentable: Set<String> = []
+    /// Occurrences moved one by one (`detachOccurrence`): series id -> detached id -> (original date, new start).
+    private var detached: [String: [String: (original: Date, start: Date)]] = [:]
 
     /// `assignsExternalIDs` gives every new item an external id (`ext-<identifier>`), as iCloud does.
     public init(calendars: [AppleCalendarInfo], readOnlyCalendarIDs: Set<String> = [],
@@ -45,6 +47,25 @@ public actor FakeItemRepository: ItemRepository {
 
     /// Makes `details` report `hasUnrepresentableRepeat` for the item (an Apple rule Stark can't hold).
     public func markUnrepresentableRepeat(_ identifier: String) { unrepresentable.insert(identifier) }
+
+    /// Moves one occurrence of a series (its occurrence date `originalDate`) to `newStart`, as Apple
+    /// Calendar's "this event only" edit does. The detached occurrence keeps its original date and
+    /// gets its own ref, `<series id>/RID=<original seconds>` (EventKit's shape, spike b).
+    public func detachOccurrence(_ ref: AppleItemRef, originalDate: Date, to newStart: Date) throws -> AppleItemRef {
+        guard ref.kind == .event, events[ref.identifier]?.event.recurrence != nil else { throw ItemRepositoryError.notFound }
+        let id = "\(ref.identifier)/RID=\(Int(originalDate.timeIntervalSinceReferenceDate))"
+        detached[ref.identifier, default: [:]][id] = (originalDate, newStart)
+        return AppleItemRef(kind: .event, identifier: id)
+    }
+
+    /// Every occurrence start of the series in `range`, detached ones at their new start, sorted.
+    public func occurrenceStarts(of ref: AppleItemRef, in range: ClosedRange<Date>) -> [Date] {
+        guard let stored = events[ref.identifier] else { return [] }
+        let moved = detached[ref.identifier] ?? [:]
+        let originals = Set(moved.values.map(\.original))
+        let regular = OccurrenceExpander.expand(event: stored.event, in: range).filter { !originals.contains($0) }
+        return (regular + moved.values.map(\.start).filter { range.contains($0) }).sorted()
+    }
 
     /// Makes the next mutating call throw `saveFailed(message)` and change nothing.
     public func failNext(_ message: String = "injected failure") { nextFailure = message }
@@ -155,8 +176,22 @@ public actor FakeItemRepository: ItemRepository {
         }
     }
 
+    /// A detached occurrence's own ref (`/RID=`) removes exactly that occurrence (EventKit: matched
+    /// by `eventIdentifier`, since it keeps its original date); a series ref removes the occurrence
+    /// on `date`.
     public func deleteOccurrence(_ ref: AppleItemRef, on date: Date) throws {
         try beginWrite()
+        if ref.kind == .event, let rid = ref.identifier.range(of: "/RID=") {
+            let seriesID = String(ref.identifier[..<rid.lowerBound])
+            guard var stored = events[seriesID] else { throw ItemRepositoryError.notFound }
+            try checkWritable(stored.calendarID)
+            if let moved = detached[seriesID]?.removeValue(forKey: ref.identifier) {
+                stored.event.exceptionDates.append(moved.original)
+                events[seriesID] = stored
+                return
+            }
+            return try deleteOccurrence(AppleItemRef(kind: .event, identifier: seriesID), on: date)
+        }
         guard ref.kind == .event, var stored = events[ref.identifier] else { throw ItemRepositoryError.notFound }
         try checkWritable(stored.calendarID)
         guard stored.event.recurrence != nil else {

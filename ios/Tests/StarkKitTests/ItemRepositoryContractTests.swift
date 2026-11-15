@@ -15,6 +15,12 @@ struct RepositoryHarness {
     let now: Date
     /// Every stored reminder, including completed copies (`Reminder.id` is the identifier).
     let reminders: @Sendable () async -> [Reminder]
+    /// Moves one occurrence of an event series (`original` is its occurrence date) to `newStart`,
+    /// as Apple Calendar's "this event only" edit does, and returns the detached occurrence's own
+    /// ref (EventKit: the series id plus `/RID=`). A detached occurrence keeps its ORIGINAL date.
+    let detachOccurrence: @Sendable (_ series: AppleItemRef, _ original: Date, _ newStart: Date) async throws -> AppleItemRef
+    /// The start of every occurrence of the series in `range` (a detached one at its new start), sorted.
+    let eventStarts: @Sendable (_ series: AppleItemRef, _ range: ClosedRange<Date>) async -> [Date]
 }
 
 /// The behaviour every `ItemRepository` must have. Task 6 runs the same checks against the
@@ -107,6 +113,31 @@ enum ItemRepositoryContract {
         #expect(occurrences.contains(start))
         #expect(!occurrences.contains(second))
         #expect(occurrences.contains(start.addingTimeInterval(2 * 86_400)))
+    }
+
+    /// Deleting a detached occurrence by its own ref removes exactly that occurrence. It keeps its
+    /// original date, so matching by the tapped day would delete the series' regular occurrence on
+    /// the day it was moved to (daily series) and leave the tapped one.
+    static func deleteOccurrenceRemovesTheTappedDetachedOne(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let ref = try await h.repository.addEvent(
+            NewEvent(title: "Standup", start: start, end: start.addingTimeInterval(1800),
+                     recurrence: RecurrenceRule(frequency: .daily, count: 5)), calendarID: h.calendarID)
+        let day = 86_400.0
+        // The second occurrence moves onto the third one's day, an hour earlier (the same local
+        // day as the third in every zone from UTC-10 to UTC+14 for `start`).
+        let moved = start.addingTimeInterval(2 * day - 3600)
+        let detached = try await h.detachOccurrence(ref, start.addingTimeInterval(day), moved)
+        #expect(detached.identifier != ref.identifier)
+        let window = start.addingTimeInterval(-3600)...start.addingTimeInterval(6 * day)
+        let before = await h.eventStarts(ref, window)
+        #expect(before == [start, moved, start.addingTimeInterval(2 * day), start.addingTimeInterval(3 * day),
+                           start.addingTimeInterval(4 * day)])
+
+        try await h.repository.deleteOccurrence(detached, on: moved)
+        let after = await h.eventStarts(ref, window)
+        #expect(after == [start, start.addingTimeInterval(2 * day), start.addingTimeInterval(3 * day),
+                          start.addingTimeInterval(4 * day)])
     }
 
     static func completeAndUncompleteOneOff(_ make: () async -> RepositoryHarness) async throws {
@@ -335,7 +366,9 @@ struct FakeItemRepositoryContractTests {
                                       now: { ItemRepositoryContract.start })
         return RepositoryHarness(repository: fake, calendarID: "cal", listID: "list", readOnlyCalendarID: "ro",
                                  itemCount: { await fake.itemCount }, now: ItemRepositoryContract.start,
-                                 reminders: { await fake.allReminders })
+                                 reminders: { await fake.allReminders },
+                                 detachOccurrence: { try await fake.detachOccurrence($0, originalDate: $1, to: $2) },
+                                 eventStarts: { await fake.occurrenceStarts(of: $0, in: $1) })
     }
 
     @Test func addGetRoundTrip() async throws { try await ItemRepositoryContract.addGetRoundTrip(Self.make) }
@@ -346,6 +379,9 @@ struct FakeItemRepositoryContractTests {
     @Test func deleteWholeSeries() async throws { try await ItemRepositoryContract.deleteWholeSeries(Self.make) }
     @Test func deleteOccurrenceKeepsOthers() async throws {
         try await ItemRepositoryContract.deleteOccurrenceKeepsOthers(Self.make)
+    }
+    @Test func deleteOccurrenceRemovesTheTappedDetachedOne() async throws {
+        try await ItemRepositoryContract.deleteOccurrenceRemovesTheTappedDetachedOne(Self.make)
     }
     @Test func completeAndUncompleteOneOff() async throws {
         try await ItemRepositoryContract.completeAndUncompleteOneOff(Self.make)
