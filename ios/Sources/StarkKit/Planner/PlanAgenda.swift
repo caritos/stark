@@ -27,8 +27,14 @@ import Foundation
 /// (`occurrence` = due date, `displayDate = plan.start`, overdue when due before today's day).
 /// This covers a one-off due beyond the agenda's window or the overdue lookback, which the tray
 /// offers but `buildAgendaItems` never lists. Recurring reminders are never synthesized.
+///
+/// Apple reminders: a planned copy of an Apple row (`appleSource` set, id `apple-<identifier>`)
+/// keeps its `appleSource`. `apple` (default empty) adds the snapshot's open DATED reminders to
+/// the synthesis lookup above, as one-offs (an Apple reminder carries no recurrence: it is
+/// Apple's single open occurrence); a synthesized row carries its `AppleSource`. Undated Apple
+/// reminders are never synthesized (they stay out of the agenda, spec Decision 3).
 public func applyPlans(_ items: [AgendaItem], plans: [PlanBlock], today: Date,
-                       reminders: [Reminder] = [],
+                       reminders: [Reminder] = [], apple: AppleSnapshot = .empty,
                        calendar: Calendar = Calendar(identifier: .gregorian)) -> [AgendaItem] {
     let todayStart = calendar.startOfDay(for: today)
     var live = plans.filter { calendar.startOfDay(for: $0.start) >= todayStart }
@@ -51,23 +57,32 @@ public func applyPlans(_ items: [AgendaItem], plans: [PlanBlock], today: Date,
             result.append(item)
         }
         result.append(AgendaItem(kind: item.kind, occurrence: item.occurrence, displayDate: plan.start,
-                                 isOverdue: item.isOverdue, plan: plan))
+                                 isOverdue: item.isOverdue, plan: plan, appleSource: item.appleSource))
         changed = true
     }
-    if !live.isEmpty && !reminders.isEmpty {
+    // Open dated Apple reminders as synthetic one-offs, with their source.
+    var appleSources: [String: AppleSource] = [:]
+    var lookup = reminders
+    for a in apple.reminders where !a.isCompleted && a.due != nil {
+        let (r, source) = appleReminderValue(a, calendar: calendar)
+        lookup.append(r)
+        appleSources[r.id] = source
+    }
+    if !live.isEmpty && !lookup.isEmpty {
         // Each reminder is synthesized at most once, and never when `items` already lists it
         // (then a leftover plan is a duplicate, ignored as above).
         var listed = Set(items.compactMap { item -> String? in
             if case .reminder(let r) = item.kind { return r.id } else { return nil }
         })
-        let byID = Dictionary(reminders.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let byID = Dictionary(lookup.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for plan in live {
             guard let r = byID[plan.reminderID], !r.isCompleted, r.recurrence == nil,
                   let due = r.dueDate, calendar.isDate(due, inSameDayAs: plan.occurrence),
                   listed.insert(r.id).inserted
             else { continue }
             result.append(AgendaItem(kind: .reminder(r), occurrence: due, displayDate: plan.start,
-                                     isOverdue: calendar.startOfDay(for: due) < todayStart, plan: plan))
+                                     isOverdue: calendar.startOfDay(for: due) < todayStart, plan: plan,
+                                     appleSource: appleSources[r.id]))
             changed = true
         }
     }
