@@ -76,7 +76,7 @@ struct SearchView: View {
                 await store.loadAllMonths()
                 isLoadingHistory = false
             }
-            .sheet(item: $selectedItem) { item in EditItemView(item: item) }
+            .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item) }
         }
         .tint(Colors.accent)
         .preferredColorScheme(.dark)

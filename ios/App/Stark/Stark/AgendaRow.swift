@@ -9,6 +9,10 @@ import StarkKit
 /// come before it, in the accent colour), (a `%birthday`/`%anniversary` event) an emoji before the title and an age note under it, and (events) the location. The date lives in the section header, so the row never shows one
 /// except for an overdue reminder's missed date.
 ///
+/// A read-only Apple Calendar / Reminders row (`item.isReadOnly`) dims its marker (it is never a
+/// working checkbox) and adds a source line: a 6 pt square in the calendar's own colour and the
+/// calendar's title.
+///
 /// This view is **visuals only** — nothing in it is tappable. The taps live in
 /// `AgendaRowTargets`, laid over the whole row by `AgendaView` (see the note there).
 struct AgendaRowView: View {
@@ -21,6 +25,8 @@ struct AgendaRowView: View {
     var today: Date? = nil
 
     private static let markerSize: CGFloat = 16
+    /// A read-only row's marker is drawn, but dimmed so it never looks like a working checkbox.
+    private static let readOnlyMarkerOpacity: CGFloat = 0.4
 
     /// Completed, or about to be: the filled check, struck-through secondary-colour title.
     private var looksDone: Bool { item.isCompleted || isPending }
@@ -48,6 +54,7 @@ struct AgendaRowView: View {
         HStack(alignment: .top, spacing: Spacing.sm) {
             marker
                 .frame(width: Self.markerSize, height: Self.markerSize)
+                .opacity(item.isReadOnly ? Self.readOnlyMarkerOpacity : 1)
                 .padding(.top, timeLine == nil ? 2 : 0)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -87,6 +94,9 @@ struct AgendaRowView: View {
                         .font(.footnote)
                         .foregroundStyle(Colors.textSecondary)
                         .lineLimit(2)
+                }
+                if let source = item.appleSource {
+                    AppleSourceLabel(source: source)
                 }
             }
             Spacer(minLength: 0)
@@ -155,6 +165,7 @@ struct AgendaRowView: View {
         }
         if showsPriorityMarks { parts.append("\(priorityWord) priority") }
         if let location { parts.append(location) }
+        if let source = item.appleSource { parts.append("from \(source.calendarTitle), read only") }
         if looksDone { parts.append("completed") }
         if item.outcome == .attended {
             parts.append("attended")
@@ -188,7 +199,8 @@ struct AgendaRowView: View {
                                 range: range, time: AgendaFormat.time, monthDay: AgendaFormat.monthDay)
     }
 
-    private var timeLine: (text: String, isAccent: Bool)? {
+    /// The row's small time line (also the read-only Apple detail's, so both read the same).
+    var timeLine: (text: String, isAccent: Bool)? {
         if let planLines { return (planLines.primary, false) }
         switch item.kind {
         case .event(let event):
@@ -240,8 +252,11 @@ struct AgendaRowTargets: View {
     let looksDone: Bool
     let summary: String
     let onSelect: () -> Void
-    /// Nil for events, which have no checkbox.
+    /// Nil for events, which have no checkbox, and for read-only (Apple) rows.
     let onToggleComplete: (() -> Void)?
+    /// A read-only reminder row: the 44pt strip stays as an inert spacer (no button, so a tap
+    /// there does nothing) and the layout matches a Stark reminder row.
+    var showsInertCheckboxStrip = false
 
     /// Apple's minimum touch target.
     static let checkboxWidth: CGFloat = 44
@@ -255,6 +270,10 @@ struct AgendaRowTargets: View {
                 .buttonStyle(.plain)
                 .frame(width: Self.checkboxWidth)
                 .accessibilityLabel(looksDone ? "Mark incomplete" : "Mark complete")
+            } else if showsInertCheckboxStrip {
+                Color.clear
+                    .frame(width: Self.checkboxWidth)
+                    .accessibilityHidden(true)
             }
             Button(action: onSelect) {
                 Color.clear.contentShape(Rectangle())
@@ -262,6 +281,26 @@ struct AgendaRowTargets: View {
             .buttonStyle(.plain)
             .accessibilityLabel(summary)
             .accessibilityHint("Opens details")
+        }
+    }
+}
+
+/// The source line of a read-only Apple row (and of its detail sheet): a 6 pt square in the
+/// calendar's own colour (`AppleSource.colorRGB`; that colour is data, the only non-token colour
+/// in the app, falling back to the secondary text colour) and the calendar title.
+struct AppleSourceLabel: View {
+    let source: AppleSource
+    var font: Font = .footnote
+
+    var body: some View {
+        HStack(spacing: Spacing.xs) {
+            Rectangle()
+                .fill(source.colorRGB.map { Color(hex: $0) } ?? Colors.textSecondary)
+                .frame(width: 6, height: 6)
+            Text(source.calendarTitle)
+                .font(font)
+                .foregroundStyle(Colors.textSecondary)
+                .lineLimit(1)
         }
     }
 }

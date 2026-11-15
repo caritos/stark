@@ -25,4 +25,10 @@ struct AppleMergeTests {
         #expect(built.appleSource == source)
         #expect(built.id == item().id)
     }
+
+    @Test func appleItemIsReadOnlyStarkItemIsNot() {
+        let source = AppleSource(calendarID: "c1", calendarTitle: "Work", colorHex: "#FF0000", isReminder: false)
+        #expect(item(source: source).isReadOnly)
+        #expect(!item().isReadOnly)
+    }
 }

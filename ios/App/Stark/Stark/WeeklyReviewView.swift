@@ -51,7 +51,7 @@ struct WeeklyReviewView: View {
                     .accessibilityLabel("Share weekly review")
                 }
             }
-            .sheet(item: $selectedItem) { item in EditItemView(item: item) }
+            .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item) }
         }
         .tint(Colors.accent)
         .preferredColorScheme(.dark)

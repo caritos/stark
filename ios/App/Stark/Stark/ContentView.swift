@@ -176,7 +176,7 @@ struct ContentView: View {
         .sheet(isPresented: $showAdd) { AddItemView() }
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showSettings) { SettingsView(secrets: secrets) }
-        .sheet(item: $selectedItem) { item in EditItemView(item: item) }
+        .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item, today: today) }
         .fullScreenCover(item: $planRequest) { request in PlannerView(day: request.day, today: today) }
         .task {
             // Load the wider window (includes the overdue lookback), not the display window.

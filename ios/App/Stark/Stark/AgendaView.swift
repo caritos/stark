@@ -258,7 +258,9 @@ struct AgendaView: View {
                     looksDone: item.isCompleted || isPending,
                     summary: rowView.accessibilitySummary,
                     onSelect: { onSelect(item) },
-                    onToggleComplete: isReminder ? { toggleComplete(item) } : nil
+                    // A read-only (Apple) row never gets a checkbox: its strip is inert.
+                    onToggleComplete: isReminder && !item.isReadOnly ? { toggleComplete(item) } : nil,
+                    showsInertCheckboxStrip: isReminder && item.isReadOnly
                 )
             }
             .listRowSeparator(.hidden)
@@ -270,7 +272,7 @@ struct AgendaView: View {
     /// incomplete one starts a pending completion, or cancels it if one is already pending.
     /// `item.id` (reminder id + occurrence) is the stable pending key, never a list position.
     private func toggleComplete(_ item: AgendaItem) {
-        guard case .reminder(let reminder) = item.kind else { return }
+        guard !item.isReadOnly, case .reminder(let reminder) = item.kind else { return }
         if reminder.isCompleted {
             store.uncompleteReminder(id: reminder.id)
         } else {

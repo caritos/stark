@@ -118,7 +118,9 @@ struct SquareButton: View {
     }
 }
 
-private extension Color {
+extension Color {
+    /// `0xRRGGBB`. Only theme tokens use it, plus an Apple calendar's own colour (data, not
+    /// styling) on overlay rows.
     init(hex: UInt32) {
         self.init(
             red: Double((hex >> 16) & 0xFF) / 255,
