@@ -9,6 +9,8 @@ public protocol AppleItemProvider: Sendable {
     func requestAccess() async -> AppleAccess
     func calendars() -> [AppleCalendarInfo]
     /// `@concurrent`: always runs on the concurrent pool, never on the caller's (main) actor.
+    /// Events whose occurrences fall in `events`; EVERY open reminder (any due date, or none);
+    /// completed reminders whose completion date is in `reminders`. The engines filter by range.
     @concurrent
     func fetch(events: ClosedRange<Date>, reminders: ClosedRange<Date>) async throws -> AppleSnapshot
     /// Posted when the underlying store changes (EventKit's `EKEventStoreChanged`); nil if never.

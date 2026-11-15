@@ -131,18 +131,18 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
 
     @concurrent
     private func fetchReminders(in range: ClosedRange<Date>) async throws -> [AppleReminder] {
-        let open = store.predicateForIncompleteReminders(withDueDateStarting: range.lowerBound,
-                                                         ending: range.upperBound, calendars: nil)
+        // EVERY open reminder, whatever its due date (none, or outside `range`): undated ones feed
+        // Search and the planner's "No date" pane, and a repeating one whose next due date lies
+        // past the window still lets the planner read its earlier blocks as done
+        // (`DayPlanModel.appleDoneBlock`). The engines filter by range themselves
+        // (`mergeAppleItems`, `undatedAppleReminders`), so the agenda is unchanged; the
+        // selection still filters by calendar downstream (`AppleSelection.filtered`).
+        let open = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
         let done = store.predicateForCompletedReminders(withCompletionDateStarting: range.lowerBound,
                                                         ending: range.upperBound, calendars: nil)
-        // A due-date range never matches a reminder with no due date, so undated open ones are
-        // fetched separately (all incomplete, keeping only those without a due date) for Search
-        // and the planner's "No date" pane; the agenda drops them (`mergeAppleItems`).
-        let anyOpen = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
         let openItems = try await reminders(matching: open)
         let doneItems = try await reminders(matching: done)
-        let undatedItems = try await reminders(matching: anyOpen).filter { $0.due == nil }
-        return openItems + doneItems + undatedItems
+        return openItems + doneItems
     }
 
     /// Maps inside the completion handler so no `EKReminder` crosses a concurrency boundary.
