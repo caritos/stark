@@ -3,20 +3,21 @@ import SwiftUI
 import UIKit
 import StarkKit
 
-/// Settings > "Apple Calendar and Reminders": the overlay's on/off switch (the only place access
-/// is requested), the access state, a way back to iOS Settings after a refusal, and one toggle
-/// per calendar and reminder list grouped by account. Grouping, wording and which controls show
-/// are StarkKit (`AppleSettings`, tested there); this view only lays them out.
+/// Settings > "Apple Calendar and Reminders": the access state (access itself is requested only
+/// from the main screen's `AccessRequiredView`), a way back to iOS Settings after a refusal, the
+/// default calendar and list for new items (writable ones only), and one toggle per calendar and
+/// reminder list grouped by account. The overlay is always on (no switch). Grouping, wording and
+/// which controls show are StarkKit (`AppleSettings`, `DefaultDestination`, tested there); this
+/// view only lays them out.
 struct AppleSettingsView: View {
     @Environment(AppleOverlayModel.self) private var overlay
+    @Environment(DefaultDestinationModel.self) private var destinations
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         List {
             Section {
-                Toggle("Show Apple Calendar and Reminders", isOn: enabledBinding)
-                    .foregroundStyle(Colors.text)
                 LabeledContent("Access") {
                     Text(AppleSettings.statusLabel(overlay.access))
                 }
@@ -29,11 +30,40 @@ struct AppleSettingsView: View {
                         .foregroundStyle(Colors.accent)
                 }
             } footer: {
-                Text("Shows your Apple calendars and reminders in Stark, read-only. Stark doesn't copy or send them anywhere.")
+                Text("Stark shows your Apple calendars and reminders. Stark doesn't copy or send them anywhere.")
                     .font(.footnote)
                     .foregroundStyle(Colors.textSecondary)
             }
             .listRowBackground(Colors.background)
+
+            if overlay.access == .granted {
+                Section {
+                    Picker("Default calendar", selection: calendarBinding) {
+                        ForEach(destinations.calendarChoices) { calendar in
+                            Text(calendar.title).tag(calendar.id)
+                        }
+                    }
+                    .foregroundStyle(Colors.text)
+                    Picker("Default list", selection: listBinding) {
+                        ForEach(destinations.listChoices) { list in
+                            Text(list.title).tag(list.id)
+                        }
+                    }
+                    .foregroundStyle(Colors.text)
+                    if let error = destinations.error {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(Colors.accent)
+                    }
+                } header: {
+                    Text("New items")
+                } footer: {
+                    Text("Events you add in Stark go to the default calendar, to-dos to the default list. Only calendars and lists Stark can change are listed.")
+                        .font(.footnote)
+                        .foregroundStyle(Colors.textSecondary)
+                }
+                .listRowBackground(Colors.background)
+            }
 
             if AppleSettings.showsCalendars(isEnabled: overlay.isEnabled, access: overlay.access) {
                 ForEach(AppleSettings.groupedByAccount(overlay.calendars)) { group in
@@ -56,22 +86,24 @@ struct AppleSettingsView: View {
         .listRowSeparatorTint(Colors.separator)
         .navigationTitle("Apple Calendar and Reminders")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await overlay.refreshAccess() }
+        .task { await refresh() }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await overlay.refreshAccess() } }
+            if phase == .active { Task { await refresh() } }
         }
     }
 
-    private var enabledBinding: Binding<Bool> {
-        Binding(
-            get: { overlay.isEnabled },
-            set: { on in
-                if on {
-                    Task { await overlay.enable() }
-                } else {
-                    overlay.disable()
-                }
-            })
+    private func refresh() async {
+        await overlay.refreshAccess()
+        await destinations.refresh()
+    }
+
+    /// "" while nothing is resolved (no matching tag: the picker shows nothing chosen).
+    private var calendarBinding: Binding<String> {
+        Binding(get: { destinations.calendarID ?? "" }, set: { destinations.chooseCalendar($0) })
+    }
+
+    private var listBinding: Binding<String> {
+        Binding(get: { destinations.listID ?? "" }, set: { destinations.chooseList($0) })
     }
 
     private func shownBinding(_ id: String) -> Binding<Bool> {

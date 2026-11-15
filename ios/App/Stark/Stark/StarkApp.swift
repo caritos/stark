@@ -12,15 +12,38 @@ import StarkKit
 struct StarkApp: App {
     @StateObject private var store: PlannerStore
     @StateObject private var pending: PendingCompletions
-    /// Read-only Apple Calendar / Reminders overlay. Off by default; access is only ever
-    /// requested from Settings, never at launch.
-    @State private var overlay = AppleOverlayModel(provider: EventKitProvider())
+    /// The Apple Calendar / Reminders overlay, always on. Access is only ever requested from the
+    /// main screen's `AccessRequiredView`, after it explained why, never at launch.
+    @State private var overlay: AppleOverlayModel
+    /// Where new Apple items go (Settings > Apple Calendar and Reminders).
+    @State private var destinations: DefaultDestinationModel
+    /// The one EventKit repository, sidecar and router (Apple write path). Views do not call the
+    /// router yet (Task 9); the bridge is wired to it in Task 7.
+    private let repository: AppleItemRepository
+    private let sidecar: ItemSidecar
+    private let router: ItemRouter
     private let bridge: ClaudeBridge
     private let secrets: SecretStore
 
     init() {
         let store = Self.makeStore()
         _store = StateObject(wrappedValue: store)
+        // One EKEventStore for the whole app: the provider creates it lazily and the repository
+        // writes through it.
+        let provider = EventKitProvider()
+        let repository = AppleItemRepository(provider: provider)
+        self.repository = repository
+        let overlay = AppleOverlayModel(provider: provider)
+        _overlay = State(initialValue: overlay)
+        let destinations = DefaultDestinationModel(provider: provider, repository: repository)
+        _destinations = State(initialValue: destinations)
+        let sidecar = ItemSidecar(fileURL: Self.sidecarURL(), calendar: .autoupdatingCurrent)
+        self.sidecar = sidecar
+        let router = ItemRouter(repository: repository, local: store, sidecar: sidecar,
+                                destinations: destinations, calendar: .autoupdatingCurrent)
+        // EKEventStoreChanged is not reliable after a save (write spike f): reload after every write.
+        router.onDidWrite = { [weak overlay] in await overlay?.refreshAfterWrite() }
+        self.router = router
         // Idempotence (unknown id, already resolved by Done/Skip) lives in `PlannerStore.completeReminder`.
         let secrets = KeychainSecretStore(service: "com.caritos.todo-txt.bridge", account: "pairing")
         self.secrets = secrets
@@ -38,6 +61,8 @@ struct StarkApp: App {
                 .environmentObject(store)
                 .environmentObject(pending)
                 .environment(overlay)
+                .environment(destinations)
+                .environment(\.itemRouter, router)
                 #if targetEnvironment(macCatalyst)
                 .frame(minWidth: 480, minHeight: 520)
                 #endif
@@ -45,6 +70,16 @@ struct StarkApp: App {
         #if targetEnvironment(macCatalyst)
         .windowResizability(.contentMinSize)
         #endif
+    }
+
+    /// `Library/Application Support/Stark/sidecar.json` (plan blocks and outcomes of Apple items,
+    /// keyed by EventKit identifier; not in Documents). The directory is created here; a failure
+    /// surfaces later as a sidecar write error, never as a crash.
+    private static func sidecarURL() -> URL {
+        let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Stark", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent("sidecar.json")
     }
 
     private static func makeStore() -> PlannerStore {
@@ -56,4 +91,9 @@ struct StarkApp: App {
         )
         return PlannerStore(file: file)
     }
+}
+
+extension EnvironmentValues {
+    /// The app's one `ItemRouter` (set by `StarkApp`); nil only in previews.
+    @Entry var itemRouter: ItemRouter? = nil
 }

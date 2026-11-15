@@ -2,7 +2,7 @@
 //  AppleOverlayModel.swift
 //  Stark
 //
-//  Read-only overlay state: on/off, access, the device's calendars, which ones are shown and the
+//  Overlay state (always on): access, the device's calendars, which ones are shown and the
 //  latest fetched items. Merging, selection and filtering are StarkKit code (tested there); this
 //  holds no other logic. EventKit work runs off the main actor through `AppleItemProvider`.
 //
@@ -15,16 +15,16 @@ import StarkKit
 @MainActor @Observable
 final class AppleOverlayModel {
     private enum Key {
-        static let enabled = "appleOverlay.enabled"
         static let excluded = "appleOverlay.excludedCalendarIDs"
     }
 
     private static let log = Logger(subsystem: "com.caritos.todo-txt", category: "AppleOverlay")
 
-    /// Off by default. Persisted.
-    var isEnabled: Bool {
-        didSet { defaults.set(isEnabled, forKey: Key.enabled) }
-    }
+    /// Always on since the Apple write path (phase 1, decision 11): Stark's new items live in
+    /// Apple, so they must never vanish from view. The old persisted switch
+    /// (`appleOverlay.enabled`) is no longer read, so an install that had it off gets the overlay
+    /// on too. Access is still only requested from `AccessRequiredView`'s button.
+    var isEnabled: Bool { true }
     var access: AppleAccess
     var calendars: [AppleCalendarInfo] = []
     /// Persisted as the excluded ids only (no names, no paths).
@@ -52,7 +52,6 @@ final class AppleOverlayModel {
     init(provider: AppleItemProvider, defaults: UserDefaults = .standard) {
         self.provider = provider
         self.defaults = defaults
-        isEnabled = defaults.bool(forKey: Key.enabled)
         selection = AppleSelection(excludedIDs: Set(defaults.stringArray(forKey: Key.excluded) ?? []))
         access = provider.accessState()
         observeStoreChanges()
@@ -62,13 +61,11 @@ final class AppleOverlayModel {
         changeTask?.cancel()
     }
 
-    /// Turning the overlay on is the only place access is requested (never at launch). Always
-    /// asks the provider, which requests only the sources still undetermined, so one left unasked
-    /// next to a denied one is asked once the user fixes the other in iOS Settings. The switch
-    /// stays on even if access is refused, so Settings can show the denied state; the snapshot
-    /// stays empty until access is granted.
+    /// The only place access is requested: `AccessRequiredView`'s button, after it explained what
+    /// access is for (never at launch). Always asks the provider, which requests only the sources
+    /// still undetermined, so one left unasked next to a denied one is asked once the user fixes
+    /// the other in iOS Settings. The snapshot stays empty until access is granted.
     func enable() async {
-        isEnabled = true
         access = await provider.requestAccess()
         if let lastRequest {
             await reload(display: lastRequest.display, today: lastRequest.today)
@@ -95,11 +92,6 @@ final class AppleOverlayModel {
         case .clear:
             clearSnapshot()
         }
-    }
-
-    func disable() {
-        isEnabled = false
-        clearSnapshot()
     }
 
     /// Drops any in-flight reload's result and empties the snapshot.
@@ -131,6 +123,12 @@ final class AppleOverlayModel {
     func reload(for screen: AppleFetchWindow.Screen, display: ClosedRange<Date>?, today: Date) async {
         window.set(screen, display)
         await refresh(today: today)
+    }
+
+    /// After Stark itself wrote to Apple (`ItemRouter.onDidWrite`): `EKEventStoreChanged` is not
+    /// reliable after a save (write spike f), so the agenda reloads here, for the last "today".
+    func refreshAfterWrite() async {
+        await refresh(today: lastRequest?.today ?? Date())
     }
 
     /// Re-fetches the current hull (foreground). Does nothing before any screen asked for data.

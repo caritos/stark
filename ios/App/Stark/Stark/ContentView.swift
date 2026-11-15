@@ -17,6 +17,7 @@ struct ContentView: View {
     @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
     @Environment(AppleOverlayModel.self) private var overlay
+    @Environment(DefaultDestinationModel.self) private var destinations
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var showSearch = false
@@ -125,6 +126,24 @@ struct ContentView: View {
                         .background(Colors.accent)
                 }
             }
+            // Without full access Stark cannot show or keep Apple items: say why and ask (or point
+            // to iOS Settings) instead of showing an empty calendar. Stark's own local items stay
+            // visible below.
+            if overlay.access != .granted {
+                AccessRequiredView()
+            } else if let problem = destinations.error {
+                Button {
+                    showSettings = true
+                } label: {
+                    Text(problem)
+                        .font(.footnote)
+                        .foregroundStyle(Colors.text)
+                        .padding(Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Colors.accent)
+                }
+                .accessibilityHint("Opens Settings.")
+            }
             ZStack {
                 VStack(spacing: 0) {
                     MonthGridView(today: today, mode: mode, selectedDate: selectedDate, onSelectDate: selectDate, scrollPagingDate: scrollPagingDate)
@@ -187,8 +206,13 @@ struct ContentView: View {
             let waiting = pendingBridgeURLs
             pendingBridgeURLs = []
             for url in waiting { handleBridge(url) }
-            // Empty (and no EventKit call) unless the overlay was turned on in Settings.
+            // Empty (and no EventKit call) until access was granted from `AccessRequiredView`.
             await overlay.reload(for: .agenda, display: AgendaWindow.range(around: agendaAnchor), today: today)
+            await destinations.refresh()
+        }
+        // Granted from the access screen, or in iOS Settings while Stark was in the background.
+        .onChange(of: overlay.access) { _, access in
+            if access == .granted { Task { await destinations.refresh() } }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {

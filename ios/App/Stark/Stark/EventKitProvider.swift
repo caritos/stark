@@ -67,6 +67,14 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
             + store.calendars(for: .reminder).map { Self.info($0, isReminderList: true) }
     }
 
+    /// EventKit's own defaults for new items (`defaultCalendarForNewEvents`,
+    /// `defaultCalendarForNewReminders`), the first-use value of Stark's default destinations.
+    /// Synchronous: call it off the main actor.
+    func systemDefaultIDs() -> (calendarID: String?, listID: String?) {
+        (store.defaultCalendarForNewEvents?.calendarIdentifier,
+         store.defaultCalendarForNewReminders()?.calendarIdentifier)
+    }
+
     @concurrent
     func fetch(events: ClosedRange<Date>, reminders: ClosedRange<Date>) async throws -> AppleSnapshot {
         #if DEBUG
