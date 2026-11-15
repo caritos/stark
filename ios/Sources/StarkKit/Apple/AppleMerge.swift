@@ -15,7 +15,8 @@ import Foundation
 /// - Open reminders due before today (inside the lookback) are overdue, pinned to start-of-today
 ///   with the due date kept in `occurrence`; older ones are dropped.
 /// - Completed reminders show on their due day and are never overdue.
-/// - Reminders without a due date are dropped.
+/// - Reminders without a due date are dropped (they never show in the agenda; see
+///   `undatedAppleReminders`).
 /// - A reminder with `dueHasTime == false` is stored at local midnight, which is Stark's marker
 ///   for a date-only due date (`FormFields.isAllDay`).
 public func mergeAppleItems(
@@ -61,14 +62,9 @@ public func mergeAppleItems(
     }
 
     for apple in snapshot.reminders {
-        guard let rawDue = apple.due else { continue }
-        let due = apple.dueHasTime ? rawDue : calendar.startOfDay(for: rawDue)
-        let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
-                                 colorHex: apple.calendar.colorHex, isReminder: true, url: apple.url,
-                                 isWritable: apple.calendar.isWritable)
-        let reminder = Reminder(id: "apple-\(apple.id)", title: apple.title, notes: apple.notes, dueDate: due,
-                                isCompleted: apple.isCompleted, completedDate: apple.isCompleted ? due : nil,
-                                priority: apple.priority, completedAt: apple.completedAt)
+        guard apple.due != nil else { continue }
+        let (reminder, source) = appleReminderValue(apple, calendar: calendar)
+        guard let due = reminder.dueDate else { continue }
         if apple.isCompleted {
             if range.contains(due) {
                 merged.append(AgendaItem(kind: .reminder(reminder), occurrence: due, displayDate: due,
@@ -85,6 +81,40 @@ public func mergeAppleItems(
     }
 
     return sortAgendaItems(merged, calendar: calendar)
+}
+
+/// The synthetic `Reminder` (id `apple-<id>`, no recurrence) and its `AppleSource` for one Apple
+/// reminder, exactly as `mergeAppleItems` builds them: a date-only due date is local midnight, a
+/// completed reminder's `completedDate` is its due date. Shared by every engine that reads Apple
+/// reminders so they all agree on ids and dates.
+func appleReminderValue(_ apple: AppleReminder, calendar: Calendar) -> (Reminder, AppleSource) {
+    let due = apple.due.map { apple.dueHasTime ? $0 : calendar.startOfDay(for: $0) }
+    let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
+                             colorHex: apple.calendar.colorHex, isReminder: true, url: apple.url,
+                             isWritable: apple.calendar.isWritable)
+    let reminder = Reminder(id: ItemOrigin.applePrefix + apple.id, title: apple.title, notes: apple.notes,
+                            dueDate: due, isCompleted: apple.isCompleted,
+                            completedDate: apple.isCompleted ? due : nil,
+                            priority: apple.priority, completedAt: apple.completedAt)
+    return (reminder, source)
+}
+
+/// The open Apple reminders with no due date, as rows for Search and the planner's "No date" pane
+/// (spec Decision 3). Never part of the agenda (`mergeAppleItems` drops them). `occurrence` and
+/// `displayDate` are `.distantFuture`, a stable sentinel that sorts last and keeps each row's `id`
+/// fixed; completed undated reminders are left out. Sorted by title, then id.
+public func undatedAppleReminders(
+    _ snapshot: AppleSnapshot,
+    calendar: Calendar = Calendar(identifier: .gregorian)
+) -> [AgendaItem] {
+    snapshot.reminders
+        .filter { $0.due == nil && !$0.isCompleted }
+        .map { apple -> AgendaItem in
+            let (reminder, source) = appleReminderValue(apple, calendar: calendar)
+            return AgendaItem(kind: .reminder(reminder), occurrence: .distantFuture, displayDate: .distantFuture,
+                              isOverdue: false, appleSource: source)
+        }
+        .sorted { ($0.title, $0.id) < ($1.title, $1.id) }
 }
 
 /// Maps EventKit's end date to the `AppleCalendarEvent.end` that `mergeAppleItems` expects.

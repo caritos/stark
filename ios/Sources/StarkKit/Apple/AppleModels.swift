@@ -120,6 +120,14 @@ public struct AppleSnapshot: Equatable, Sendable {
         self.events = events
         self.reminders = reminders
     }
+
+    /// No Apple items: the default for every engine's `apple:` parameter, so local behaviour is
+    /// unchanged when the overlay is off.
+    public static let empty = AppleSnapshot(events: [], reminders: [])
+
+    /// Reminders with no due date (open or completed). The agenda never shows them; Search and the
+    /// planner's "No date" pane do (`undatedAppleReminders`).
+    public var undatedReminders: [AppleReminder] { reminders.filter { $0.due == nil } }
 }
 
 /// What the overlay does when access is re-read without asking (e.g. the user changed it in iOS
