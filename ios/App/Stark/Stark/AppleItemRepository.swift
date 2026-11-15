@@ -485,8 +485,8 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
                 reminder.startDateComponents = nil
             }
             // EventKit leaves absolute-date alerts where they were; keep them with the due date.
-            Self.shiftAlarms(of: reminder, from: current?.date,
-                             to: reminder.dueDateComponents.map { appleReminderDue($0) }?.date)
+            Self.shiftAlarms(of: reminder, from: current?.date, oldHasTime: current?.hasTime ?? true,
+                             to: reminder.dueDateComponents.map { appleReminderDue($0) }?.date, newHasTime: hasTime)
         }
 
         switch patch.recurrence {
@@ -499,16 +499,22 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         }
     }
 
-    /// Moves the reminder's absolute-date alerts with its due date (`ReminderAlarmShift`); offset
-    /// alerts follow the due date by themselves. Absolute alerts are replaced by NEW alarms (an
+    /// Moves the reminder's absolute-date alerts with its due date (`ReminderAlarmShift`: by whole
+    /// days, keeping their time of day, whenever a date-only due is involved); offset alerts follow
+    /// the due date by themselves. Absolute alerts are replaced by NEW alarms (an
     /// absolute alert on iOS carries only its date): changing or removing the reminder's own alarm
     /// objects, or copies of them, did not always persist on the simulator (a removed alert came
     /// back at its original date).
-    private static func shiftAlarms(of reminder: EKReminder, from oldDue: Date?, to newDue: Date?) {
+    private static func shiftAlarms(of reminder: EKReminder, from oldDue: Date?, oldHasTime: Bool,
+                                    to newDue: Date?, newHasTime: Bool) {
         let alarms = reminder.alarms ?? []
         let absolute = alarms.compactMap(\.absoluteDate)
-        guard oldDue != newDue, !absolute.isEmpty else { return }
-        var shifted = ReminderAlarmShift.shifted(absolute, oldDue: oldDue, newDue: newDue).makeIterator()
+        guard oldDue != newDue || oldHasTime != newHasTime, !absolute.isEmpty else { return }
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = .autoupdatingCurrent
+        var shifted = ReminderAlarmShift.shifted(absolute, oldDue: oldDue, oldHasTime: oldHasTime,
+                                                 newDue: newDue, newHasTime: newHasTime,
+                                                 calendar: gregorian).makeIterator()
         var result: [EKAlarm] = []
         for alarm in alarms {
             guard alarm.absoluteDate != nil else {
