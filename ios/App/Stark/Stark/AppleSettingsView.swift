@@ -30,7 +30,7 @@ struct AppleSettingsView: View {
                         .foregroundStyle(Colors.accent)
                 }
             } footer: {
-                Text("Stark shows your Apple calendars and reminders. Stark doesn't copy or send them anywhere.")
+                Text("Stark shows your Apple calendars and reminders and saves your changes to them. Stark doesn't copy them into its own files or send them anywhere.")
                     .font(.footnote)
                     .foregroundStyle(Colors.textSecondary)
             }

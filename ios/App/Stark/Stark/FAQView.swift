@@ -26,8 +26,8 @@ struct FAQView: View {
             sends nothing anywhere and adds no network connection. iOS asks for access the first \
             time you tap Allow Access on Stark's main screen, after Stark says what it is for. \
             Planner blocks for Apple reminders and attended/skipped marks on Apple events are kept \
-            in a small file of Stark's own on this device. The day export, for today and \
-            yesterday, includes the Apple items shown that day.
+            in a small file of Stark's own on this device. The day export (today and \
+            yesterday) and the Weekly Review share include the Apple items they show.
             """
         ),
         Entry(
@@ -95,8 +95,8 @@ struct FAQView: View {
             question: "Can I turn an event into a task?",
             answer: """
             Yes. Open the event, use the Event/Reminder switch at the top and tap the check. The \
-            event's end time is dropped, its location moves into the task's notes, and any \
-            attended/skipped marks are dropped (Stark asks first). It works the other way round \
+            event's end time is dropped, its location moves into the task's notes, and, for \
+            Stark's older events, any attended/skipped marks are dropped (Stark asks first). It works the other way round \
             too: a task becomes an event, and its priority is dropped. For an Apple item Stark \
             creates the other kind and deletes the original, so its alerts, invitees and any \
             occurrences edited one by one are lost; Stark asks first when the event has invitees \
@@ -113,8 +113,8 @@ struct FAQView: View {
             secret. The secret is kept in this phone's Keychain (not in backups) and, once you \
             pair, in your Mac's login Keychain; Stark never sends it anywhere else. Requests \
             are added immediately to Apple Calendar and Reminders, in your default calendar and \
-            list; sending the same request again adds nothing, and an item you deleted stays \
-            deleted. Claude Code cannot read your schedule from the phone for now: stark-claude \
+            list, and Stark notes each added item in its small file so that sending the same \
+            request again does not normally add it twice; an item you deleted stays deleted. Claude Code cannot read your schedule from the phone for now: stark-claude \
             today is unavailable until a Mac tool exists. To reset pairing, tap Settings > \
             Claude Code > Reset pairing.
             """
