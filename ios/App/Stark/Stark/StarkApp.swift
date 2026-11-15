@@ -18,7 +18,7 @@ struct StarkApp: App {
     /// Where new Apple items go (Settings > Apple Calendar and Reminders).
     @State private var destinations: DefaultDestinationModel
     /// The one EventKit repository, sidecar and router (Apple write path). Views do not call the
-    /// router yet (Task 9); the bridge is wired to it in Task 7.
+    /// router yet (Task 9); the Claude Code bridge writes through the same repository and sidecar.
     private let repository: AppleItemRepository
     private let sidecar: ItemSidecar
     private let router: ItemRouter
@@ -48,12 +48,14 @@ struct StarkApp: App {
         // EKEventStoreChanged is not reliable after a save (write spike f): reload after every write.
         router.onDidWrite = { [weak overlay] in await overlay?.refreshAfterWrite() }
         self.router = router
-        // Idempotence (unknown id, already resolved by Done/Skip) lives in `PlannerStore.completeReminder`.
         let secrets = KeychainSecretStore(service: "com.caritos.todo-txt.bridge", account: "pairing")
         self.secrets = secrets
-        bridge = ClaudeBridge(store: store, secrets: secrets,
+        // Bridge items go to Apple (default calendar / list) and are ledgered in the sidecar.
+        bridge = ClaudeBridge(repository: repository, sidecar: sidecar, destinations: destinations,
+                              hasAccess: { provider.accessState() == .granted }, secrets: secrets,
                               replay: BridgeReplayGuard(store: UserDefaultsReplayStore(), now: Date.init),
                               calendar: .autoupdatingCurrent)
+        // Idempotence (unknown id, already resolved by Done/Skip) lives in `PlannerStore.completeReminder`.
         _pending = StateObject(wrappedValue: PendingCompletions(commit: { id, occurrence in
             store.completeReminder(id: id, on: occurrence)
         }))

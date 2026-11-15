@@ -47,14 +47,12 @@ struct ContentView: View {
 
     private let bridge: ClaudeBridge
     private let secrets: SecretStore
-    /// False until `store.start` has loaded recurring.ics and the window's months; a bridge URL
-    /// that arrives earlier (cold launch) waits in `pendingBridgeURLs` so the import sees the
-    /// existing ids. Drained once, right after start.
-    @State private var storeStarted = false
+    /// False until the default calendar and list have been resolved (`destinations.refresh()`); a
+    /// bridge URL that arrives earlier (cold launch) waits in `pendingBridgeURLs`, or it would be
+    /// rejected for want of a destination. Drained once, right after. The local store's state does
+    /// not matter: bridge items go to Apple and their idempotency lives in the sidecar ledger.
+    @State private var bridgeReady = false
     @State private var pendingBridgeURLs: [URL] = []
-    /// `store.start` reports a failed read (recurring.ics or a month) only through `store.error`;
-    /// that cannot be told apart from other errors, so any error right after start blocks imports.
-    @State private var storeLoadFailed = false
     @State private var notice: String?
     @State private var noticeTask: Task<Void, Never>?
 
@@ -87,7 +85,7 @@ struct ContentView: View {
         // sheets and Forms would render light with near-white text.
         .preferredColorScheme(.dark)
         .onOpenURL { url in
-            if storeStarted {
+            if bridgeReady {
                 handleBridge(url)
             } else {
                 pendingBridgeURLs.append(url)
@@ -201,14 +199,13 @@ struct ContentView: View {
             // Load the wider window (includes the overdue lookback), not the display window.
             let range = AgendaWindow.loadRange(around: Date())
             store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
-            storeLoadFailed = store.error != nil
-            storeStarted = true
-            let waiting = pendingBridgeURLs
-            pendingBridgeURLs = []
-            for url in waiting { handleBridge(url) }
             // Empty (and no EventKit call) until access was granted from `AccessRequiredView`.
             await overlay.reload(for: .agenda, display: AgendaWindow.range(around: agendaAnchor), today: today)
             await destinations.refresh()
+            bridgeReady = true
+            let waiting = pendingBridgeURLs
+            pendingBridgeURLs = []
+            for url in waiting { handleBridge(url) }
         }
         // Granted from the access screen, or in iOS Settings while Stark was in the background.
         .onChange(of: overlay.access) { _, access in
@@ -231,14 +228,14 @@ struct ContentView: View {
         }
     }
 
+    /// The bridge handles URLs one at a time in arrival order, so these tasks may overlap.
     private func handleBridge(_ url: URL) {
-        guard !storeLoadFailed else {
-            // Not handed to the bridge, so nothing is imported and no batch is recorded.
-            showNotice("Stark couldn't load your data, so the request wasn't added. Force-quit Stark, then send again.")
-            return
+        Task {
+            let outcome = await bridge.handle(url)
+            if let text = outcome.notice { showNotice(text) }
+            // EKEventStoreChanged is not reliable after a save (write spike f).
+            if case .added = outcome { await overlay.refreshAfterWrite() }
         }
-        guard let text = bridge.handle(url).notice else { return }
-        showNotice(text)
     }
 
     private func showNotice(_ text: String) {
