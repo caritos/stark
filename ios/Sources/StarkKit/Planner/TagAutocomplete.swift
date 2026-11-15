@@ -39,8 +39,20 @@ public enum TagAutocomplete {
     /// Scans fresh on every call rather than maintaining an index, the same choice the Expo
     /// app's version made -- fine at this app's dataset sizes (thousands of items), and much
     /// simpler than keeping a derived index in sync with every add/edit/delete.
-    public static func suggestions(for prefix: Prefix, events: [Event], reminders: [Reminder]) -> [String] {
+    ///
+    /// `apple` (default empty) adds the Apple events' and reminders' titles and notes; the caller
+    /// passes events within two years either side of today and all reminders (spec Decision 10).
+    public static func suggestions(for prefix: Prefix, events: [Event], reminders: [Reminder],
+                                   apple: AppleSnapshot = .empty) -> [String] {
         var found: Set<String> = []
+        for event in apple.events {
+            collect(from: event.title, sigil: prefix.sigil, into: &found)
+            collect(from: event.notes, sigil: prefix.sigil, into: &found)
+        }
+        for reminder in apple.reminders {
+            collect(from: reminder.title, sigil: prefix.sigil, into: &found)
+            collect(from: reminder.notes, sigil: prefix.sigil, into: &found)
+        }
         for event in events {
             collect(from: event.title, sigil: prefix.sigil, into: &found)
             collect(from: event.notes, sigil: prefix.sigil, into: &found)
