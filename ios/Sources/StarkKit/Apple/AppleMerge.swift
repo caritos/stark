@@ -63,7 +63,7 @@ public func mergeAppleItems(
         guard let rawDue = apple.due else { continue }
         let due = apple.dueHasTime ? rawDue : calendar.startOfDay(for: rawDue)
         let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
-                                 colorHex: apple.calendar.colorHex, isReminder: true)
+                                 colorHex: apple.calendar.colorHex, isReminder: true, url: apple.url)
         let reminder = Reminder(id: "apple-\(apple.id)", title: apple.title, notes: apple.notes, dueDate: due,
                                 isCompleted: apple.isCompleted, completedDate: apple.isCompleted ? due : nil,
                                 priority: apple.priority, completedAt: apple.completedAt)

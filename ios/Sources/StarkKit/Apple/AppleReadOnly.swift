@@ -58,6 +58,19 @@ public func appleOpenURL(for item: AgendaItem) -> URL? {
     }
 }
 
+/// The URL stored on a read-only Apple item (an event's from `Event.url`, a reminder's from
+/// `AppleSource.url`), or nil when absent or empty, or for a Stark item.
+public func appleItemURL(_ item: AgendaItem) -> String? {
+    guard let source = item.appleSource else { return nil }
+    let url: String?
+    switch item.kind {
+    case .event(let event): url = event.url
+    case .reminder: url = source.url
+    }
+    guard let url, !url.isEmpty else { return nil }
+    return url
+}
+
 extension AppleSource {
     /// The calendar's colour as `0xRRGGBB`, parsed from `colorHex` ("#RRGGBB"); nil when absent
     /// or malformed.

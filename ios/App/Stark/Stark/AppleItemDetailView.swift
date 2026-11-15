@@ -44,10 +44,7 @@ struct AppleItemDetailView: View {
         return location
     }
 
-    private var urlText: String? {
-        guard case .event(let event) = item.kind, let url = event.url, !url.isEmpty else { return nil }
-        return url
-    }
+    private var urlText: String? { appleItemURL(item) }
 
     /// Only an http/https link with a host is offered as a tappable link (as in `EditItemView`).
     private var webLink: URL? {

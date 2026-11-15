@@ -24,12 +24,17 @@ public struct AppleSource: Equatable, Sendable {
     public let calendarTitle: String
     public let colorHex: String?
     public let isReminder: Bool
+    /// A reminder's URL (Stark's `Reminder` has no URL field); nil for events, whose URL is on
+    /// `Event.url`. Read it through `appleItemURL(_:)`.
+    public let url: String?
 
-    public init(calendarID: String, calendarTitle: String, colorHex: String?, isReminder: Bool) {
+    public init(calendarID: String, calendarTitle: String, colorHex: String?, isReminder: Bool,
+                url: String? = nil) {
         self.calendarID = calendarID
         self.calendarTitle = calendarTitle
         self.colorHex = colorHex
         self.isReminder = isReminder
+        self.url = url
     }
 }
 
@@ -68,9 +73,11 @@ public struct AppleReminder: Equatable, Sendable {
     public let completedAt: Date?
     public let priority: Int?
     public let calendar: AppleCalendarInfo
+    public let url: String?
 
     public init(id: String, title: String, notes: String?, due: Date?, dueHasTime: Bool,
-                isCompleted: Bool, completedAt: Date?, priority: Int?, calendar: AppleCalendarInfo) {
+                isCompleted: Bool, completedAt: Date?, priority: Int?, calendar: AppleCalendarInfo,
+                url: String? = nil) {
         self.id = id
         self.title = title
         self.notes = notes
@@ -80,6 +87,7 @@ public struct AppleReminder: Equatable, Sendable {
         self.completedAt = completedAt
         self.priority = priority
         self.calendar = calendar
+        self.url = url
     }
 }
 

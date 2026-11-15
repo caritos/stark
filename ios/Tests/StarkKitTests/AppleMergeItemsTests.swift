@@ -223,4 +223,35 @@ extension AppleMergeTests {
                            calendar: Self.cal, apple: AppleSnapshot(events: shifts, reminders: []))
         for day in 10...14 { #expect(d[day] == DayDensity(tasks: 0, events: 1)) }
     }
+
+    private var listInfo: AppleCalendarInfo { AppleCalendarInfo(id: "list", title: "Home", accountName: "iCloud", colorHex: nil, isReminderList: true) }
+
+    private func reminder(url: String?) -> AppleReminder {
+        AppleReminder(id: "r", title: "Pay", notes: nil, due: date(20, 9), dueHasTime: true, isCompleted: false,
+                      completedAt: nil, priority: nil, calendar: listInfo, url: url)
+    }
+
+    @Test func reminderURLCarriedToTheRow() {
+        let row = merge(reminders: [reminder(url: "https://bank.example/pay")]).first
+        #expect(row?.appleSource?.url == "https://bank.example/pay")
+        #expect(row.flatMap(appleItemURL) == "https://bank.example/pay")
+    }
+
+    @Test func reminderWithoutURLHasNone() {
+        let row = merge(reminders: [reminder(url: nil)]).first
+        #expect(row != nil)
+        #expect(row?.appleSource?.url == nil)
+        #expect(row.flatMap(appleItemURL) == nil)
+    }
+
+    @Test func eventURLComesFromTheEvent() {
+        let row = merge(events: [event(start: date(20, 9), end: date(20, 10))]).first
+        #expect(row.flatMap(appleItemURL) == "https://x.y")
+    }
+
+    @Test func emptyReminderURLIsNone() {
+        let row = merge(reminders: [reminder(url: "")]).first
+        #expect(row != nil)
+        #expect(row.flatMap(appleItemURL) == nil)
+    }
 }

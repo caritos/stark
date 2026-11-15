@@ -158,7 +158,8 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
             completedAt: reminder.completionDate,
             // EventKit uses 0 for "none" and 1-9 like iCal, as Stark does.
             priority: reminder.priority == 0 ? nil : reminder.priority,
-            calendar: info(ekCalendar, isReminderList: true))
+            calendar: info(ekCalendar, isReminderList: true),
+            url: reminder.url?.absoluteString)
     }
 
     // MARK: - Shared mapping
