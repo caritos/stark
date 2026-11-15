@@ -135,6 +135,23 @@ enum ItemRepositoryContract {
         #expect(await h.itemCount() == before + 2)
     }
 
+    /// One ref per item, in input order, events first (the bridge ledgers items by position).
+    static func batchReturnsRefsInInputOrder(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let refs = try await h.repository.addBatch(
+            events: [(NewEvent(title: "E1", start: start), h.calendarID),
+                     (NewEvent(title: "E2", start: start), h.calendarID)],
+            reminders: [(NewReminder(title: "R1", due: start), h.listID),
+                        (NewReminder(title: "R2", due: start), h.listID)])
+        #expect(refs.map(\.kind) == [.event, .event, .reminder, .reminder])
+        var titles: [String] = []
+        for ref in refs {
+            let d = try await h.repository.details(ref)
+            titles.append(d.event?.title ?? d.reminder?.title ?? "?")
+        }
+        #expect(titles == ["E1", "E2", "R1", "R2"])
+    }
+
     /// A later item fails after earlier ones were already saved (uncommitted): nothing stays.
     static func batchFailureOfALaterItemRollsBack(_ make: () async -> RepositoryHarness) async throws {
         let h = await make()
@@ -354,6 +371,9 @@ struct FakeItemRepositoryContractTests {
     }
     @Test func completingAOneOffIgnoresTheDate() async throws {
         try await ItemRepositoryContract.completingAOneOffIgnoresTheDate(Self.make)
+    }
+    @Test func batchReturnsRefsInInputOrder() async throws {
+        try await ItemRepositoryContract.batchReturnsRefsInInputOrder(Self.make)
     }
     @Test func notWritableCalendarThrows() async throws {
         try await ItemRepositoryContract.notWritableCalendarThrows(Self.make)
