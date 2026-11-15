@@ -1,5 +1,6 @@
 // ios/App/Stark/Stark/SearchView.swift
 import SwiftUI
+import Combine
 import StarkKit
 
 /// Full-history text search over titles, notes, and locations. Unlike the agenda, which only
@@ -20,6 +21,9 @@ struct SearchView: View {
     @State private var query = ""
     @State private var isLoadingHistory = true
     @State private var selectedItem: AgendaItem?
+    /// The results, recomputed only when the query, the Apple snapshot or the store's items change
+    /// (not on every body pass: with a four-year Apple window that is thousands of items).
+    @State private var results: [AgendaItem] = []
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -89,12 +93,19 @@ struct SearchView: View {
                 Task { await overlay.reload(for: .search, display: nil, today: Date()) }
             }
             .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item) }
+            .onChange(of: query) { refreshResults() }
+            .onChange(of: overlay.snapshot) { refreshResults() }
+            // `$events`/`$reminders` publish before the store changes, so use the published values.
+            .onReceive(store.$events.combineLatest(store.$reminders)) { events, reminders in
+                refreshResults(events: events, reminders: reminders)
+            }
         }
         .tint(Colors.accent)
         .preferredColorScheme(.dark)
     }
 
-    private var results: [AgendaItem] {
-        SearchResults.find(events: store.events, reminders: store.reminders, apple: overlay.snapshot, query: query)
+    private func refreshResults(events: [Event]? = nil, reminders: [Reminder]? = nil) {
+        results = SearchResults.find(events: events ?? store.events, reminders: reminders ?? store.reminders,
+                                     apple: overlay.snapshot, query: query)
     }
 }
