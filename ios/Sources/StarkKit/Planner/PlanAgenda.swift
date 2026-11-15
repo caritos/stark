@@ -88,3 +88,24 @@ public func applyPlans(_ items: [AgendaItem], plans: [PlanBlock], today: Date,
     }
     return changed ? sortAgendaItems(result, calendar: calendar) : items
 }
+
+/// The agenda's rows with Apple items and plans, in the one correct order: Apple rows are merged
+/// into `local` FIRST (`mergeAppleItems` over `range`), THEN plans are applied (`applyPlans`, with
+/// `snapshot` for Apple reminders outside the window). Applying plans first would let an Apple
+/// reminder planned on its own day be listed twice (the planned copy plus the merged row).
+///
+/// - `local`: `buildAgendaItems` over `range` (Stark's own rows, no plans applied yet).
+/// - `plans`: every plan block, local and Apple (`ItemRouter.plans(on:)` output, reminderID =
+///   model id), each block once.
+/// - `reminders`: Stark's reminders, for synthesizing a planned one-off outside the window.
+/// - With an empty snapshot the result is exactly `applyPlans(local, ...)`.
+///
+/// AgendaView and the density functions call this instead of composing the two themselves.
+public func agendaWithApple(local: [AgendaItem], snapshot: AppleSnapshot, plans: [PlanBlock],
+                            range: ClosedRange<Date>, today: Date, reminders: [Reminder] = [],
+                            calendar: Calendar = Calendar(identifier: .gregorian)) -> [AgendaItem] {
+    let merged = snapshot == .empty
+        ? local
+        : mergeAppleItems(local, snapshot: snapshot, in: range, today: today, calendar: calendar)
+    return applyPlans(merged, plans: plans, today: today, reminders: reminders, apple: snapshot, calendar: calendar)
+}
