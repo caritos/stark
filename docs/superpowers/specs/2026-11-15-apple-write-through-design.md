@@ -167,3 +167,44 @@ on/off switch goes away (access is required); the per-calendar selection stays.
 Protocol method names and file layout, sidecar file name and schema version, how the router chooses
 an implementation during the transition (by item id prefix or origin field), the exact preview and
 access-screen layouts within the Braun/Bauhaus theme, error banner wording, task split.
+
+## Decisions after the builder check (2026-11-15)
+
+Owner decisions:
+1. **Recurring reminders do what Apple does.** Completing one moves it to its next date; Stark keeps no
+   completion history for repeating reminders and no sidecar completion log. The old completed copies
+   (`seriesID` records) are not imported. Planner day history treats a plan block whose occurrence the
+   series has already moved past as done (derived from the series' current due date), never as missed.
+   The completion-history sheet is removed for repeating reminders; Weekly Review shows one-off
+   completions and what is still open.
+2. **Planner, Weekly Review, tag autocomplete and convert work on Apple items from phase 1**, using the
+   same calendar/list selection (hide a list such as groceries to keep it out of the planner tray).
+   Phase 1 is therefore larger than first drawn.
+3. **Undated Apple reminders** appear in Search and in a "No date" pane of the planner tray, not in the
+   agenda. (Owner: "go with your pick".)
+
+My calls (the owner can override):
+4. `stark-claude today` prints "unavailable until the Mac tool" from phase 1 (it reads the old files
+   and would silently omit Apple items); step 4 of `.claude/commands/stark.md` is skipped until piece 4.
+5. Editing an Apple item loads the real EventKit item when the edit sheet opens and writes back only
+   the fields the user changed (the overlay's stand-in values carry no recurrence rule, time zone or
+   write permission and must never be saved back whole). A time change on a series moves only the
+   time of day. A repeat rule Stark cannot represent is shown read-only. Edit and delete are hidden for
+   calendars that cannot be written to and for events where the owner is an invitee.
+6. Bridge idempotency: the ledger maps each bridge item id (derived from content) to its Apple
+   identifier and skips ids already recorded (an item deleted in Apple stays deleted). `ClaudeBridge.handle`
+   becomes async; a batch saves without commit and commits once, rolling back on failure.
+7. Import of repeating reminders: the due date is set to the occurrence the agenda shows today (the
+   oldest unresolved miss inside the 90-day lookback, else the next one), and a fixed occurrence count is
+   reduced by the occurrences already used. A repeating event's skip dates become deleted occurrences.
+8. The import writes its ledger entry right after each successful save (a crash cannot cause
+   duplicates on a second run). Items that cannot be represented stay local and visible with a "not
+   imported" mark, and phase 3 cannot start while any remain.
+9. Sidecar keys store the event/calendar-item identifier plus the external identifier; on a miss the
+   sidecar tries to re-match on the external identifier and never drops an orphan automatically.
+10. Search and tag autocomplete read events within two years either side of today and all reminders.
+11. Phase 1 forces the overlay on and always shows the default calendar and list (items created in
+    Stark must never vanish from view).
+12. Spikes before building on them (first tasks of the plan): completing a recurring `EKReminder`;
+    whether saving a series from its first occurrence wipes occurrences changed individually in Apple
+    Calendar; recurrence-rule representability.
