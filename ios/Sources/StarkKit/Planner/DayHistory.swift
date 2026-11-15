@@ -61,7 +61,7 @@ public struct DayHistory {
         apple: AppleSnapshot = .empty, sidecarPlans: [PlanBlock] = [],
         calendar: Calendar = Calendar(identifier: .gregorian)
     ) -> DayHistory {
-        let plans = localPlans + sidecarPlans
+        let plans = DayPlanModel.combinedPlans(localPlans, sidecarPlans)
         let dayStart = calendar.startOfDay(for: day)
         guard dayStart <= calendar.startOfDay(for: today) else {
             return DayHistory(day: day, events: [], allDayEvents: [], done: [], open: [], stats: Stats())
@@ -83,7 +83,7 @@ public struct DayHistory {
         apple: AppleSnapshot = .empty, sidecarPlans: [PlanBlock] = [],
         calendar: Calendar = Calendar(identifier: .gregorian)
     ) -> Stats {
-        let plans = localPlans + sidecarPlans
+        let plans = DayPlanModel.combinedPlans(localPlans, sidecarPlans)
         let dayStart = calendar.startOfDay(for: day)
         let weekday = calendar.component(.weekday, from: dayStart) // 1 = Sunday
         let sunday = calendar.date(byAdding: .day, value: -(weekday - 1), to: dayStart)!
