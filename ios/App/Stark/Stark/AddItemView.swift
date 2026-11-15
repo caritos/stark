@@ -2,9 +2,18 @@
 import SwiftUI
 import StarkKit
 
+/// Adds an event or a reminder. New items always go to Apple (spec: no local option) through the
+/// router, into the calendar or list picked here (writable ones only; the default destination is
+/// preselected). Without access or a writable destination Save is off and a message points to
+/// Settings. A failed save shows the router's message and keeps the sheet open.
 struct AddItemView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.itemRouter) private var router
+    @Environment(DefaultDestinationModel.self) private var destinations
+    @Environment(AppleOverlayModel.self) private var overlay
+    /// Closes Add and opens Stark's Settings (access, default calendar and list).
+    private let onOpenSettings: () -> Void
 
     @State private var kind: ItemKind = .event
     @State private var title = ""
@@ -18,13 +27,19 @@ struct AddItemView: View {
     @State private var notes = ""
     @State private var url = ""
     @State private var priority: ReminderPriority = .none
+    /// The picked calendar / list; nil means "the default destination" (`AddDestination`).
+    @State private var pickedCalendarID: String?
+    @State private var pickedListID: String?
+    @State private var errorMessage: String?
+    @State private var isSaving = false
 
     /// Which text field has focus, so the keyboard's sigil buttons know which one to append to
     /// (and stay hidden for the URL field, which must not get tags).
     private enum Field { case title, notes, url }
     @FocusState private var focusedField: Field?
 
-    init() {
+    init(onOpenSettings: @escaping () -> Void = {}) {
+        self.onOpenSettings = onOpenSettings
         let now = Date()
         _date = State(initialValue: now)
         _endDate = State(initialValue: now.addingTimeInterval(EventSchedule.defaultDuration))
@@ -33,6 +48,7 @@ struct AddItemView: View {
     var body: some View {
         NavigationStack {
             Form {
+                destinationSection
                 TextField("Title", text: $title)
                     .focused($focusedField, equals: .title)
                 TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
@@ -108,17 +124,23 @@ struct AddItemView: View {
             // Big, high-contrast two-way switch pinned above the form (issue #109): the stock
             // segmented control was small, grey-on-grey and sat inside the form's rounded card.
             .safeAreaInset(edge: .top, spacing: 0) {
-                KindSwitch(kind: $kind)
-                    .padding(.horizontal, Spacing.md)
-                    .padding(.vertical, Spacing.sm)
-                    .background(Colors.background)
+                VStack(spacing: 0) {
+                    if let errorMessage {
+                        SheetErrorBanner(text: errorMessage) { self.errorMessage = nil }
+                    }
+                    KindSwitch(kind: $kind)
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.sm)
+                        .background(Colors.background)
+                }
             }
             .navigationTitle("Add \(kind.rawValue)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 SquareToolbarButton(systemImage: "plus", label: "Add", placement: .confirmationAction,
                                     isProminent: true,
-                                    isDisabled: title.trimmingCharacters(in: .whitespaces).isEmpty) { add() }
+                                    isDisabled: title.trimmingCharacters(in: .whitespaces).isEmpty
+                                        || selectedDestination == nil || isSaving) { add() }
                 SquareToolbarButton(systemImage: "xmark", label: "Cancel", placement: .cancellationAction) { dismiss() }
             }
         }
@@ -138,30 +160,101 @@ struct AddItemView: View {
         return recurrence.summary
     }
 
-    private func add() {
-        let start = FormFields.normalizedStart(date, allDay: allDay)
-        switch kind {
-        case .event:
-            store.addEvent(Event(
-                title: title,
-                notes: FormFields.trimmedOrNil(notes),
-                start: start,
-                end: EventSchedule.storedEnd(endDate, start: date, allDay: allDay),
-                isAllDay: allDay,
-                // No Location field on Add -- keeps the add form quick; it can still be set
-                // afterward via Edit.
-                recurrence: repeatEnd.applied(to: recurrence),
-                url: FormFields.trimmedOrNil(url)
-            ))
-        case .reminder:
-            store.addReminder(Reminder(
-                title: title,
-                notes: FormFields.trimmedOrNil(notes),
-                dueDate: start,
-                priority: priority.icalValue,
-                recurrence: repeatEnd.applied(to: recurrence)
-            ))
+    // MARK: Destination
+
+    private var isEvent: Bool { kind == .event }
+
+    private var choices: [AppleCalendarInfo] {
+        isEvent ? destinations.calendarChoices : destinations.listChoices
+    }
+
+    private var destinationState: AddDestination.State {
+        AddDestination.state(hasAccess: overlay.access == .granted, choices: choices,
+                             defaultID: isEvent ? destinations.calendarID : destinations.listID)
+    }
+
+    /// The calendar or list the item will go to: the picked one while it is still offered, else
+    /// the default; nil when there is none (Save is off).
+    private var selectedDestination: String? {
+        let picked = isEvent ? pickedCalendarID : pickedListID
+        if let picked, choices.contains(where: { $0.id == picked }) { return picked }
+        guard case .ready(let selected) = destinationState else { return nil }
+        return selected
+    }
+
+    private var destinationBinding: Binding<String?> {
+        Binding(
+            get: { selectedDestination },
+            set: { id in
+                if isEvent { pickedCalendarID = id } else { pickedListID = id }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var destinationSection: some View {
+        if let message = AddDestination.message(destinationState, isEvent: isEvent) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(Colors.text)
+                Button("Open Settings") { onOpenSettings() }
+                    .foregroundStyle(Colors.accent)
+                    .accessibilityHint("Closes Add and opens Stark's Settings.")
+            }
+        } else {
+            Picker(isEvent ? "Calendar" : "List", selection: destinationBinding) {
+                if selectedDestination == nil {
+                    Text("Choose").tag(String?.none)
+                }
+                ForEach(choices) { choice in
+                    Text(choice.title).tag(Optional(choice.id))
+                }
+            }
+            .accessibilityHint(isEvent ? "The Apple calendar the event is added to."
+                                       : "The Reminders list the reminder is added to.")
         }
-        dismiss()
+    }
+
+    private func add() {
+        guard let router, let destination = selectedDestination, !isSaving else { return }
+        let start = FormFields.normalizedStart(date, allDay: allDay)
+        let event = Event(
+            title: title,
+            notes: FormFields.trimmedOrNil(notes),
+            start: start,
+            end: EventSchedule.storedEnd(endDate, start: date, allDay: allDay),
+            isAllDay: allDay,
+            // No Location field on Add -- keeps the add form quick; it can still be set
+            // afterward via Edit.
+            recurrence: repeatEnd.applied(to: recurrence),
+            url: FormFields.trimmedOrNil(url)
+        )
+        let reminder = Reminder(
+            title: title,
+            notes: FormFields.trimmedOrNil(notes),
+            dueDate: start,
+            priority: priority.icalValue,
+            recurrence: repeatEnd.applied(to: recurrence)
+        )
+        let isEvent = isEvent
+        isSaving = true
+        errorMessage = nil
+        Task {
+            defer { isSaving = false }
+            do {
+                // A picked calendar that is hidden in the overlay is shown again first, so the new
+                // item never vanishes from view (decision 11, as for the default destination).
+                if !overlay.selection.isShown(destination) { overlay.setShown(destination, true) }
+                if isEvent {
+                    try await router.add(event: event, calendarID: destination)
+                } else {
+                    try await router.add(reminder: reminder, listID: destination)
+                }
+                dismiss()
+            } catch {
+                errorMessage = error.routerMessage
+            }
+        }
     }
 }
