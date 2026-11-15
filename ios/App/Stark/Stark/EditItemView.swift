@@ -192,15 +192,6 @@ struct EditItemView: View {
 
                 Section {
                     if !isConverting, let actions = eventActions {
-                        if actions.showsAttended {
-                            Button("Done") { markOutcome(.attended) }.foregroundStyle(Colors.accent)
-                        }
-                        if actions.showsDidntAttend {
-                            Button("Skip") { markOutcome(.skipped) }.foregroundStyle(Colors.accent)
-                        }
-                        if actions.showsClear {
-                            Button("Undo") { markOutcome(nil) }.foregroundStyle(Colors.accent)
-                        }
                         if actions.showsRemoveOccurrence {
                             Button("Remove This Occurrence") { skipOccurrence() }.foregroundStyle(Colors.accent)
                         }
@@ -211,12 +202,6 @@ struct EditItemView: View {
                     }
                     if !isConverting && showsDone {
                         Button("Done") { markDone() }.foregroundStyle(Colors.accent)
-                    }
-                    if !isConverting && showsUndo {
-                        Button("Undo") { markUndone() }.foregroundStyle(Colors.accent)
-                    }
-                    if !isConverting && showsSkip {
-                        Button("Skip") { skipOccurrence() }.foregroundStyle(Colors.accent)
                     }
                     Button("Delete", role: .destructive) { showDeleteConfirm = true }
                 }
