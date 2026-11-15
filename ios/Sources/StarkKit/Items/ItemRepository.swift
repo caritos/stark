@@ -118,10 +118,15 @@ public struct EventPatch: Equatable, Sendable {
     public var end: Patch<Date>
     public var isAllDay: Bool?
     public var recurrence: Patch<RecurrenceRule>
+    /// The caller has warned the user that changing the repeat rule of a series loses the
+    /// occurrences edited one by one in Apple Calendar (spike b). Without it the EventKit
+    /// repository refuses a rule change on a series that has such occurrences.
+    public var confirmRuleChange: Bool
 
     public init(title: String? = nil, notes: Patch<String> = .keep, location: Patch<String> = .keep,
                 url: Patch<String> = .keep, start: Date? = nil, end: Patch<Date> = .keep,
-                isAllDay: Bool? = nil, recurrence: Patch<RecurrenceRule> = .keep) {
+                isAllDay: Bool? = nil, recurrence: Patch<RecurrenceRule> = .keep,
+                confirmRuleChange: Bool = false) {
         self.title = title
         self.notes = notes
         self.location = location
@@ -130,6 +135,7 @@ public struct EventPatch: Equatable, Sendable {
         self.end = end
         self.isAllDay = isAllDay
         self.recurrence = recurrence
+        self.confirmRuleChange = confirmRuleChange
     }
 }
 

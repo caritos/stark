@@ -36,3 +36,12 @@ struct AppleWritableTests {
         #expect(merged.first { $0.appleSource?.isReminder == true }?.appleSource?.isWritable == true)
     }
 }
+
+@Suite("EventPatch rule-change confirmation")
+struct EventPatchConfirmRuleChangeTests {
+    @Test func ruleChangesAreUnconfirmedByDefault() {
+        #expect(EventPatch(recurrence: .clear).confirmRuleChange == false)
+        #expect(EventPatch(recurrence: .clear, confirmRuleChange: true).confirmRuleChange)
+        #expect(EventPatch(title: "a") != EventPatch(title: "a", confirmRuleChange: true))
+    }
+}
