@@ -55,9 +55,9 @@ struct FAQView: View {
             edit, complete or delete them, so open them in Calendar or Reminders to change \
             them. You choose which calendars and lists show. Nothing is copied into Stark's \
             files and nothing is sent anywhere; no network connection is added. Reminders \
-            without a date are not shown. The share button on a day includes the Apple items \
-            shown that day. Stark's own items stay stored separately, and an item that exists \
-            in both places appears twice.
+            without a date are not shown. The day export, for today and yesterday, includes \
+            the Apple items shown that day. Stark's own items stay stored separately, and an \
+            item that exists in both places appears twice.
             """
         ),
         Entry(
