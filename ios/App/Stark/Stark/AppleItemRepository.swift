@@ -215,15 +215,22 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
     /// `isCompleted = true` and save, nothing else (spike a): for a repeating reminder EventKit
     /// itself moves the same reminder to its next due date and writes a separate completed copy;
     /// when no occurrence is left (COUNT/UNTIL) the reminder itself reads completed afterwards. The
-    /// repository must not move the due date too (that would skip one more occurrence). `date` is
-    /// not needed: EventKit always completes the reminder's current occurrence. Completing a
-    /// completed reminder does nothing.
+    /// repository must not move the due date too (that would skip one more occurrence). EventKit
+    /// always completes the reminder's current occurrence, so `date` only guards against a second
+    /// completion: when a repeating reminder's current due date is on a later day than `date`,
+    /// that occurrence is already done (a double tap, the checkbox timer firing after Done) and
+    /// nothing is saved. Completing a completed reminder does nothing.
     @concurrent
     func complete(_ ref: AppleItemRef, on date: Date) async throws {
         try locked {
             let ekReminder = try reminder(ref)
             try checkWritable(ekReminder.calendar)
             guard !ekReminder.isCompleted else { return }
+            if ekReminder.hasRecurrenceRules, let components = ekReminder.dueDateComponents,
+               let due = appleReminderDue(components).date {
+                let days = Calendar.autoupdatingCurrent
+                if days.startOfDay(for: due) > days.startOfDay(for: date) { return }
+            }
             ekReminder.isCompleted = true
             do {
                 try store.save(ekReminder, commit: true)
@@ -346,7 +353,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         // No end: a point event (timed) or a single day (all-day; EventKit stretches it to the day).
         event.endDate = new.end ?? new.start
         if let rule = new.recurrence {
-            event.recurrenceRules = [Self.ekRule(try RecurrenceDescriptor(rule))]
+            event.recurrenceRules = [Self.ekRule(try RecurrenceDescriptor(rule), isAllDay: new.isAllDay)]
         }
         return event
     }
@@ -363,7 +370,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         reminder.url = try Self.url(new.url)
         reminder.dueDateComponents = new.due.map { Self.dueComponents($0, hasTime: new.dueHasTime) }
         if let rule = new.recurrence {
-            reminder.recurrenceRules = [Self.ekRule(try RecurrenceDescriptor(rule))]
+            reminder.recurrenceRules = [Self.ekRule(try RecurrenceDescriptor(rule), isAllDay: false)]
         }
         return reminder
     }
@@ -402,7 +409,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
             let current = event.recurrenceRules ?? []
             if current.count == 1, Self.descriptor(current[0], isAllDay: event.isAllDay) == descriptor { break }
             try guardRuleChange(of: event, confirmed: patch.confirmRuleChange)
-            event.recurrenceRules = [Self.ekRule(descriptor)]
+            event.recurrenceRules = [Self.ekRule(descriptor, isAllDay: event.isAllDay)]
         case .clear:
             guard event.hasRecurrenceRules else { break }
             try guardRuleChange(of: event, confirmed: patch.confirmRuleChange)
@@ -451,7 +458,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
 
         switch patch.recurrence {
         case .keep: break
-        case .set(let rule): reminder.recurrenceRules = [Self.ekRule(try RecurrenceDescriptor(rule))]
+        case .set(let rule): reminder.recurrenceRules = [Self.ekRule(try RecurrenceDescriptor(rule), isAllDay: false)]
         case .clear: reminder.recurrenceRules = nil
         }
         if reminder.hasRecurrenceRules, reminder.dueDateComponents == nil {
@@ -556,7 +563,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
 
     // MARK: - Recurrence mapping (1:1 with RecurrenceDescriptor)
 
-    static func ekRule(_ descriptor: RecurrenceDescriptor) -> EKRecurrenceRule {
+    static func ekRule(_ descriptor: RecurrenceDescriptor, isAllDay: Bool) -> EKRecurrenceRule {
         let frequency: EKRecurrenceFrequency = switch descriptor.frequency {
         case .daily: .daily
         case .weekly: .weekly
@@ -571,7 +578,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         let end: EKRecurrenceEnd? = switch descriptor.end {
         case .never: nil
         case .count(let count): EKRecurrenceEnd(occurrenceCount: count)
-        case .until(let day): EKRecurrenceEnd(end: untilWriteDate(day))
+        case .until(let day): EKRecurrenceEnd(end: untilWriteDate(day, isAllDay: isAllDay))
         }
         func numbers(_ values: [Int]) -> [NSNumber]? { values.isEmpty ? nil : values.map { NSNumber(value: $0) } }
         return EKRecurrenceRule(recurrenceWith: frequency, interval: descriptor.interval,
@@ -621,11 +628,17 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         return (rule, false)
     }
 
-    /// The inclusive last day is written as 23:59:59 local on it (a start-of-day end would lose a
-    /// timed item's last occurrence, spike d).
-    static func untilWriteDate(_ day: Date) -> Date {
+    /// The inclusive last day. Timed items and reminders: 23:59:59 local on it (a start-of-day end
+    /// would lose a timed item's last occurrence, spike d). All-day events: local NOON of the day,
+    /// whose UTC date is that same day in every zone within +-11:59, because EventKit rewrites an
+    /// all-day end to 23:59:59Z of a date and the read side takes the UTC day. (On the simulator,
+    /// 23:59:59 local was also rewritten to the same date in New York, Tokyo and Honolulu; noon is
+    /// the choice that does not depend on which date EventKit takes.)
+    static func untilWriteDate(_ day: Date, isAllDay: Bool) -> Date {
         let calendar = Calendar.autoupdatingCurrent
-        return calendar.date(bySettingHour: 23, minute: 59, second: 59, of: calendar.startOfDay(for: day)) ?? day
+        let start = calendar.startOfDay(for: day)
+        return calendar.date(bySettingHour: isAllDay ? 12 : 23, minute: isAllDay ? 0 : 59,
+                             second: isAllDay ? 0 : 59, of: start) ?? day
     }
 
     /// The until's calendar day, as local start of day: local for timed items, UTC for all-day
