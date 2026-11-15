@@ -108,8 +108,8 @@ enum ItemRepositoryContract {
             NewEvent(title: "Gym", start: start, recurrence: daily), calendarID: h.calendarID)
         let second = start.addingTimeInterval(86_400)
         try await h.repository.deleteOccurrence(ref, on: second)
-        let e = try #require(try await h.repository.details(ref).event)
-        let occurrences = OccurrenceExpander.expand(event: e, in: start...start.addingTimeInterval(3 * 86_400))
+        // Read from the store's own occurrences: `details` carries no exception dates for Apple.
+        let occurrences = await h.eventStarts(ref, start...start.addingTimeInterval(3 * 86_400))
         #expect(occurrences.contains(start))
         #expect(!occurrences.contains(second))
         #expect(occurrences.contains(start.addingTimeInterval(2 * 86_400)))

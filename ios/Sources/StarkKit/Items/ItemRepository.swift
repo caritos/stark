@@ -169,8 +169,9 @@ public struct ReminderPatch: Equatable, Sendable {
     }
 }
 
-/// The real stored item behind a ref (for an event, the series master), with its real recurrence
-/// and exception dates, for the edit sheet to start from.
+/// The real stored item behind a ref (for an event, the series master), with its real recurrence,
+/// for the edit sheet to start from. The EventKit repository leaves `Event.exceptionDates` empty
+/// (EventKit does not expose them and no write uses them).
 public struct ItemDetails: Equatable, Sendable {
     public var event: Event?
     public var reminder: Reminder?

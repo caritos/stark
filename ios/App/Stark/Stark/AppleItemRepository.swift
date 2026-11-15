@@ -558,11 +558,12 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
             if event.isAllDay ? calendar.isDate(last, inSameDayAs: start) : last == start { end = nil }
         }
         let (rule, unrepresentable) = Self.starkRule(event.recurrenceRules, isAllDay: event.isAllDay)
-        var value = Event(id: Self.seriesID(event.eventIdentifier ?? event.calendarItemIdentifier),
+        // No exception dates: EventKit does not expose them and nothing that writes needs them
+        // (computing them took two three-year fetches under the write lock on every `details`).
+        let value = Event(id: Self.seriesID(event.eventIdentifier ?? event.calendarItemIdentifier),
                           title: event.title ?? "", notes: Self.nonEmpty(event.notes), start: start, end: end,
                           isAllDay: event.isAllDay, location: Self.nonEmpty(event.location), recurrence: rule,
                           url: Self.nonEmpty(event.url?.absoluteString))
-        if rule != nil { value.exceptionDates = exceptionDates(of: event, as: value) }
         return (value, unrepresentable)
     }
 
@@ -583,7 +584,7 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         return text
     }
 
-    /// The window searched for a series' occurrences (deleted days, detached ones): from a year
+    /// The window searched for a series' detached occurrences (`guardRuleChange`): from a year
     /// back (or the series start) for three years, inside EventKit's four-year predicate limit.
     private func occurrenceWindow(of master: EKEvent) -> ClosedRange<Date> {
         let calendar = Calendar.autoupdatingCurrent
@@ -602,17 +603,6 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         let predicate = store.predicateForEvents(withStart: window.lowerBound, end: window.upperBound,
                                                  calendars: [calendar])
         return store.events(matching: predicate).filter { Self.seriesID($0.eventIdentifier ?? "") == seriesID }
-    }
-
-    /// EventKit does not expose a series' exception dates: they are the days the rule produces
-    /// (Stark's expander) that EventKit no longer lists, within `occurrenceWindow`. Detached
-    /// occurrences keep their original date, so they are not exceptions.
-    private func exceptionDates(of master: EKEvent, as value: Event) -> [Date] {
-        let window = occurrenceWindow(of: master)
-        let expected = OccurrenceExpander.expand(event: value, in: window)
-        guard !expected.isEmpty else { return [] }
-        let actual = Set(occurrences(of: master).map { ($0.occurrenceDate ?? $0.startDate).timeIntervalSinceReferenceDate })
-        return expected.filter { !actual.contains($0.timeIntervalSinceReferenceDate) }
     }
 
     // MARK: - Recurrence mapping (1:1 with RecurrenceDescriptor)
