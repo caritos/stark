@@ -23,6 +23,9 @@ struct AgendaView: View {
     @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
     @Environment(AppleOverlayModel.self) private var overlay
+    @Environment(PlanCache.self) private var planCache
+    @Environment(NoticeCenter.self) private var notices
+    @Environment(\.itemRouter) private var router
     /// The real today, owned by `ContentView` (which advances it when the calendar day changes) so
     /// this view re-renders on the new day instead of reading `Date()` once and going stale.
     let today: Date
@@ -132,6 +135,10 @@ struct AgendaView: View {
                 }
                 // Never drop a still-pending completion when the agenda goes away.
                 .onDisappear { pending.flush() }
+                // Apple reminders' plan blocks for the display window (sidecar, through the router).
+                .task(id: AgendaWindow.range(around: anchor)) {
+                    await planCache.show(AgendaWindow.range(around: anchor))
+                }
                 .onChange(of: itemCount) { _, _ in
                     guard !hasSettled else { return }
                     scrollToToday(proxy, todayStart: todayStart)
@@ -258,7 +265,8 @@ struct AgendaView: View {
                     looksDone: item.isCompleted || isPending,
                     summary: rowView.accessibilitySummary,
                     onSelect: { onSelect(item) },
-                    // A read-only (Apple) row never gets a checkbox: its strip is inert.
+                    // A read-only row (an Apple calendar or list Stark can't write) never gets a
+                    // checkbox: its strip is inert. Writable Apple reminders complete via the router.
                     onToggleComplete: isReminder && !item.isReadOnly ? { toggleComplete(item) } : nil,
                     showsInertCheckboxStrip: isReminder && item.isReadOnly
                 )
@@ -271,10 +279,22 @@ struct AgendaView: View {
     /// The checkbox was tapped. A completed reminder reopens immediately (no grace window); an
     /// incomplete one starts a pending completion, or cancels it if one is already pending.
     /// `item.id` (reminder id + occurrence) is the stable pending key, never a list position.
+    /// Both go through the router; the pending commit completes the row's OCCURRENCE (StarkApp).
+    /// Reopening the completed copy of a repeating Apple reminder can't move the series back, so
+    /// the owner gets a notice (`UncompleteNotice`); a failure shows in the main error banner.
     private func toggleComplete(_ item: AgendaItem) {
         guard !item.isReadOnly, case .reminder(let reminder) = item.kind else { return }
         if reminder.isCompleted {
-            store.uncompleteReminder(id: reminder.id)
+            guard let router else { return }
+            let notice = UncompleteNotice.text(for: item, snapshot: overlay.snapshot)
+            Task {
+                do {
+                    try await router.uncomplete(id: reminder.id)
+                    if let notice { notices.show(notice) }
+                } catch {
+                    store.error = error.routerMessage
+                }
+            }
         } else {
             pending.toggle(key: item.id, reminderID: reminder.id, occurrence: item.occurrence)
         }
@@ -291,11 +311,12 @@ struct AgendaView: View {
             // The real today, not the anchor: overdue logic must not move with the window.
             today: now
         )
-        let planned = applyPlans(items, plans: store.plans, today: now, reminders: store.reminders,
-                                 calendar: Self.calendar)
-        // Read-only Apple Calendar / Reminders rows; the snapshot is empty while the overlay is off.
-        let merged = mergeAppleItems(planned, snapshot: overlay.snapshot, in: range, today: now,
-                                     calendar: Self.calendar)
+        // Apple rows are merged BEFORE plans are applied (`agendaWithApple`). Plans: Stark's own
+        // (the store) plus Apple reminders' (sidecar, `PlanCache`), each block once. With an empty
+        // snapshot and no Apple plans this is exactly the old `applyPlans(items, store.plans, ...)`.
+        let merged = agendaWithApple(local: items, snapshot: overlay.snapshot,
+                                     plans: store.plans + planCache.applePlans, range: range, today: now,
+                                     reminders: store.reminders, calendar: Self.calendar)
         return groupAgendaByDay(merged, in: range, calendar: Self.calendar)
     }
 

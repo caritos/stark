@@ -17,8 +17,12 @@ struct StarkApp: App {
     @State private var overlay: AppleOverlayModel
     /// Where new Apple items go (Settings > Apple Calendar and Reminders).
     @State private var destinations: DefaultDestinationModel
-    /// The one EventKit repository, sidecar and router (Apple write path). Views do not call the
-    /// router yet (Task 9); the Claude Code bridge writes through the same repository and sidecar.
+    /// Apple reminders' plan blocks for the agenda (read through the router).
+    @State private var planCache: PlanCache
+    /// The main screen's notice strip, shared so sheets and the agenda can post to it.
+    @State private var notices = NoticeCenter()
+    /// The one EventKit repository, sidecar and router (Apple write path). Every view write goes
+    /// through the router; the Claude Code bridge writes through the same repository and sidecar.
     private let repository: AppleItemRepository
     private let sidecar: ItemSidecar
     private let router: ItemRouter
@@ -45,8 +49,13 @@ struct StarkApp: App {
         self.sidecar = sidecar
         let router = ItemRouter(repository: repository, local: store, sidecar: sidecar,
                                 destinations: destinations, calendar: .autoupdatingCurrent)
+        let planCache = PlanCache(router: router)
+        _planCache = State(initialValue: planCache)
         // EKEventStoreChanged is not reliable after a save (write spike f): reload after every write.
-        router.onDidWrite = { [weak overlay] in await overlay?.refreshAfterWrite() }
+        router.onDidWrite = { [weak overlay, weak planCache] in
+            await overlay?.refreshAfterWrite()
+            await planCache?.refresh()
+        }
         self.router = router
         let secrets = KeychainSecretStore(service: "com.caritos.todo-txt.bridge", account: "pairing")
         self.secrets = secrets
@@ -55,9 +64,17 @@ struct StarkApp: App {
                               hasAccess: { provider.accessState() == .granted }, secrets: secrets,
                               replay: BridgeReplayGuard(store: UserDefaultsReplayStore(), now: Date.init),
                               calendar: .autoupdatingCurrent)
-        // Idempotence (unknown id, already resolved by Done/Skip) lives in `PlannerStore.completeReminder`.
-        _pending = StateObject(wrappedValue: PendingCompletions(commit: { id, occurrence in
-            store.completeReminder(id: id, on: occurrence)
+        // Through the router: Stark's ids to the local store (idempotence, e.g. already resolved by
+        // Done/Skip, lives in `PlannerStore.completeReminder`), Apple ids to EventKit with the
+        // OCCURRENCE's own date (the repository ignores a repeating reminder already past that
+        // day, so a double tap never completes the next one). The row stays pending until the
+        // write and the overlay reload have landed; a failure shows in the main error banner.
+        _pending = StateObject(wrappedValue: PendingCompletions(asyncCommit: { id, occurrence in
+            do {
+                try await router.complete(id: id, on: occurrence)
+            } catch {
+                store.error = error.routerMessage
+            }
         }))
     }
 
@@ -68,6 +85,8 @@ struct StarkApp: App {
                 .environmentObject(pending)
                 .environment(overlay)
                 .environment(destinations)
+                .environment(planCache)
+                .environment(notices)
                 .environment(\.itemRouter, router)
                 #if targetEnvironment(macCatalyst)
                 .frame(minWidth: 480, minHeight: 520)
