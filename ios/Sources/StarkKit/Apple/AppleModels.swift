@@ -33,7 +33,7 @@ public struct AppleSource: Equatable, Sendable {
     }
 }
 
-public struct AppleEvent: Equatable, Sendable {
+public struct AppleCalendarEvent: Equatable, Sendable {
     public let id: String
     public let title: String
     public let notes: String?
@@ -88,10 +88,10 @@ public enum AppleAccess: Equatable, Sendable {
 }
 
 public struct AppleSnapshot: Equatable, Sendable {
-    public let events: [AppleEvent]
+    public let events: [AppleCalendarEvent]
     public let reminders: [AppleReminder]
 
-    public init(events: [AppleEvent], reminders: [AppleReminder]) {
+    public init(events: [AppleCalendarEvent], reminders: [AppleReminder]) {
         self.events = events
         self.reminders = reminders
     }

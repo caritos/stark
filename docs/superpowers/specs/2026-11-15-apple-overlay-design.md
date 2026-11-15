@@ -67,7 +67,7 @@ iOS Settings), and write-only (treated as denied). The overlay is off by default
   `appleSource` on `AgendaItem` (nil for Stark's own rows). Not on `Event`/`Reminder`, which are
   persisted.
 - `AppleItemProvider` protocol: `items(in: ClosedRange<Date>, calendars: Set<String>) async throws
-  -> (events: [AppleEvent], reminders: [AppleReminder])` with plain value types.
+  -> (events: [AppleCalendarEvent], reminders: [AppleReminder])` with plain value types.
 - `mergeAppleItems(_ stark: [AgendaItem], apple: ..., today:) -> [AgendaItem]`: builds one
   `AgendaItem` per concrete Apple occurrence and re-sorts with the existing `sortAgendaItems`.
   Apple events are already expanded by EventKit, so they enter with `recurrence == nil` and are

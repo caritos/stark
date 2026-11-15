@@ -40,7 +40,7 @@
 
 ## File Structure
 
-- Create `ios/Sources/StarkKit/Apple/AppleModels.swift`: `AppleCalendarInfo`, `AppleEvent`, `AppleReminder`, `AppleSource`, `AppleAccess`, `AppleSnapshot`.
+- Create `ios/Sources/StarkKit/Apple/AppleModels.swift`: `AppleCalendarInfo`, `AppleCalendarEvent`, `AppleReminder`, `AppleSource`, `AppleAccess`, `AppleSnapshot`.
 - Create `ios/Sources/StarkKit/Apple/AppleMerge.swift`: `mergeAppleItems`.
 - Create `ios/Sources/StarkKit/Apple/AppleSelection.swift`: excluded-ids rule.
 - Modify `ios/Sources/StarkKit/Planner/AgendaBuilder.swift` (`AgendaItem.appleSource`), `AgendaDensity.swift`, `SearchResults.swift`.
@@ -58,10 +58,10 @@
 - Produces:
   - `struct AppleCalendarInfo: Equatable, Identifiable, Sendable { id: String; title: String; accountName: String; colorHex: String?; isReminderList: Bool }`
   - `struct AppleSource: Equatable, Sendable { calendarID: String; calendarTitle: String; colorHex: String?; isReminder: Bool }`
-  - `struct AppleEvent: Equatable, Sendable { id: String; title: String; notes: String?; location: String?; url: String?; start: Date; end: Date?; isAllDay: Bool; calendar: AppleCalendarInfo }`
+  - `struct AppleCalendarEvent: Equatable, Sendable { id: String; title: String; notes: String?; location: String?; url: String?; start: Date; end: Date?; isAllDay: Bool; calendar: AppleCalendarInfo }`
   - `struct AppleReminder: Equatable, Sendable { id: String; title: String; notes: String?; due: Date?; dueHasTime: Bool; isCompleted: Bool; completedAt: Date?; priority: Int?; calendar: AppleCalendarInfo }`
   - `enum AppleAccess: Equatable, Sendable { case notAsked, granted, denied, writeOnly }`
-  - `struct AppleSnapshot: Equatable, Sendable { events: [AppleEvent]; reminders: [AppleReminder] }`
+  - `struct AppleSnapshot: Equatable, Sendable { events: [AppleCalendarEvent]; reminders: [AppleReminder] }`
   - `AgendaItem.appleSource: AppleSource?` (stored, default nil in `init`, not part of `id`).
 
 - [ ] **Step 1:** Write `appleSourceDefaultsToNil` (an `AgendaItem` built with the existing init has `appleSource == nil`) and `appleSourceKeptByInit`. Run `cd ios && swift test --filter AppleMergeTests`; expect compile failure (types missing).
@@ -78,7 +78,7 @@
 - Produces: `public func mergeAppleItems(_ items: [AgendaItem], snapshot: AppleSnapshot, in range: ClosedRange<Date>, today: Date, calendar: Calendar = Calendar(identifier: .gregorian)) -> [AgendaItem]`. `range` is the display range; reminders are additionally considered back `overdueLookbackDays` from today.
 
 Behavior to implement (write each as its own test first, with fixed dates and a fixed `Calendar`):
-- Each `AppleEvent` becomes `.event(Event(id: "apple-<id>", ... recurrence: nil))`, `occurrence == displayDate ==` that day's occurrence start, `isOverdue == false`, `appleSource` set, `AgendaItem.id` starts with `apple-`. Tests: `timedEventKeepsStartAndEnd`, `idNeverCollidesWithStarkUUID`, `eventOutsideRangeDropped`.
+- Each `AppleCalendarEvent` becomes `.event(Event(id: "apple-<id>", ... recurrence: nil))`, `occurrence == displayDate ==` that day's occurrence start, `isOverdue == false`, `appleSource` set, `AgendaItem.id` starts with `apple-`. Tests: `timedEventKeepsStartAndEnd`, `idNeverCollidesWithStarkUUID`, `eventOutsideRangeDropped`.
 - Multi-day and all-day: one row per day via `spanDays`; test `threeDayAllDayEventGivesThreeRows`; `eventEndingAtMidnightDoesNotSpillToNextDay` (end exactly next 00:00 -> rows only on the start day).
 - Reminder with `due` in range, not completed: `.reminder(Reminder(id: "apple-<id>", dueDate: due, ... recurrence: nil))`; `dueHasTime == false` means date-only like Stark's date-only reminders (reuse however Stark marks a date-only due date; read `Reminder` usage in `AgendaRow`). Tests: `reminderOnItsDueDay`, `dateOnlyReminderHasNoTimeOfDay`.
 - Overdue: due before today and within lookback -> `isOverdue`, `displayDate` = start of today, `occurrence` = due; due before the lookback -> dropped; test names `overdueReminderPinnedToToday`, `reminderOlderThanLookbackNotShown`.

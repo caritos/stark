@@ -17,8 +17,8 @@ extension AppleMergeTests {
     private var today: Date { date(15, 10) }
     private var range: ClosedRange<Date> { date(1)...date(30, 23, 59) }
 
-    private func event(_ id: String = "e1", start: Date, end: Date?, allDay: Bool = false) -> StarkKit.AppleEvent {
-        AppleEvent(id: id, title: "Evt", notes: "n", location: "L", url: "https://x.y", start: start, end: end, isAllDay: allDay, calendar: info)
+    private func event(_ id: String = "e1", start: Date, end: Date?, allDay: Bool = false) -> AppleCalendarEvent {
+        AppleCalendarEvent(id: id, title: "Evt", notes: "n", location: "L", url: "https://x.y", start: start, end: end, isAllDay: allDay, calendar: info)
     }
 
     private func reminder(_ id: String = "r1", due: Date?, hasTime: Bool = true, done: Bool = false) -> AppleReminder {
@@ -26,7 +26,7 @@ extension AppleMergeTests {
                       completedAt: done ? due : nil, priority: 1, calendar: info)
     }
 
-    private func merge(_ items: [AgendaItem] = [], events: [StarkKit.AppleEvent] = [], reminders: [AppleReminder] = []) -> [AgendaItem] {
+    private func merge(_ items: [AgendaItem] = [], events: [AppleCalendarEvent] = [], reminders: [AppleReminder] = []) -> [AgendaItem] {
         mergeAppleItems(items, snapshot: AppleSnapshot(events: events, reminders: reminders), in: range, today: today, calendar: Self.cal)
     }
 
