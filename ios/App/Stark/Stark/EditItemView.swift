@@ -423,19 +423,15 @@ struct EditItemView: View {
     /// Done / Skip / Undo / Remove This Occurrence, for events only.
     private var eventActions: EventOutcomeActions? {
         guard case .event = item.kind else { return nil }
-        return EventOutcomeActions(outcome: item.outcome, isRecurring: item.isRecurring)
+        // An Apple repeat Stark can't represent is still a series (`ItemDeletePrompt.isSeries`).
+        return EventOutcomeActions(outcome: item.outcome,
+                                   isRecurring: ItemDeletePrompt.isSeries(isRecurring: item.isRecurring, details: details))
     }
 
     private var deleteMessage: String {
-        if let source = item.appleSource {
-            let app = source.isReminder ? "Reminders" : "Calendar"
-            return item.isRecurring
-                ? "This deletes every occurrence from \(app)."
-                : "This deletes it from \(app)."
-        }
-        return item.isRecurring
-            ? "This deletes all future occurrences."
-            : "This cannot be undone."
+        ItemDeletePrompt.message(isRecurring: item.isRecurring,
+                                 appleApp: item.appleSource.map { $0.isReminder ? "Reminders" : "Calendar" },
+                                 details: details)
     }
 
     // MARK: Actions
