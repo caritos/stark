@@ -95,6 +95,19 @@ struct LatestReloadGateTests {
         #expect(log.events.contains("B returned"))
     }
 
+    /// The app keeps the previous snapshot when a fetch fails (e.g. EventKit returning no reminder
+    /// list): a throwing fetch must report `failed` and neither apply nor clear.
+    @Test func failingFetchNeitherAppliesNorClears() async {
+        let gate = LatestReloadGate()
+        let holds = Holds()
+        let log = Log()
+        let a = start("A", gate: gate, holds: holds, log: log)
+        await until { await holds.isWaiting("A") }
+        await holds.release("A", failing: true)
+        await a.value
+        #expect(log.events == ["failed", "A returned"])
+    }
+
     @Test func inactiveReturnsAtOnceWithoutFetchingAndClears() async {
         let gate = LatestReloadGate()
         let holds = Holds()

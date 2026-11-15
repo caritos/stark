@@ -70,7 +70,7 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
         dispatchPrecondition(condition: .notOnQueue(.main))
         #endif
         let fetchedEvents = fetchEvents(in: events)
-        let fetchedReminders = await fetchReminders(in: reminders)
+        let fetchedReminders = try await fetchReminders(in: reminders)
         return AppleSnapshot(events: fetchedEvents, reminders: fetchedReminders)
     }
 
@@ -114,23 +114,31 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
 
     // MARK: - Reminders
 
+    /// EventKit hands a reminder fetch `nil` when it fails; that throws so the caller keeps the
+    /// previous snapshot instead of showing "no reminders".
+    struct ReminderFetchFailed: Error {}
+
     @concurrent
-    private func fetchReminders(in range: ClosedRange<Date>) async -> [AppleReminder] {
+    private func fetchReminders(in range: ClosedRange<Date>) async throws -> [AppleReminder] {
         let open = store.predicateForIncompleteReminders(withDueDateStarting: range.lowerBound,
                                                          ending: range.upperBound, calendars: nil)
         let done = store.predicateForCompletedReminders(withCompletionDateStarting: range.lowerBound,
                                                         ending: range.upperBound, calendars: nil)
-        let openItems = await reminders(matching: open)
-        let doneItems = await reminders(matching: done)
+        let openItems = try await reminders(matching: open)
+        let doneItems = try await reminders(matching: done)
         return openItems + doneItems
     }
 
     /// Maps inside the completion handler so no `EKReminder` crosses a concurrency boundary.
     @concurrent
-    private func reminders(matching predicate: NSPredicate) async -> [AppleReminder] {
-        await withCheckedContinuation { continuation in
+    private func reminders(matching predicate: NSPredicate) async throws -> [AppleReminder] {
+        try await withCheckedThrowingContinuation { continuation in
             store.fetchReminders(matching: predicate) { reminders in
-                continuation.resume(returning: (reminders ?? []).compactMap(Self.map))
+                guard let reminders else {
+                    continuation.resume(throwing: ReminderFetchFailed())
+                    return
+                }
+                continuation.resume(returning: reminders.compactMap(Self.map))
             }
         }
     }
