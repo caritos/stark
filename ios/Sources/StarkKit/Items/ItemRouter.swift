@@ -123,19 +123,23 @@ public final class ItemRouter {
 
     // MARK: Add (always Apple)
 
+    /// `calendarID` overrides the default calendar (the add sheet's picker); nil uses the default.
     @discardableResult
-    public func add(event: Event) async throws -> AppleItemRef {
-        guard let calendarID = destinations.calendarID else { throw ItemRouterError.noDefaultDestination(.event) }
+    public func add(event: Event, calendarID: String? = nil) async throws -> AppleItemRef {
+        guard let calendarID = calendarID ?? destinations.calendarID else {
+            throw ItemRouterError.noDefaultDestination(.event)
+        }
         let ref = try await apple { try await repository.addEvent(Self.newEvent(event), calendarID: calendarID) }
         await didWrite()
         return ref
     }
 
-    /// `dueHasTime` nil derives it from the due date (local midnight is Stark's date-only marker).
+    /// `listID` overrides the default list; nil uses the default. Date-only vs timed follows
+    /// `FormFields.dueHasTime` (local midnight = date-only), the same rule `update` uses.
     @discardableResult
-    public func add(reminder: Reminder, dueHasTime: Bool? = nil, url: String? = nil) async throws -> AppleItemRef {
-        guard let listID = destinations.listID else { throw ItemRouterError.noDefaultDestination(.reminder) }
-        let new = Self.newReminder(reminder, dueHasTime: dueHasTime, url: url)
+    public func add(reminder: Reminder, listID: String? = nil, url: String? = nil) async throws -> AppleItemRef {
+        guard let listID = listID ?? destinations.listID else { throw ItemRouterError.noDefaultDestination(.reminder) }
+        let new = Self.newReminder(reminder, url: url)
         let ref = try await apple { try await repository.addReminder(new, listID: listID) }
         await didWrite()
         return ref
@@ -143,32 +147,50 @@ public final class ItemRouter {
 
     // MARK: Update
 
-    /// Local: the whole edited value, as before. Apple: only the fields that differ from `original`
-    /// (the item from `details(id:kind:)`) are written; nothing changed means no write.
-    public func update(event: Event, original: Event) async throws {
+    /// Local: the whole edited value, as before (`original` is not needed). Apple: `original` is the
+    /// stored item from `details(id:kind:)` and is required; only the fields that differ from it are
+    /// written, and nothing changed means no write and no `onDidWrite`. Refused when the item can't
+    /// be written, and a repeat change is refused when the stored repeat can't be represented.
+    public func update(event: Event, original: ItemDetails? = nil) async throws {
         switch ItemOrigin(id: event.id, kind: .event) {
         case .local:
             local.updateEvent(event)
         case .apple(let ref):
+            let original = try Self.requireDetails(original)
             let patch = EventPatch(from: original, to: event)
             guard patch != EventPatch() else { return }
-            try await apple { try await repository.update(ref, event: patch) }
-            await didWrite()
+            try Self.checkWritable(original, changesRepeat: patch.recurrence != .keep)
+            try await appleWrite { try await repository.update(ref, event: patch) }
         }
     }
 
-    /// As `update(event:original:)`. `dueHasTime` and `url` are Apple-only fields `Reminder` lacks
-    /// (nil / `keep` = unchanged); the local store ignores them.
-    public func update(reminder: Reminder, original: Reminder, dueHasTime: Bool? = nil,
-                       url: Patch<String> = .keep) async throws {
+    /// As `update(event:original:)`. `url` is the edited URL (`Reminder` has none), diffed against
+    /// `original.reminderURL`; the local store ignores it.
+    public func update(reminder: Reminder, url: String?, original: ItemDetails? = nil) async throws {
         switch ItemOrigin(id: reminder.id, kind: .reminder) {
         case .local:
             local.updateReminder(reminder)
         case .apple(let ref):
-            let patch = ReminderPatch(from: original, to: reminder, dueHasTime: dueHasTime, url: url)
+            let original = try Self.requireDetails(original)
+            let patch = ReminderPatch(from: original, to: reminder, url: url)
             guard patch != ReminderPatch() else { return }
-            try await apple { try await repository.update(ref, reminder: patch) }
-            await didWrite()
+            try Self.checkWritable(original, changesRepeat: patch.recurrence != .keep)
+            try await appleWrite { try await repository.update(ref, reminder: patch) }
+        }
+    }
+
+    private static func requireDetails(_ details: ItemDetails?) throws -> ItemDetails {
+        guard let details else {
+            throw ItemRouterError.unsupported("This item couldn't be loaded for editing. Close it and try again.")
+        }
+        return details
+    }
+
+    private static func checkWritable(_ details: ItemDetails, changesRepeat: Bool) throws {
+        guard details.isWritable else { throw ItemRouterError.apple(.notWritable) }
+        if changesRepeat && details.hasUnrepresentableRepeat {
+            throw ItemRouterError.unsupported(
+                "This item repeats in a way Stark can't edit. Change its repeat in Apple Calendar or Reminders.")
         }
     }
 
@@ -227,22 +249,37 @@ public final class ItemRouter {
     }
 
     /// Apple: kept in the sidecar, dated by the occurrence (`date`); nil clears that day's mark.
+    /// The item's external id is read through the repository; use `setEventOutcome(ref:on:outcome:)`
+    /// when the caller already holds a ref carrying it.
     public func setEventOutcome(id: String, on date: Date, outcome: EventOutcome?) async throws {
         switch ItemOrigin(id: id, kind: .event) {
         case .local:
             local.setEventOutcome(id: id, on: date, outcome: outcome, now: now())
         case .apple(let ref):
-            let stamp = now()
-            try await sidecarWrite {
-                if let outcome {
-                    try await sidecar.setOutcome(EventOutcomeRecord(date: date, outcome: outcome, recordedAt: stamp),
-                                                 for: ref.identifier, externalID: ref.externalID)
-                } else {
-                    try await sidecar.clearOutcome(for: ref.identifier, externalID: ref.externalID, on: date)
-                }
-            }
-            await didWrite()
+            try await setEventOutcome(ref: await withExternalID(ref), on: date, outcome: outcome)
         }
+    }
+
+    /// Apple only: the outcome for `ref`, stored with `ref.externalID` as given.
+    public func setEventOutcome(ref: AppleItemRef, on date: Date, outcome: EventOutcome?) async throws {
+        let stamp = now()
+        try await sidecarWrite {
+            if let outcome {
+                try await sidecar.setOutcome(EventOutcomeRecord(date: date, outcome: outcome, recordedAt: stamp),
+                                             for: ref.identifier, externalID: ref.externalID)
+            } else {
+                try await sidecar.clearOutcome(for: ref.identifier, externalID: ref.externalID, on: date)
+            }
+        }
+        await didWrite()
+    }
+
+    /// `ref` with its external id: as given, else read once from the repository (nothing cached).
+    /// An item the repository can't read keeps nil; sidecar records never need the item to exist.
+    private func withExternalID(_ ref: AppleItemRef) async -> AppleItemRef {
+        guard ref.externalID == nil else { return ref }
+        guard let external = try? await repository.details(ref).externalID else { return ref }
+        return AppleItemRef(kind: ref.kind, identifier: ref.identifier, externalID: external)
     }
 
     // MARK: Convert
@@ -251,8 +288,7 @@ public final class ItemRouter {
     /// list, moves the sidecar records to it, then deletes the event; returns the new ref. A failed
     /// create changes nothing; a failure after it keeps both (`.convertedButOriginalKept`).
     @discardableResult
-    public func convertEvent(id: String, to reminder: Reminder, dueHasTime: Bool? = nil,
-                             url: String? = nil) async throws -> AppleItemRef? {
+    public func convertEvent(id: String, to reminder: Reminder, url: String? = nil) async throws -> AppleItemRef? {
         switch ItemOrigin(id: id, kind: .event) {
         case .local:
             guard local.convertEvent(id: id, to: reminder) else {
@@ -261,7 +297,7 @@ public final class ItemRouter {
             return nil
         case .apple(let ref):
             guard let listID = destinations.listID else { throw ItemRouterError.noDefaultDestination(.reminder) }
-            let new = Self.newReminder(reminder, dueHasTime: dueHasTime, url: url)
+            let new = Self.newReminder(reminder, url: url)
             return try await replace(ref) { try await self.repository.addReminder(new, listID: listID) }
         }
     }
@@ -283,9 +319,12 @@ public final class ItemRouter {
     }
 
     private func replace(_ old: AppleItemRef, create: () async throws -> AppleItemRef) async throws -> AppleItemRef {
-        let newRef = try await apple(create)
+        let newRef = await withExternalID(try await apple(create))
         do {
             try await sidecar.remap(oldID: old.identifier, newID: newRef.identifier)
+            if let external = newRef.externalID {
+                try await sidecar.update { $0.externalIDs[newRef.identifier] = external }
+            }
         } catch {
             await didWrite()
             throw ItemRouterError.convertedButOriginalKept("its plans couldn't be moved: \(Self.describe(error))")
@@ -315,9 +354,11 @@ public final class ItemRouter {
     /// Replaces the day's blocks: blocks for Apple reminders go to the sidecar (stored under the bare
     /// identifier), the rest to the local store. Blocks not on `day` are ignored, as in the store.
     /// The sidecar is written first; if the local store then refuses, the Apple half is saved and
-    /// `.local` is thrown (retrying rewrites the same blocks, since this is a replace).
+    /// `.local` is thrown (retrying rewrites the same blocks, since this is a replace). Each planned
+    /// Apple reminder's external id is read through the repository and recorded with the blocks.
     public func replacePlans(on day: Date, with blocks: [PlanBlock]) async throws {
         var appleBlocks: [PlanBlock] = []
+        var appleRefs: [String: AppleItemRef] = [:]
         var localBlocks: [PlanBlock] = []
         for block in blocks {
             if case .apple(let ref) = ItemOrigin(id: block.reminderID, kind: .reminder) {
@@ -325,13 +366,20 @@ public final class ItemRouter {
                 var copy = block
                 copy.reminderID = ref.identifier
                 appleBlocks.append(copy)
+                appleRefs[ref.identifier] = ref
             } else {
                 localBlocks.append(block)
             }
         }
         let storedApple = try await sidecarRead { try await sidecar.plans(on: day) }
         if !(appleBlocks.isEmpty && storedApple.isEmpty) && appleBlocks != storedApple {
-            try await sidecarWrite { try await sidecar.replacePlans(on: day, with: appleBlocks) }
+            var externalIDs: [String: String] = [:]
+            for ref in appleRefs.values {
+                if let external = await withExternalID(ref).externalID { externalIDs[ref.identifier] = external }
+            }
+            try await sidecarWrite {
+                try await sidecar.replacePlans(on: day, with: appleBlocks, externalIDs: externalIDs)
+            }
             await didWrite()
         }
         guard local.replacePlans(on: day, with: localBlocks) else {
@@ -385,9 +433,9 @@ public final class ItemRouter {
                  location: event.location, url: event.url, recurrence: event.recurrence)
     }
 
-    static func newReminder(_ reminder: Reminder, dueHasTime: Bool?, url: String?) -> NewReminder {
+    static func newReminder(_ reminder: Reminder, url: String?) -> NewReminder {
         NewReminder(title: reminder.title, notes: reminder.notes, due: reminder.dueDate,
-                    dueHasTime: dueHasTime ?? !FormFields.isAllDay(reminder), priority: reminder.priority,
+                    dueHasTime: FormFields.dueHasTime(reminder), priority: reminder.priority,
                     recurrence: reminder.recurrence, url: url)
     }
 }

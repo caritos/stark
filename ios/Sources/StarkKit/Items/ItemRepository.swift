@@ -171,10 +171,14 @@ public struct ItemDetails: Equatable, Sendable {
     public var isInviteeOnly: Bool
     /// The item repeats in a way `RecurrenceRule` cannot express; saving a changed rule would lose it.
     public var hasUnrepresentableRepeat: Bool
+    /// The cross-device identifier (`calendarItemExternalIdentifier`), when the store has one.
+    public var externalID: String?
 
     public init(event: Event? = nil, reminder: Reminder? = nil, dueHasTime: Bool = true,
                 reminderURL: String? = nil, calendarID: String, isWritable: Bool = true,
-                isInviteeOnly: Bool = false, hasUnrepresentableRepeat: Bool = false) {
+                isInviteeOnly: Bool = false, hasUnrepresentableRepeat: Bool = false,
+                externalID: String? = nil) {
+        self.externalID = externalID
         self.event = event
         self.reminder = reminder
         self.dueHasTime = dueHasTime

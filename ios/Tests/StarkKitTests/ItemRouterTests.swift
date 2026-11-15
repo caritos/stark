@@ -98,6 +98,11 @@ struct ItemRouterTests {
         utc.date(from: DateComponents(year: 2026, month: 11, day: day, hour: hour))!
     }
 
+    /// Local midnight: Stark's marker for a date-only due date (`FormFields.isAllDay`).
+    private func midnight(_ day: Int) -> Date {
+        Calendar(identifier: .gregorian).startOfDay(for: at(day, 12))
+    }
+
     private final class Counter { var writes = 0 }
 
     private struct Harness {
@@ -109,8 +114,10 @@ struct ItemRouterTests {
     }
 
     private func harness(repo: (any ItemRepository)? = nil, fake: FakeItemRepository? = nil,
-                         destinations: StubDestinations = StubDestinations(calendarID: "cal", listID: "list")) -> Harness {
-        let fake = fake ?? FakeItemRepository(calendars: Self.calendars, now: { Date(timeIntervalSince1970: 1_800_000_000) })
+                         destinations: StubDestinations = StubDestinations(calendarID: "cal", listID: "list"),
+                         externalIDs: Bool = false) -> Harness {
+        let fake = fake ?? FakeItemRepository(calendars: Self.calendars, assignsExternalIDs: externalIDs,
+                                              now: { Date(timeIntervalSince1970: 1_800_000_000) })
         let local = FakeLocalStore()
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString).appendingPathComponent("sidecar.json")
@@ -150,13 +157,43 @@ struct ItemRouterTests {
     func addGoesToApple() async throws {
         let h = harness()
         let eventRef = try await h.router.add(event: Event(title: "Dentist", start: at(3, 10), end: at(3, 11)))
-        let reminderRef = try await h.router.add(reminder: Reminder(title: "Call", dueDate: at(3)), dueHasTime: false)
+        let reminderRef = try await h.router.add(reminder: Reminder(title: "Call", dueDate: midnight(3)))
+        let timedRef = try await h.router.add(reminder: Reminder(title: "Ring", dueDate: at(3, 15)))
         #expect(h.local.calls.isEmpty)
         let e = try await h.repo.details(eventRef)
         #expect(e.event?.title == "Dentist" && e.calendarID == "cal" && e.event?.end == at(3, 11))
         let r = try await h.repo.details(reminderRef)
         #expect(r.reminder?.title == "Call" && r.calendarID == "list" && r.dueHasTime == false)
-        #expect(h.counter.writes == 2)
+        #expect(try await h.repo.details(timedRef).dueHasTime == true)
+        #expect(h.counter.writes == 3)
+    }
+
+    @Test("an explicit destination wins over the default; nil falls back to it")
+    func addDestinationOverride() async throws {
+        let calendars = Self.calendars + [
+            AppleCalendarInfo(id: "work", title: "Work", accountName: "iCloud", colorHex: nil, isReminderList: false),
+            AppleCalendarInfo(id: "errands", title: "Errands", accountName: "iCloud", colorHex: nil, isReminderList: true),
+        ]
+        let h = harness(fake: FakeItemRepository(calendars: calendars))
+        let e1 = try await h.router.add(event: Event(title: "a", start: at(3)), calendarID: "work")
+        let e2 = try await h.router.add(event: Event(title: "b", start: at(3)), calendarID: nil)
+        let r1 = try await h.router.add(reminder: Reminder(title: "c", dueDate: at(3)), listID: "errands")
+        let r2 = try await h.router.add(reminder: Reminder(title: "d", dueDate: at(3)))
+        #expect(try await h.repo.details(e1).calendarID == "work")
+        #expect(try await h.repo.details(e2).calendarID == "cal")
+        #expect(try await h.repo.details(r1).calendarID == "errands")
+        #expect(try await h.repo.details(r2).calendarID == "list")
+    }
+
+    @Test("an explicit destination works without a default; neither throws and writes nothing")
+    func addExplicitWithoutDefault() async throws {
+        let h = harness(destinations: StubDestinations(calendarID: nil, listID: nil))
+        let ref = try await h.router.add(event: Event(title: "a", start: at(3)), calendarID: "cal")
+        #expect(try await h.repo.details(ref).calendarID == "cal")
+        await #expect(throws: ItemRouterError.noDefaultDestination(.reminder)) {
+            try await h.router.add(reminder: Reminder(title: "x", dueDate: at(3)), listID: nil)
+        }
+        #expect(await h.repo.itemCount == 1)
     }
 
     @Test("add without a default destination throws a readable error and writes nothing")
@@ -207,7 +244,7 @@ struct ItemRouterTests {
         let original = Event(id: id, title: "old", start: at(3))
         var edited = original
         edited.title = "new"
-        try await h.router.update(event: edited, original: original)
+        try await h.router.update(event: edited)
         #expect(h.local.calls == [
             "complete \(id)", "uncomplete \(id)", "skipEvent \(id)", "skipReminder \(id)",
             "outcome \(id) attended", "deleteEvent \(id)", "deleteReminder \(id)", "updateEvent \(id) new",
@@ -290,7 +327,7 @@ struct ItemRouterTests {
         var edited = original
         edited.title = "Long lunch"
         edited.location = nil
-        try await h.router.update(event: edited, original: original)
+        try await h.router.update(event: edited, original: details)
         let e = try await h.repo.details(ref).event
         #expect(e?.title == "Long lunch" && e?.location == nil)
         #expect(e?.notes == "n" && e?.start == at(3, 12) && e?.recurrence == RecurrenceRule(frequency: .weekly))
@@ -310,25 +347,30 @@ struct ItemRouterTests {
         #expect(EventPatch(from: a, to: b) == EventPatch(title: "B", notes: .clear, end: .set(at(3, 11)), recurrence: .clear))
     }
 
-    @Test("a reminder patch diff holds only what changed, plus the caller's date-only and URL changes")
+    @Test("a reminder patch diff against the stored details holds only what changed, URL and date-only included")
     func reminderPatchDiff() {
-        let a = Reminder(id: "x", title: "A", dueDate: at(3), priority: 1)
-        #expect(ReminderPatch(from: a, to: a) == ReminderPatch())
+        let a = Reminder(id: "x", title: "A", dueDate: at(3, 15), priority: 1)
+        let details = ItemDetails(reminder: a, dueHasTime: true, reminderURL: "u", calendarID: "list")
+        #expect(ReminderPatch(from: details, to: a, url: "u") == ReminderPatch())
         var b = a
-        b.dueDate = at(4)
+        b.dueDate = midnight(4)
         b.priority = nil
-        #expect(ReminderPatch(from: a, to: b, dueHasTime: false, url: .set("u"))
-                == ReminderPatch(due: .set(at(4)), dueHasTime: false, priority: .clear, url: .set("u")))
+        #expect(ReminderPatch(from: details, to: b, url: nil)
+                == ReminderPatch(due: .set(midnight(4)), dueHasTime: false, priority: .clear, url: .clear))
+        // A timed reminder that happens to sit at midnight keeps its flag when the due date is unchanged.
+        let atMidnight = Reminder(id: "y", title: "A", dueDate: midnight(4))
+        let timed = ItemDetails(reminder: atMidnight, dueHasTime: true, calendarID: "list")
+        #expect(ReminderPatch(from: timed, to: atMidnight, url: nil) == ReminderPatch())
     }
 
     @Test("update of an Apple reminder applies the diff")
     func updateAppleReminder() async throws {
         let h = harness()
         let ref = try await h.router.add(reminder: Reminder(title: "Call", dueDate: at(3), priority: 5))
-        let original = try #require(try await h.router.details(id: "apple-\(ref.identifier)", kind: .reminder).reminder)
-        var edited = original
+        let details = try await h.router.details(id: "apple-\(ref.identifier)", kind: .reminder)
+        var edited = try #require(details.reminder)
         edited.title = "Call mom"
-        try await h.router.update(reminder: edited, original: original)
+        try await h.router.update(reminder: edited, url: details.reminderURL, original: details)
         let r = try await h.repo.details(ref).reminder
         #expect(r?.title == "Call mom" && r?.priority == 5 && r?.dueDate == at(3))
     }
@@ -383,7 +425,7 @@ struct ItemRouterTests {
         ])
         h.counter.writes = 0
         let converted = try await h.router.convertEvent(id: "apple-\(ref.identifier)",
-                                                        to: Reminder(title: "Pay rent", dueDate: at(7)), dueHasTime: false)
+                                                        to: Reminder(title: "Pay rent", dueDate: midnight(7)))
         let newRef = try #require(converted)
         #expect(newRef.kind == .reminder)
         await #expect(throws: ItemRepositoryError.notFound) { try await h.repo.details(ref) }
@@ -448,5 +490,158 @@ struct ItemRouterTests {
             try await h.router.convertEvent(id: "apple-\(ref.identifier)", to: Reminder(title: "x"))
         }
         #expect(await fake.itemCount == 1)
+    }
+
+    // MARK: Update against stored details (spec call 5)
+
+    /// An Apple event row as `mergeAppleItems` builds it: no recurrence, the occurrence's start.
+    private func standIn(_ ref: AppleItemRef, title: String, start: Date) -> Event {
+        Event(id: "apple-\(ref.identifier)", title: title, start: start, end: start.addingTimeInterval(3600))
+    }
+
+    @Test("editing only the title of an overlay stand-in keeps the series' rule and master start")
+    func standInEventTitleOnly() async throws {
+        let h = harness()
+        let ref = try await h.router.add(event: Event(title: "Gym", start: at(2, 18), end: at(2, 19),
+                                                      recurrence: RecurrenceRule(frequency: .weekly)))
+        let row = standIn(ref, title: "Gym", start: at(16, 18))
+        var edited = row
+        edited.title = "Gym class"
+        try await h.router.update(event: edited, original: ItemDetails(event: row, calendarID: "cal"))
+        let e = try await h.repo.details(ref).event
+        #expect(e?.title == "Gym class")
+        #expect(e?.recurrence == RecurrenceRule(frequency: .weekly))
+        #expect(e?.start == at(2, 18) && e?.end == at(2, 19))
+    }
+
+    @Test("editing only the title of a reminder stand-in keeps date-only and timed due dates")
+    func standInReminderTitleOnly() async throws {
+        let h = harness()
+        for (due, hasTime) in [(midnight(3), false), (at(3, 15), true)] {
+            let ref = try await h.router.add(reminder: Reminder(title: "Call", dueDate: due))
+            let row = Reminder(id: "apple-\(ref.identifier)", title: "Call", dueDate: due)
+            var edited = row
+            edited.title = "Call mom"
+            try await h.router.update(reminder: edited, url: nil,
+                                      original: ItemDetails(reminder: row, dueHasTime: hasTime, calendarID: "list"))
+            let d = try await h.repo.details(ref)
+            #expect(d.reminder?.title == "Call mom" && d.reminder?.dueDate == due && d.dueHasTime == hasTime)
+        }
+    }
+
+    @Test("a no-op update writes nothing and does not fire onDidWrite")
+    func noOpUpdate() async throws {
+        let h = harness()
+        let eventRef = try await h.router.add(event: Event(title: "x", start: at(3), recurrence: RecurrenceRule(frequency: .daily)))
+        let reminderRef = try await h.router.add(reminder: Reminder(title: "y", dueDate: midnight(3)))
+        let ev = try await h.router.details(id: "apple-\(eventRef.identifier)", kind: .event)
+        let rm = try await h.router.details(id: "apple-\(reminderRef.identifier)", kind: .reminder)
+        h.counter.writes = 0
+        // Any repository write would now throw.
+        await h.repo.failNext("unexpected write")
+        try await h.router.update(event: try #require(ev.event), original: ev)
+        try await h.router.update(reminder: try #require(rm.reminder), url: rm.reminderURL, original: rm)
+        #expect(h.counter.writes == 0)
+    }
+
+    @Test("switching a timed reminder to all-day sends the date-only flag")
+    func timedToAllDay() async throws {
+        let h = harness()
+        let ref = try await h.router.add(reminder: Reminder(title: "Call", dueDate: at(3, 15)))
+        let details = try await h.router.details(id: "apple-\(ref.identifier)", kind: .reminder)
+        var edited = try #require(details.reminder)
+        edited.dueDate = midnight(3)
+        try await h.router.update(reminder: edited, url: nil, original: details)
+        let d = try await h.repo.details(ref)
+        #expect(d.dueHasTime == false && d.reminder?.dueDate == midnight(3))
+    }
+
+    @Test("an Apple update without the stored details is refused")
+    func updateNeedsDetails() async throws {
+        let h = harness()
+        let ref = try await h.router.add(event: Event(title: "x", start: at(3)))
+        await #expect(throws: ItemRouterError.self) {
+            try await h.router.update(event: Event(id: "apple-\(ref.identifier)", title: "y", start: at(3)))
+        }
+        #expect(try await h.repo.details(ref).event?.title == "x")
+    }
+
+    @Test("a write to a read-only item is refused with a readable message")
+    func readOnlyRefused() async throws {
+        let h = harness()
+        let ref = try await h.router.add(event: Event(title: "x", start: at(3)))
+        let row = standIn(ref, title: "x", start: at(3))
+        var edited = row
+        edited.title = "y"
+        h.counter.writes = 0
+        do {
+            try await h.router.update(event: edited, original: ItemDetails(event: row, calendarID: "cal", isWritable: false))
+            Issue.record("expected a throw")
+        } catch let error as ItemRouterError {
+            #expect(error == .apple(.notWritable) && !error.message.isEmpty)
+        }
+        #expect(try await h.repo.details(ref).event?.title == "x")
+        #expect(h.counter.writes == 0)
+    }
+
+    @Test("a repeat change is refused when the stored repeat can't be represented; other edits go through")
+    func unrepresentableRepeatRefused() async throws {
+        let h = harness()
+        let ref = try await h.router.add(event: Event(title: "x", start: at(3), recurrence: RecurrenceRule(frequency: .daily)))
+        let details = try await h.router.details(id: "apple-\(ref.identifier)", kind: .event)
+        var stored = details
+        stored.hasUnrepresentableRepeat = true
+        var edited = try #require(details.event)
+        edited.recurrence = RecurrenceRule(frequency: .weekly)
+        do {
+            try await h.router.update(event: edited, original: stored)
+            Issue.record("expected a throw")
+        } catch let error as ItemRouterError {
+            guard case .unsupported = error else { Issue.record("wrong error \(error)"); return }
+        }
+        #expect(try await h.repo.details(ref).event?.recurrence == RecurrenceRule(frequency: .daily))
+        edited.recurrence = details.event?.recurrence
+        edited.title = "renamed"
+        try await h.router.update(event: edited, original: stored)
+        #expect(try await h.repo.details(ref).event?.title == "renamed")
+    }
+
+    // MARK: External ids
+
+    @Test("an outcome set by id stores the item's external id, resolved from the repository")
+    func outcomeRecordsExternalID() async throws {
+        let h = harness(externalIDs: true)
+        let ref = try await h.router.add(event: Event(title: "x", start: at(3)))
+        let ext = try #require(ref.externalID)
+        try await h.router.setEventOutcome(id: "apple-\(ref.identifier)", on: at(3), outcome: .attended)
+        #expect(try await h.sidecar.load().outcomes.map(\.externalID) == [ext])
+    }
+
+    @Test("an outcome set with a full ref uses its external id")
+    func outcomeWithRef() async throws {
+        let h = harness()
+        try await h.router.setEventOutcome(ref: AppleItemRef(kind: .event, identifier: "EV1", externalID: "given"),
+                                           on: at(3), outcome: .skipped)
+        #expect(try await h.sidecar.load().outcomes.map(\.externalID) == ["given"])
+    }
+
+    @Test("saved plans record the planned reminders' external ids")
+    func plansRecordExternalIDs() async throws {
+        let h = harness(externalIDs: true)
+        let ref = try await h.router.add(reminder: Reminder(title: "x", dueDate: at(6)))
+        let block = PlanBlock(id: "b", reminderID: "apple-\(ref.identifier)", occurrence: at(6), start: at(6, 9), minutes: 30)
+        try await h.router.replacePlans(on: at(6), with: [block])
+        #expect(ref.externalID != nil)
+        #expect(try await h.sidecar.load().externalIDs[ref.identifier] == ref.externalID)
+    }
+
+    @Test("convert records the new item's external id")
+    func convertRecordsExternalID() async throws {
+        let h = harness(externalIDs: true)
+        let ref = try await h.router.add(event: Event(title: "x", start: at(7)))
+        let converted = try await h.router.convertEvent(id: "apple-\(ref.identifier)", to: Reminder(title: "x", dueDate: at(7)))
+        let newRef = try #require(converted)
+        let ext = try #require(newRef.externalID)
+        #expect(try await h.sidecar.load().externalIDs[newRef.identifier] == ext)
     }
 }

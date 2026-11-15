@@ -19,16 +19,19 @@ public actor FakeItemRepository: ItemRepository {
 
     private let calendars: [AppleCalendarInfo]
     private let readOnlyIDs: Set<String>
+    private let assignsExternalIDs: Bool
     private let now: @Sendable () -> Date
     private var events: [String: StoredEvent] = [:]
     private var reminders: [String: StoredReminder] = [:]
     private var counter = 0
     private var nextFailure: String?
 
+    /// `assignsExternalIDs` gives every new item an external id (`ext-<identifier>`), as iCloud does.
     public init(calendars: [AppleCalendarInfo], readOnlyCalendarIDs: Set<String> = [],
-                now: @escaping @Sendable () -> Date = { Date() }) {
+                assignsExternalIDs: Bool = false, now: @escaping @Sendable () -> Date = { Date() }) {
         self.calendars = calendars
         self.readOnlyIDs = readOnlyCalendarIDs
+        self.assignsExternalIDs = assignsExternalIDs
         self.now = now
     }
 
@@ -73,12 +76,14 @@ public actor FakeItemRepository: ItemRepository {
         case .event:
             guard let stored = events[ref.identifier] else { throw ItemRepositoryError.notFound }
             return ItemDetails(event: stored.event, calendarID: stored.calendarID,
-                               isWritable: !readOnlyIDs.contains(stored.calendarID))
+                               isWritable: !readOnlyIDs.contains(stored.calendarID),
+                               externalID: externalID(for: ref.identifier))
         case .reminder:
             guard let stored = reminders[ref.identifier] else { throw ItemRepositoryError.notFound }
             return ItemDetails(reminder: stored.reminder, dueHasTime: stored.dueHasTime,
                                reminderURL: stored.url, calendarID: stored.calendarID,
-                               isWritable: !readOnlyIDs.contains(stored.calendarID))
+                               isWritable: !readOnlyIDs.contains(stored.calendarID),
+                               externalID: externalID(for: ref.identifier))
         }
     }
 
@@ -223,6 +228,10 @@ public actor FakeItemRepository: ItemRepository {
         }
     }
 
+    private func externalID(for identifier: String) -> String? {
+        assignsExternalIDs ? "ext-\(identifier)" : nil
+    }
+
     private func newID() -> String {
         counter += 1
         return "fake-\(counter)"
@@ -234,7 +243,7 @@ public actor FakeItemRepository: ItemRepository {
             event: Event(id: id, title: new.title, notes: new.notes, start: new.start, end: new.end,
                          isAllDay: new.isAllDay, location: new.location, recurrence: new.recurrence, url: new.url),
             calendarID: calendarID)
-        return AppleItemRef(kind: .event, identifier: id)
+        return AppleItemRef(kind: .event, identifier: id, externalID: externalID(for: id))
     }
 
     private func insert(_ new: NewReminder, listID: String) -> AppleItemRef {
@@ -243,7 +252,7 @@ public actor FakeItemRepository: ItemRepository {
             reminder: Reminder(id: id, title: new.title, notes: new.notes, dueDate: new.due,
                                priority: new.priority, recurrence: new.recurrence),
             dueHasTime: new.dueHasTime, url: new.url, calendarID: listID)
-        return AppleItemRef(kind: .reminder, identifier: id)
+        return AppleItemRef(kind: .reminder, identifier: id, externalID: externalID(for: id))
     }
 
     /// The first occurrence of the series strictly after `moment` (EventKit's rule: after both the
