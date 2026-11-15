@@ -120,21 +120,21 @@ struct ItemSidecarTests {
         let s = sidecar(tempFile())
         let d = day("2026-11-16")
         let rec = EventOutcomeRecord(date: d, outcome: .attended)
-        try await s.setOutcome(rec, for: "E1", externalID: "X1", on: d)
-        try await s.setOutcome(rec, for: "E1", externalID: "X1", on: d)
+        try await s.setOutcome(rec, for: "E1", externalID: "X1")
+        try await s.setOutcome(rec, for: "E1", externalID: "X1")
         #expect(try await s.load().outcomes.count == 1)
         let skipped = EventOutcomeRecord(date: d, outcome: .skipped)
-        try await s.setOutcome(skipped, for: "E1", externalID: "X1", on: d)
+        try await s.setOutcome(skipped, for: "E1", externalID: "X1")
         #expect(try await s.load().outcomes.count == 1)
         #expect(try await s.outcome(for: "E1", externalID: nil, on: d) == skipped)
         let rec17 = EventOutcomeRecord(date: day("2026-11-17"), outcome: .attended)
-        try await s.setOutcome(rec17, for: "E1", externalID: "X1", on: day("2026-11-17"))
+        try await s.setOutcome(rec17, for: "E1", externalID: "X1")
         #expect(try await s.load().outcomes.count == 2)
-        try await s.setOutcome(nil, for: "E1", externalID: nil, on: d)
+        try await s.clearOutcome(for: "E1", externalID: nil, on: d)
         #expect(try await s.outcome(for: "E1", externalID: "X1", on: d) == nil)
         #expect(try await s.outcome(for: "E1", externalID: nil, on: day("2026-11-17")) == rec17)
         // Clearing again is a no-op.
-        try await s.setOutcome(nil, for: "E1", externalID: nil, on: d)
+        try await s.clearOutcome(for: "E1", externalID: nil, on: d)
         #expect(try await s.load().outcomes.count == 1)
     }
 
@@ -143,7 +143,7 @@ struct ItemSidecarTests {
         let s = sidecar(tempFile())
         let d = day("2026-11-16")
         let rec = EventOutcomeRecord(date: d, outcome: .attended)
-        try await s.setOutcome(rec, for: "OLD", externalID: "X1", on: d)
+        try await s.setOutcome(rec, for: "OLD", externalID: "X1")
         #expect(try await s.outcome(for: "NEW", externalID: "X1", on: d) == rec)
         // Looking up something that exists nowhere deletes nothing.
         #expect(try await s.outcome(for: "GONE", externalID: "Y", on: d) == nil)
@@ -194,8 +194,8 @@ struct ItemSidecarTests {
     func setOutcomeKeepsExternalID() async throws {
         let s = sidecar(tempFile())
         let d = day("2026-11-16")
-        try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .attended), for: "E1", externalID: "X1", on: d)
-        try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .skipped), for: "E1", externalID: nil, on: d)
+        try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .attended), for: "E1", externalID: "X1")
+        try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .skipped), for: "E1", externalID: nil)
         let entries = try await s.load().outcomes
         #expect(entries.count == 1)
         #expect(entries.first?.externalID == "X1")
@@ -207,8 +207,8 @@ struct ItemSidecarTests {
         let s = sidecar(tempFile())
         let older = EventOutcomeRecord(date: day("2026-11-16", hour: 8), outcome: .attended)
         let newer = EventOutcomeRecord(date: day("2026-11-16", hour: 18), outcome: .skipped)
-        try await s.setOutcome(older, for: "NEW", externalID: nil, on: older.date)
-        try await s.setOutcome(newer, for: "OLD", externalID: "X1", on: newer.date)
+        try await s.setOutcome(older, for: "NEW", externalID: nil)
+        try await s.setOutcome(newer, for: "OLD", externalID: "X1")
         try await s.remap(oldID: "OLD", newID: "NEW")
         let entries = try await s.load().outcomes
         #expect(entries.count == 1)
@@ -216,7 +216,7 @@ struct ItemSidecarTests {
         #expect(entries[0].record == newer)
         #expect(entries[0].externalID == "X1")
         // A different day for NEW is untouched.
-        try await s.setOutcome(EventOutcomeRecord(date: day("2026-11-20"), outcome: .attended), for: "OLD", externalID: nil, on: day("2026-11-20"))
+        try await s.setOutcome(EventOutcomeRecord(date: day("2026-11-20"), outcome: .attended), for: "OLD", externalID: nil)
         try await s.remap(oldID: "OLD", newID: "NEW")
         #expect(try await s.load().outcomes.count == 2)
     }
@@ -244,7 +244,7 @@ struct ItemSidecarTests {
         let s = sidecar(url)
         for (i, id) in ["Z", "A", "M"].enumerated() {
             let d = day("2026-11-1\(i + 1)")
-            try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .attended), for: id, externalID: "X\(id)", on: d)
+            try await s.setOutcome(EventOutcomeRecord(date: d, outcome: .attended), for: id, externalID: "X\(id)")
         }
         let first = try Data(contentsOf: url)
         try await s.update { _ in }
@@ -260,19 +260,66 @@ struct ItemSidecarTests {
         #expect(SidecarData.currentVersion == 1)
     }
 
-    @Test("the external id fallback is deterministic, identifier first, then newest")
+    @Test("the external id fallback returns the newest by date even when it has the smaller identifier")
     func deterministicFallback() async throws {
         let s = sidecar(tempFile())
-        let a = EventOutcomeRecord(date: day("2026-11-16", hour: 8), outcome: .attended)
-        let b = EventOutcomeRecord(date: day("2026-11-16", hour: 18), outcome: .skipped)
+        let older = EventOutcomeRecord(date: day("2026-11-16", hour: 8), outcome: .attended)
+        let newer = EventOutcomeRecord(date: day("2026-11-16", hour: 18), outcome: .skipped)
         try await s.update { $0.outcomes = [
-            OutcomeEntry(identifier: "A", externalID: "X", record: a),
-            OutcomeEntry(identifier: "B", externalID: "X", record: b),
+            OutcomeEntry(identifier: "A", externalID: "X", record: newer),
+            OutcomeEntry(identifier: "B", externalID: "X", record: older),
         ] }
         for _ in 0..<10 {
-            #expect(try await s.outcome(for: "NEW", externalID: "X", on: day("2026-11-16")) == b)
+            #expect(try await s.outcome(for: "NEW", externalID: "X", on: day("2026-11-16")) == newer)
         }
-        #expect(try await s.outcome(for: "A", externalID: "X", on: day("2026-11-16")) == a)
+        #expect(try await s.outcome(for: "B", externalID: "X", on: day("2026-11-16")) == older)
+    }
+
+    private func collide(existing: (String?, Int), moved: (String?, Int)) async throws -> OutcomeEntry {
+        let s = sidecar(tempFile())
+        let e = EventOutcomeRecord(date: day("2026-11-16", hour: existing.1), outcome: .attended)
+        let m = EventOutcomeRecord(date: day("2026-11-16", hour: moved.1), outcome: .skipped)
+        try await s.update { $0.outcomes = [
+            OutcomeEntry(identifier: "NEW", externalID: existing.0, record: e),
+            OutcomeEntry(identifier: "OLD", externalID: moved.0, record: m),
+        ] }
+        try await s.remap(oldID: "OLD", newID: "NEW")
+        let out = try await s.load().outcomes
+        #expect(out.count == 1)
+        return out[0]
+    }
+
+    @Test("remap: existing newer with an earlier-sorting external id still wins")
+    func remapExistingNewer() async throws {
+        let r = try await collide(existing: ("A", 18), moved: ("Z", 8))
+        #expect(r.record.outcome == .attended)
+        #expect(r.externalID == "A")
+    }
+
+    @Test("remap: moved newer wins although the existing external id sorts last")
+    func remapMovedNewer() async throws {
+        let r = try await collide(existing: ("Z", 8), moved: ("A", 18))
+        #expect(r.record.outcome == .skipped)
+        #expect(r.externalID == "Z")
+    }
+
+    @Test("remap: newer moved record with nil external id wins and the existing non-nil id is kept")
+    func remapNilExternalNewer() async throws {
+        let r = try await collide(existing: ("X1", 8), moved: (nil, 18))
+        #expect(r.record.outcome == .skipped)
+        #expect(r.externalID == "X1")
+    }
+
+    @Test("a record is found by a lookup on the day of its date and setting twice replaces")
+    func setByRecordDate() async throws {
+        let s = sidecar(tempFile())
+        let first = EventOutcomeRecord(date: day("2026-11-16", hour: 8), outcome: .attended)
+        let second = EventOutcomeRecord(date: day("2026-11-16", hour: 8), outcome: .skipped)
+        try await s.setOutcome(first, for: "E1", externalID: "X1")
+        try await s.setOutcome(second, for: "E1", externalID: "X1")
+        #expect(try await s.load().outcomes.count == 1)
+        #expect(try await s.outcome(for: "E1", externalID: nil, on: day("2026-11-16", hour: 22)) == second)
+        #expect(try await s.outcome(for: "E1", externalID: nil, on: day("2026-11-17")) == nil)
     }
 
     @Test("outcomes match by calendar day at read time in a non-UTC zone")
@@ -281,7 +328,7 @@ struct ItemSidecarTests {
         let s = ItemSidecar(fileURL: url, calendar: ny)
         let late = nyDate(16, 23, 30)
         let rec = EventOutcomeRecord(date: late, outcome: .attended)
-        try await s.setOutcome(rec, for: "E1", externalID: nil, on: late)
+        try await s.setOutcome(rec, for: "E1", externalID: nil)
         #expect(try await s.outcome(for: "E1", externalID: nil, on: nyDate(16, 8, 0)) == rec)
         #expect(try await s.outcome(for: "E1", externalID: nil, on: nyDate(17, 0, 30)) == nil)
     }
@@ -292,7 +339,7 @@ struct ItemSidecarTests {
         let url = tempFile()
         let instant = day("2026-11-17", hour: 3) // 22:00 on Nov 16 in New York, Nov 17 in UTC
         let rec = EventOutcomeRecord(date: instant, outcome: .attended)
-        try await ItemSidecar(fileURL: url, calendar: ny).setOutcome(rec, for: "E1", externalID: nil, on: instant)
+        try await ItemSidecar(fileURL: url, calendar: ny).setOutcome(rec, for: "E1", externalID: nil)
         let reader = ItemSidecar(fileURL: url, calendar: utc)
         #expect(try await reader.outcome(for: "E1", externalID: nil, on: day("2026-11-17", hour: 12)) == rec)
         #expect(try await reader.outcome(for: "E1", externalID: nil, on: day("2026-11-16", hour: 12)) == nil)

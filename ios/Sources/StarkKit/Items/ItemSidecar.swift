@@ -131,27 +131,37 @@ public actor ItemSidecar {
 
     public func outcome(for identifier: String, externalID: String?, on day: Date) throws -> EventOutcomeRecord? {
         let sameDay = try load().outcomes.filter { calendar.isDate($0.record.date, inSameDayAs: day) }
-        let newestFirst = { (list: [OutcomeEntry]) in list.sorted { Self.outcomeOrder($1, $0) } }
+        let newestFirst = { (list: [OutcomeEntry]) in list.sorted(by: Self.isNewer) }
         if let hit = newestFirst(sameDay.filter { $0.identifier == identifier }).first { return hit.record }
         guard let externalID else { return nil }
         return newestFirst(sameDay.filter { $0.externalID == externalID }).first?.record
     }
 
-    /// Idempotent by (identifier, same day as `day`); `nil` clears. Replaces any mark for the same
-    /// identifier or external id that day. A nil `externalID` keeps the one already stored.
-    public func setOutcome(_ record: EventOutcomeRecord?, for identifier: String, externalID: String?, on day: Date) throws {
+    /// Sets the mark for the occurrence on the day of `record.date` (the occurrence start).
+    /// Idempotent: replaces any mark for the same identifier or external id on that day. A nil
+    /// `externalID` keeps the one already stored.
+    public func setOutcome(_ record: EventOutcomeRecord, for identifier: String, externalID: String?) throws {
         try update { data in
-            let matches = { (e: OutcomeEntry) in
-                self.calendar.isDate(e.record.date, inSameDayAs: day)
-                    && (e.identifier == identifier || (externalID != nil && e.externalID == externalID))
-            }
+            let matches = Self.matcher(calendar, identifier: identifier, externalID: externalID, day: record.date)
             let kept = externalID
                 ?? data.outcomes.first { matches($0) && $0.identifier == identifier && $0.externalID != nil }?.externalID
                 ?? data.outcomes.first { matches($0) && $0.externalID != nil }?.externalID
             data.outcomes.removeAll(where: matches)
-            if let record {
-                data.outcomes.append(OutcomeEntry(identifier: identifier, externalID: kept, record: record))
-            }
+            data.outcomes.append(OutcomeEntry(identifier: identifier, externalID: kept, record: record))
+        }
+    }
+
+    /// Removes the mark for the identifier (or external id) on the calendar day of `day`.
+    public func clearOutcome(for identifier: String, externalID: String?, on day: Date) throws {
+        try update { data in
+            data.outcomes.removeAll(where: Self.matcher(calendar, identifier: identifier, externalID: externalID, day: day))
+        }
+    }
+
+    private static func matcher(_ calendar: Calendar, identifier: String, externalID: String?, day: Date) -> (OutcomeEntry) -> Bool {
+        { e in
+            calendar.isDate(e.record.date, inSameDayAs: day)
+                && (e.identifier == identifier || (externalID != nil && e.externalID == externalID))
         }
     }
 
@@ -189,7 +199,7 @@ public actor ItemSidecar {
                     $0.identifier == newID && self.calendar.isDate($0.record.date, inSameDayAs: e.record.date)
                 }) {
                     let existing = merged[i]
-                    var winner = Self.outcomeOrder(existing, e) ? e : existing
+                    var winner = Self.isNewer(e, existing) ? e : existing
                     winner.externalID = existing.externalID ?? e.externalID
                     merged[i] = winner
                 } else {
@@ -206,7 +216,16 @@ public actor ItemSidecar {
 
     // MARK: Coding
 
-    /// Ascending by (identifier, externalID, date, outcome) so ordering is total and deterministic.
+    /// Recency: `a` is newer than `b` by `record.date` first; ties fall to outcome, identifier,
+    /// externalID so the choice is deterministic. Not the storage order.
+    private static func isNewer(_ a: OutcomeEntry, _ b: OutcomeEntry) -> Bool {
+        if a.record.date != b.record.date { return a.record.date > b.record.date }
+        if a.record.outcome != b.record.outcome { return a.record.outcome.rawValue > b.record.outcome.rawValue }
+        if a.identifier != b.identifier { return a.identifier > b.identifier }
+        return (a.externalID ?? "") > (b.externalID ?? "")
+    }
+
+    /// Storage sort only, ascending by (identifier, externalID, date, outcome) so ordering is total and deterministic.
     private static func outcomeOrder(_ a: OutcomeEntry, _ b: OutcomeEntry) -> Bool {
         if a.identifier != b.identifier { return a.identifier < b.identifier }
         let ax = a.externalID ?? "", bx = b.externalID ?? ""
