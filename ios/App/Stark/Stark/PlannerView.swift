@@ -190,7 +190,6 @@ struct PlannerView: View {
         .onChange(of: store.events) { _, _ in rebuildModel() }
         .onChange(of: overlay.snapshot) { _, _ in appleDataChanged() }
         .onChange(of: planCache.applePlans) { _, _ in appleDataChanged() }
-        .onChange(of: trayPanes) { _, panes in pane = TrayPane.shown(pane, among: panes) }
         .onChange(of: liftGestureActive) { _, active in
             guard !active else { return }
             // Deferred one turn so a normal release's `.onEnded` (which commits and cleans up)
@@ -216,12 +215,21 @@ struct PlannerView: View {
                                  apple: overlay.snapshot, sidecarPlans: inputs.sidecarPlans)
     }
 
+    /// Shows `new`, moving the tray selection off a pane it no longer has (NO DATE after its last
+    /// reminder was planned) to the day's own pane IN THE SAME UPDATE: set afterwards, the paged
+    /// `TabView` has already clamped the selection to its last page (FUTURE, seen in the simulator).
+    private func setModel(_ new: DayPlanModel) {
+        let shown = TrayPane.shown(pane, among: TrayPane.panes(for: new))
+        if shown != pane { pane = shown }
+        model = new
+    }
+
     /// A fresh draft from the saved plans (both stores) for the viewed, editable day.
     private func freshDraft() {
         let saved = makeModel(blocks: nil)
         draft = PlanDraft(model: saved, saved: PlannerPlans.saved(on: day, local: store.plans(on: day),
                                                                    apple: planCache.applePlans, calendar: Self.calendar))
-        model = saved
+        setModel(saved)
     }
 
     /// The Apple snapshot or the sidecar's blocks changed (the fetch for this day landed, a write
@@ -258,7 +266,7 @@ struct PlannerView: View {
         }
         if let kept = session.draft(for: day) {
             draft = kept
-            model = makeModel(blocks: kept.blocksToSave)
+            setModel(makeModel(blocks: kept.blocksToSave))
         } else {
             freshDraft()
         }
@@ -351,7 +359,7 @@ struct PlannerView: View {
     private func rebuildModel() {
         guard let draft else { return }
         // Everything the save would write, so the done blocks stay in the rebuilt model.
-        model = makeModel(blocks: draft.blocksToSave)
+        setModel(makeModel(blocks: draft.blocksToSave))
     }
 
     private var dayWord: String {
@@ -969,6 +977,10 @@ struct PlannerView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            // A new pager when the panes change (NO DATE comes or goes): the paged TabView keeps
+            // its page index when a page is removed and writes that page's tag back (FUTURE
+            // instead of TODAY, seen in the simulator); a fresh one opens on `pane`.
+            .id(trayPanes)
             trayDots
         }
         .frame(height: Self.trayHeight)
