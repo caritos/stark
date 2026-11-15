@@ -177,8 +177,8 @@ public actor FakeItemRepository: ItemRepository {
     }
 
     /// A detached occurrence's own ref (`/RID=`) removes exactly that occurrence (EventKit: matched
-    /// by `eventIdentifier`, since it keeps its original date); a series ref removes the occurrence
-    /// on `date`.
+    /// by `eventIdentifier`, since it keeps its original date) and is not found when it matches
+    /// none; a series ref removes the occurrence on `date`.
     public func deleteOccurrence(_ ref: AppleItemRef, on date: Date) throws {
         try beginWrite()
         if ref.kind == .event, let rid = ref.identifier.range(of: "/RID=") {
@@ -190,7 +190,8 @@ public actor FakeItemRepository: ItemRepository {
                 events[seriesID] = stored
                 return
             }
-            return try deleteOccurrence(AppleItemRef(kind: .event, identifier: seriesID), on: date)
+            // A stale or reissued detached id: never the day match.
+            throw ItemRepositoryError.notFound
         }
         guard ref.kind == .event, var stored = events[ref.identifier] else { throw ItemRepositoryError.notFound }
         try checkWritable(stored.calendarID)

@@ -140,6 +140,28 @@ enum ItemRepositoryContract {
                           start.addingTimeInterval(4 * day)])
     }
 
+    /// A detached occurrence's id that no longer matches (already deleted, or reissued by a sync)
+    /// is not found: it never falls back to the day match, which would delete the series' regular
+    /// occurrence on that day.
+    static func deleteOccurrenceWithAStaleDetachedIDIsNotFound(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let ref = try await h.repository.addEvent(
+            NewEvent(title: "Standup", start: start, end: start.addingTimeInterval(1800),
+                     recurrence: RecurrenceRule(frequency: .daily, count: 5)), calendarID: h.calendarID)
+        let day = 86_400.0
+        let moved = start.addingTimeInterval(2 * day - 3600)
+        let detached = try await h.detachOccurrence(ref, start.addingTimeInterval(day), moved)
+        try await h.repository.deleteOccurrence(detached, on: moved)
+        let window = start.addingTimeInterval(-3600)...start.addingTimeInterval(6 * day)
+        let before = await h.eventStarts(ref, window)
+
+        await #expect(throws: ItemRepositoryError.notFound) {
+            try await h.repository.deleteOccurrence(detached, on: moved)
+        }
+        #expect(await h.eventStarts(ref, window) == before)
+        #expect(before.contains(start.addingTimeInterval(2 * day)))
+    }
+
     static func completeAndUncompleteOneOff(_ make: () async -> RepositoryHarness) async throws {
         let h = await make()
         let ref = try await h.repository.addReminder(NewReminder(title: "Call", due: start), listID: h.listID)
@@ -382,6 +404,9 @@ struct FakeItemRepositoryContractTests {
     }
     @Test func deleteOccurrenceRemovesTheTappedDetachedOne() async throws {
         try await ItemRepositoryContract.deleteOccurrenceRemovesTheTappedDetachedOne(Self.make)
+    }
+    @Test func deleteOccurrenceWithAStaleDetachedIDIsNotFound() async throws {
+        try await ItemRepositoryContract.deleteOccurrenceWithAStaleDetachedIDIsNotFound(Self.make)
     }
     @Test func completeAndUncompleteOneOff() async throws {
         try await ItemRepositoryContract.completeAndUncompleteOneOff(Self.make)

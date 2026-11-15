@@ -200,8 +200,8 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
 
     /// Removes the occurrence that falls on `date`'s day with `.thisEvent`. A non-repeating event
     /// is deleted (as `FakeItemRepository` does). A detached occurrence's own ref (`/RID=`) is
-    /// matched by its `eventIdentifier` first: it keeps its ORIGINAL `occurrenceDate`, so the day
-    /// match would pick the series' regular occurrence on the day it was moved to.
+    /// matched by its `eventIdentifier` only (not found otherwise): it keeps its ORIGINAL
+    /// `occurrenceDate`, so the day match would pick the series' regular occurrence on that day.
     @concurrent
     func deleteOccurrence(_ ref: AppleItemRef, on date: Date) async throws {
         try locked {
@@ -217,9 +217,16 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
             let seriesID = Self.seriesID(master.eventIdentifier ?? ref.identifier)
             let predicate = store.predicateForEvents(withStart: dayStart, end: dayEnd, calendars: [calendar])
             let candidates = store.events(matching: predicate)
-            let exact = ref.identifier.contains("/RID=")
-                ? candidates.first { $0.eventIdentifier == ref.identifier } : nil
-            guard let occurrence = exact ?? candidates.first(where: { candidate in
+            if ref.identifier.contains("/RID=") {
+                // Exact match only: a stale or reissued detached id must never fall back to the
+                // day match, which would delete the series' regular occurrence on that day.
+                guard let occurrence = candidates.first(where: { $0.eventIdentifier == ref.identifier }) else {
+                    throw ItemRepositoryError.notFound
+                }
+                try remove(occurrence, span: .thisEvent)
+                return
+            }
+            guard let occurrence = candidates.first(where: { candidate in
                 Self.seriesID(candidate.eventIdentifier ?? "") == seriesID
                     && days.isDate(candidate.occurrenceDate ?? candidate.startDate, inSameDayAs: date)
             }) else { throw ItemRepositoryError.notFound }
