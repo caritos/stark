@@ -66,9 +66,16 @@ existing items with a preview, the `.ics` files left on the phone as a backup; a
 
 - Recurring reminders behave as in Apple's Reminders app: completing one moves it to its next
   occurrence. "Skip this occurrence" is removed for reminders. Completion history for recurring
-  reminders is no longer recorded by Stark (Apple keeps the completion date of the last one). The
+  reminders is no longer recorded by Stark (Apple keeps the completion date of the last one; see the
+  correction below). The
   overdue carry of several misses becomes Apple's single open occurrence (already how the overlay shows
   it). The Weekly Review and the history views show what Apple's data supports.
+- **Correction (2026-11-15, after the Task 1 spikes, `2026-11-15-eventkit-write-spikes.md` (a)):**
+  "Apple keeps the completion date of the last one" is wrong. Completing a repeating `EKReminder`
+  leaves a separate completed copy (its own identifier, due date and completion date) for every
+  completion while the open reminder moves to its next date, so Apple keeps a completed copy per
+  completion. Stark still keeps no history of its own for repeating reminders; Weekly Review counts
+  those copies like completed one-offs.
 - Converting an event to a reminder and back becomes "create the other, delete this one".
 - Events: "skip one occurrence" maps to deleting that occurrence (span this event); attended/skipped
   outcomes stay in the sidecar.
