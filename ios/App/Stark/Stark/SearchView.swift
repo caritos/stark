@@ -57,7 +57,8 @@ struct SearchView: View {
                                 selectedItem = item
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(AgendaFormat.shortDate(item.displayDate))
+                                    // "No date" for an undated Apple reminder (never its sentinel).
+                                    Text(item.isUndatedApple ? AgendaItem.noDateText : AgendaFormat.shortDate(item.displayDate))
                                         .font(Fonts.mono(11))
                                         .foregroundStyle(Colors.textSecondary)
                                     AgendaRowView(item: item)

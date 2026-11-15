@@ -7,14 +7,19 @@ import StarkKit
 /// already-used matching token as a tappable chip; tapping one completes the word in place.
 /// Renders nothing (not even empty space) when there's no active prefix or no matches, so it
 /// never reserves layout it isn't using.
+///
+/// Tags used only in Apple titles or notes are suggested too (`apple:` = the overlay's snapshot:
+/// every open reminder, the events the open screens fetched, two years of them while Search is open).
 struct TagSuggestionRow: View {
     @EnvironmentObject private var store: PlannerStore
+    @Environment(AppleOverlayModel.self) private var overlay
     let text: String
     let onApply: (String) -> Void
 
     private var suggestions: [String] {
         guard let prefix = TagAutocomplete.currentPrefix(in: text) else { return [] }
-        return TagAutocomplete.suggestions(for: prefix, events: store.events, reminders: store.reminders)
+        return TagAutocomplete.suggestions(for: prefix, events: store.events, reminders: store.reminders,
+                                           apple: overlay.snapshot)
     }
 
     var body: some View {

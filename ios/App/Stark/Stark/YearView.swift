@@ -20,6 +20,8 @@ import StarkKit
 struct YearView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
+    /// Apple reminders' plan blocks (sidecar), counted with Stark's own like the agenda does.
+    @Environment(PlanCache.self) private var planCache
     /// The year on screen. Starts as the selected day's year; the chevrons change it.
     @State private var year: Int
     /// The last computed density, tagged with the year it belongs to (see `MonthGridView`).
@@ -130,7 +132,8 @@ struct YearView: View {
     }
 
     private var densityInputs: DensityInputs {
-        DensityInputs(year: year, today: today, events: store.events, reminders: store.reminders, plans: store.plans,
+        DensityInputs(year: year, today: today, events: store.events, reminders: store.reminders,
+                      plans: PlannerPlans.all(local: store.plans, apple: planCache.applePlans),
                       apple: overlay.snapshot)
     }
 

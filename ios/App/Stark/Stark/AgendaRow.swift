@@ -218,6 +218,8 @@ struct AgendaRowView: View {
                 return (text, true)
             }
             if item.isCompleted, let note = item.completionNote { return (note, false) }
+            // An undated Apple reminder's occurrence is a sentinel: no time of day to show.
+            if item.isUndatedApple { return nil }
             guard !AgendaFormat.isMidnight(item.occurrence) else { return nil }
             return (AgendaFormat.time(item.occurrence), false)
         }

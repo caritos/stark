@@ -36,6 +36,8 @@ struct GridPagingRequest: Equatable {
 struct MonthGridView: View {
     @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
+    /// Apple reminders' plan blocks (sidecar), counted with Stark's own like the agenda does.
+    @Environment(PlanCache.self) private var planCache
     @State private var visibleMonth = YearMonth(date: Date())
     /// The last computed density, tagged with the month it belongs to. Recomputed only when its
     /// inputs change (see `DensityInputs`), never in `body`: `body` re-runs on unrelated updates
@@ -193,7 +195,8 @@ struct MonthGridView: View {
     }
 
     private var densityInputs: DensityInputs {
-        DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders, plans: store.plans,
+        DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders,
+                      plans: PlannerPlans.all(local: store.plans, apple: planCache.applePlans),
                       apple: overlay.snapshot)
     }
 

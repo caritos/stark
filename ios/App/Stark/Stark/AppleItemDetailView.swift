@@ -147,6 +147,8 @@ struct AppleItemDetailView: View {
     /// missed date, so it gets no separate day line.
     private var dayLine: String? {
         if item.isOverdue { return nil }
+        // An undated reminder's occurrence is a sentinel, never shown.
+        if item.isUndatedApple { return AgendaItem.noDateText }
         return "\(AgendaFormat.weekdayName(item.occurrence)), \(AgendaFormat.monthDay(item.occurrence))"
     }
 

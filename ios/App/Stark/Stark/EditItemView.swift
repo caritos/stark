@@ -70,19 +70,34 @@ struct EditItemView: View {
                     TextField("Title", text: $form.title)
                         .focused($focusedField, equals: .title)
                     TagSuggestionRow(text: form.title) { form.title = TagAutocomplete.applying($0, to: form.title) }
-                    DatePicker(dateLabel, selection: $form.date,
-                               displayedComponents: form.allDay ? [.date] : [.date, .hourAndMinute])
-                        .onChange(of: form.date) { oldValue, newValue in
-                            // Moving the start moves the end with it, so the duration is kept.
-                            form.endDate = EventSchedule.shiftedEnd(form.endDate, oldStart: oldValue, newStart: newValue)
-                            // A repeat end never precedes the start's day.
-                            form.repeatEnd = form.repeatEnd.clamped(toStartOn: newValue)
+                    if showsNoDate {
+                        // An undated Apple reminder: its row date is a sentinel, never shown, and
+                        // saving untouched keeps it undated (`ItemEditForm.showsNoDate`).
+                        HStack {
+                            Text(dateLabel)
+                            Spacer()
+                            Text(AgendaItem.noDateText).foregroundStyle(Colors.textSecondary)
                         }
-                    if isEvent {
-                        DatePicker("Ends", selection: $form.endDate, in: form.date...,
+                        .accessibilityElement(children: .combine)
+                        Button("Add Date") { form.addDueDate(on: Date()) }
+                            .foregroundStyle(Colors.accent)
+                            .accessibilityLabel("Add a due date")
+                            .accessibilityHint("Sets the due date to today. You can change it afterwards.")
+                    } else {
+                        DatePicker(dateLabel, selection: $form.date,
                                    displayedComponents: form.allDay ? [.date] : [.date, .hourAndMinute])
+                            .onChange(of: form.date) { oldValue, newValue in
+                                // Moving the start moves the end with it, so the duration is kept.
+                                form.endDate = EventSchedule.shiftedEnd(form.endDate, oldStart: oldValue, newStart: newValue)
+                                // A repeat end never precedes the start's day.
+                                form.repeatEnd = form.repeatEnd.clamped(toStartOn: newValue)
+                            }
+                        if isEvent {
+                            DatePicker("Ends", selection: $form.endDate, in: form.date...,
+                                       displayedComponents: form.allDay ? [.date] : [.date, .hourAndMinute])
+                        }
+                        Toggle("All day", isOn: $form.allDay)
                     }
-                    Toggle("All day", isOn: $form.allDay)
 
                     if hasUnrepresentableRepeat {
                         // Never offered for editing and never part of a patch: the stored rule
@@ -217,6 +232,11 @@ struct EditItemView: View {
                 // Repeat = Never resets the end.
                 if newValue == nil { form.repeatEnd = .never }
             }
+            .onChange(of: kind) { _, newKind in
+                // An undated Apple reminder converted to an event needs a real start: today,
+                // all day (never the sentinel date).
+                if newKind == .event && isApple && form.showsNoDate { form.addDueDate(on: Date()) }
+            }
             .task {
                 // Full-history corpus for tag suggestions (`+`/`@`/`%`/`~`); non-blocking --
                 // suggestions simply improve as more months finish loading, same as Search.
@@ -287,6 +307,10 @@ struct EditItemView: View {
     // MARK: Derived state
 
     private var isApple: Bool { details != nil }
+
+    /// An Apple reminder with no due date that the owner has not given one: "No date" instead of
+    /// the sentinel date. Stark's own undated reminders keep the old picker (local unchanged).
+    private var showsNoDate: Bool { isApple && !isEvent && form.showsNoDate }
 
     private var hasUnrepresentableRepeat: Bool { details?.hasUnrepresentableRepeat == true }
 
