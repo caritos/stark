@@ -195,6 +195,7 @@ mobile/                       ← Expo Router iOS app — DEPRECATED (2026-09-22
 ## Fantastical redesign log (2026-11-15)
 
 - **Stage 1 (foundation), plan `docs/superpowers/plans/2026-11-15-fantastical-visual-stage1.md`**: adaptive light/dark tokens, no forced dark, system font, round buttons, Add/Edit/detail/settings as grouped cards, other screens on the new tokens; no layout or behaviour change. Done: `swift test` 1094, simulator screenshots in light and dark of agenda, Add, Edit (incl. AX5 Dynamic Type), Settings, Apple settings, FAQ, Search, Weekly Review, year, planner, past day. **Not yet verified**: on a device; the Apple read-only detail screen, a reminder's Edit screen, Repeat End/On Days pages, the error banner, tag chips, a placed (accent) planner block, and Search results in light mode were not seen on screen; year-view density tints are faint in dark; Claude Code settings shows a Keychain error only in the unsigned simulator build. Per-task review was a controller screenshot check (ruling), no separate reviewer.
+- **Shipped (2026-11-15)**: merged to main (07afe28), suite green, Release build ok, TestFlight v2.0.25 (build 27) uploaded; Add no longer has a calendar/list picker (default from Settings) and the edit sheet dropped Skip/Undo (7d16605, 0c2b43b).
 - **Next**: stage 2 agenda (week ticker, Fantastical rows; needs the owner's main-screen screenshots), stage 3 month/year, stage 4 planner (+ split PlannerView.swift), stage 5 polish (website screenshots, icon). Cleanup issue #122 (dead Skip/Undo code).
 
 ## Apple overlay log (2026-11-15)
