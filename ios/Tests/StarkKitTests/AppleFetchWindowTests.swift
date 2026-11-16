@@ -71,4 +71,13 @@ struct AppleFetchWindowTests {
         window.set(.fullMonth, nil)
         #expect(window.covering == day(30)...day(120))
     }
+
+    @Test func fullDayAndFullWeekAreSeparateScreens() {
+        var window = AppleFetchWindow()
+        window.set(.fullDay, day(0)...day(1))
+        window.set(.fullWeek, day(10)...day(17))
+        #expect(window.covering == day(0)...day(17))
+        window.set(.fullDay, nil)
+        #expect(window.covering == day(10)...day(17))
+    }
 }

@@ -3,11 +3,13 @@
 /// The choices in the calendar's view menu, in menu order. DayTicker covers the week and
 /// month modes; Month and Quarter are the full-screen grids.
 public enum CalendarViewChoice: CaseIterable, Equatable, Sendable {
-    case dayTicker, month, quarter, year
+    case dayTicker, day, week, month, quarter, year
 
     public var title: String {
         switch self {
         case .dayTicker: return "DayTicker"
+        case .day: return "Day"
+        case .week: return "Week"
         case .month: return "Month"
         case .quarter: return "Quarter"
         case .year: return "Year"
@@ -17,6 +19,8 @@ public enum CalendarViewChoice: CaseIterable, Equatable, Sendable {
     public var systemImage: String {
         switch self {
         case .dayTicker: return "calendar.day.timeline.left"
+        case .day: return "rectangle.portrait"
+        case .week: return "rectangle.split.3x1"
         case .month: return "square.grid.3x3"
         case .quarter: return "rectangle.split.3x3"
         case .year: return "calendar"
@@ -26,13 +30,15 @@ public enum CalendarViewChoice: CaseIterable, Equatable, Sendable {
 
 /// Which full-screen calendar covers the DayTicker and agenda, if any.
 public enum FullScreenCalendar: Equatable, Sendable {
-    case none, month, quarter
+    case none, day, week, month, quarter
 }
 
 public enum CalendarViewMenu {
     /// The menu choice that matches the screen: a full-screen calendar wins, then year mode.
     public static func current(for mode: CalendarMode, full: FullScreenCalendar) -> CalendarViewChoice {
         switch full {
+        case .day: return .day
+        case .week: return .week
         case .month: return .month
         case .quarter: return .quarter
         case .none: return mode == .year ? .year : .dayTicker
@@ -47,6 +53,8 @@ public enum CalendarViewMenu {
     ) -> (mode: CalendarMode, full: FullScreenCalendar) {
         let underFull: CalendarMode = mode == .year ? .month : mode
         switch choice {
+        case .day: return (underFull, .day)
+        case .week: return (underFull, .week)
         case .month: return (underFull, .month)
         case .quarter: return (underFull, .quarter)
         case .year: return (.year, .none)

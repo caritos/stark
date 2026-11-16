@@ -10,6 +10,10 @@ public struct AppleFetchWindow: Equatable, Sendable {
         case agenda
         case monthGrid
         case year
+        /// The full-screen Day view while it is shown: the viewed day.
+        case fullDay
+        /// The full-screen Week view while it is shown: the viewed 7 days.
+        case fullWeek
         /// The full-screen Month view while it is shown: its visible 6-week grid.
         case fullMonth
         /// The full-screen Quarter view while it is shown: its visible 13-week grid.

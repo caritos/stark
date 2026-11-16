@@ -273,7 +273,8 @@ struct ContentView: View {
     }
 
     /// The year or the full Month/Quarter covers the grid and agenda (which stay alive underneath).
-    private var coversAgenda: Bool { mode == .year || full != .none }
+    // Day and Week have no screen yet (stage 4a tasks 3-4), so they leave the agenda showing.
+    private var coversAgenda: Bool { mode == .year || full == .month || full == .quarter }
 
     /// A day tapped in the full Month or Quarter: select it and return to the DayTicker there.
     private func leaveFullScreen(to date: Date) {
