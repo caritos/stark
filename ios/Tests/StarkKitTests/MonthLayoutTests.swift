@@ -178,4 +178,53 @@ struct MonthLayoutTests {
         #expect(w[1].lines[2].map(\.title) == ["Late"])
         #expect(w[0].lines.allSatisfy { $0.isEmpty })
     }
+
+    @Test func keptBarInLabelRowCountsAsHiddenOnOverflowingDay() {
+        // Capacity 3, bars A, B across the week (lanes 0, 1) and C on cols 0-1 (lane 2), plus one
+        // line on col 0. Col 0 overflows (3 lanes + 1 line > 3): C and the line are hidden -> 2.
+        // Col 1 holds exactly 3 rows, no overflow, so C stays in `bars` and col 1 counts 0.
+        let a = allDay("a", "2026-11-01", end: "2026-11-07")
+        let b = allDay("b", "2026-11-01", end: "2026-11-06")
+        let c = allDay("c", "2026-11-01", end: "2026-11-02")
+        let r = Reminder(id: "r", title: "R", dueDate: at("2026-11-01", 9))
+        let items = rows(a, from: "2026-11-01", days: 7) + rows(b, from: "2026-11-01", days: 6)
+            + rows(c, from: "2026-11-01", days: 2) + [reminderRow(r, day: "2026-11-01")]
+        let w = layout(items, cap: 3)[0]
+        #expect(w.bars.first { $0.title == "c" }?.lane == 2)
+        #expect(w.overflow[0] == 2)
+        #expect(w.lines[0].isEmpty)
+        #expect(w.overflow[1] == 0)
+    }
+
+    @Test func rowCapacityOneHidesEverythingOnBusyDays() {
+        let r1 = Reminder(id: "r1", title: "A", dueDate: at("2026-11-04", 9))
+        let r2 = Reminder(id: "r2", title: "B", dueDate: at("2026-11-04", 10))
+        let r3 = Reminder(id: "r3", title: "C", dueDate: at("2026-11-05", 10))
+        let w = layout([reminderRow(r1, day: "2026-11-04"), reminderRow(r2, day: "2026-11-04"),
+                        reminderRow(r3, day: "2026-11-05")], cap: 1)[0]
+        #expect(w.lines[3].isEmpty && w.overflow[3] == 2)
+        #expect(w.lines[4].count == 1 && w.overflow[4] == 0)
+    }
+
+    @Test func barLongerThanAWeekKeepsLinesInSecondWeek() {
+        let e = allDay("a", "2026-11-05", end: "2026-11-12")
+        let r = Reminder(id: "r", title: "R", dueDate: at("2026-11-10", 9))
+        let w = layout(rows(e, from: "2026-11-05", days: 8) + [reminderRow(r, day: "2026-11-10")])
+        #expect(w[0].bars.count == 1 && w[0].bars[0].continuesAfter)
+        #expect(w[1].bars.count == 1 && w[1].bars[0].continuesBefore && !w[1].bars[0].continuesAfter)
+        #expect(w[1].bars[0].endColumn == 4)
+        #expect(w[1].lines[2].map(\.title) == ["R"])
+    }
+
+    @Test func lanesArePlacedLongestFirst() {
+        // The shorter bar starts earlier but the longer one takes lane 0.
+        let short = allDay("short", "2026-11-02", end: "2026-11-03")
+        let long = allDay("long", "2026-11-03", end: "2026-11-06")
+        let w = layout(rows(short, from: "2026-11-02", days: 2) + rows(long, from: "2026-11-03", days: 4))
+        let lanes = Dictionary(uniqueKeysWithValues: w[0].bars.map { ($0.title, $0.lane) })
+        #expect(lanes["long"] == 0 && lanes["short"] == 1)
+    }
+
+    // Known gap: a clipped RECURRING event (or an Apple series) has no known real start, so its
+    // first grid day is taken as the chunk start and it does not report continuesBefore.
 }

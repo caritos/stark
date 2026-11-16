@@ -45,7 +45,13 @@ public func monthLayout(items: [AgendaItem], month: YearMonth, rowCapacity: Int,
     let weekCount = dayCount / 7
     var indexByISO: [String: Int] = [:]
     for (i, d) in days.enumerated() { indexByISO[d.iso] = i }
-    func index(of date: Date) -> Int? { indexByISO[DateMath.isoDate(from: date)] }
+    func index(of date: Date) -> Int? {
+        // Day in the passed calendar's zone (DateMath's own zone is TimeZone.current; callers
+        // keep the two equal, see `dayDensity`).
+        let c = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let y = c.year, let m = c.month, let d = c.day else { return nil }
+        return indexByISO[DateMath.isoDate(year: y, month0: m - 1, day: d)]
+    }
 
     // Split rows into bar candidates (by event id) and per-day lines.
     var barDays: [String: (event: Event, source: AppleSource?, days: Set<Int>)] = [:]
@@ -162,10 +168,12 @@ public func monthLayout(items: [AgendaItem], month: YearMonth, rowCapacity: Int,
             if !overflowing[col] {
                 lines.append(allLines[col]); overflow.append(0); continue
             }
-            let used = lanesUsed(kept, col)
+            // Every bar at lane >= cap - 1 covering this day sits in (or below) the row the
+            // "N more" label takes, so it is hidden here whether or not it stays in `bars`.
+            let used = lanesUsed(kept.filter { $0.lane < cap - 1 }, col)
             let shown = max(0, cap - 1 - used)
             let hiddenBars = placed.filter {
-                $0.startColumn <= col && col <= $0.endColumn && !kept.contains($0)
+                $0.startColumn <= col && col <= $0.endColumn && $0.lane >= cap - 1
             }.count
             lines.append(Array(allLines[col].prefix(shown)))
             overflow.append(hiddenBars + max(0, allLines[col].count - shown))
