@@ -54,6 +54,7 @@ struct RepeatEndPickerView: View {
 
     var body: some View {
         List {
+            Section {
             row("Never", isSelected: isNever) {
                 end = .never
             }
@@ -75,7 +76,12 @@ struct RepeatEndPickerView: View {
                         value: count, in: 1...999)
                     .foregroundStyle(Colors.text)
             }
+            }
+            .listRowBackground(Colors.card)
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Colors.background)
         .navigationTitle("Repeat End")
     }
 

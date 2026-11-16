@@ -164,8 +164,7 @@ struct AppleItemDetailView: View {
                 Section {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(item.title)
-                            .font(.title3)
-                            .fontWeight(.semibold)
+                            .font(.title.weight(.bold))
                             .foregroundStyle(item.isCompleted ? Colors.textSecondary : Colors.text)
                             .strikethrough(item.isCompleted)
                         if let dayLine {
@@ -186,7 +185,8 @@ struct AppleItemDetailView: View {
                     }
                     .padding(.vertical, Spacing.xs)
                 }
-                .listRowBackground(Colors.background)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: Spacing.sm, leading: Spacing.xs, bottom: Spacing.sm, trailing: Spacing.xs))
 
                 if location != nil || urlText != nil || notes != nil {
                     Section {
@@ -201,7 +201,7 @@ struct AppleItemDetailView: View {
                         }
                         if let notes { field("Notes", notes) }
                     }
-                    .listRowBackground(Colors.background)
+                    .listRowBackground(Colors.card)
                 }
 
                 if let source {
@@ -213,7 +213,7 @@ struct AppleItemDetailView: View {
                             .font(.footnote)
                             .foregroundStyle(Colors.textSecondary)
                     }
-                    .listRowBackground(Colors.background)
+                    .listRowBackground(Colors.card)
                 }
 
                 if let link = appleOpenURL(for: item) {
@@ -222,11 +222,10 @@ struct AppleItemDetailView: View {
                         Button(openTitle) { openURL(link) }
                             .foregroundStyle(Colors.accent)
                     }
-                    .listRowBackground(Colors.background)
+                    .listRowBackground(Colors.card)
                 }
             }
-            // Flat list rows (not inset-grouped rounded cards) to keep hard edges.
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Colors.background)
             .listRowSeparatorTint(Colors.separator)

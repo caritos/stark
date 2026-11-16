@@ -5,13 +5,19 @@ struct OnDaysPickerView: View {
 
     var body: some View {
         List {
+            Section {
             // The real last day of whichever month it is (28-31), stored as -1 (issue #112).
             // Combines with numbered days ("the 15th and the last day").
             row(label: "Last day of the month", value: -1)
             ForEach(1...31, id: \.self) { day in
                 row(label: "\(day)", value: day)
             }
+            }
+            .listRowBackground(Colors.card)
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Colors.background)
         .navigationTitle("On Days")
     }
 

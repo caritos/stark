@@ -49,9 +49,12 @@ struct AddItemView: View {
         NavigationStack {
             Form {
                 destinationSection
+                Section {
                 TextField("Title", text: $title)
                     .focused($focusedField, equals: .title)
                 TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
+                }
+                Section {
                 DatePicker(kind == .event ? "Starts" : "Due", selection: $date,
                            displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
                     .onChange(of: date) { oldValue, newValue in
@@ -65,7 +68,9 @@ struct AddItemView: View {
                                displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
                 }
                 Toggle("All day", isOn: $allDay)
+                }
 
+                Section {
                 NavigationLink {
                     RepeatPickerView(recurrence: $recurrence)
                 } label: {
@@ -87,7 +92,9 @@ struct AddItemView: View {
                         }
                     }
                 }
+                }
 
+                Section {
                 if kind == .event {
                     TextField("URL", text: $url)
                         .keyboardType(.URL)
@@ -109,7 +116,10 @@ struct AddItemView: View {
                     .lineLimit(1...6)
                     .focused($focusedField, equals: .notes)
                 TagSuggestionRow(text: notes) { notes = TagAutocomplete.applying($0, to: notes) }
+                }
             }
+            .scrollContentBackground(.hidden)
+            .background(Colors.background)
             .onChange(of: recurrence) { _, newValue in
                 // Repeat = Never resets the end.
                 if newValue == nil { repeatEnd = .never }
@@ -194,6 +204,7 @@ struct AddItemView: View {
     @ViewBuilder
     private var destinationSection: some View {
         if let message = AddDestination.message(destinationState, isEvent: isEvent) {
+            Section {
             VStack(alignment: .leading, spacing: Spacing.sm) {
                 Text(message)
                     .font(.footnote)
@@ -201,6 +212,7 @@ struct AddItemView: View {
                 Button("Open Settings") { onOpenSettings() }
                     .foregroundStyle(Colors.accent)
                     .accessibilityHint("Closes Add and opens Stark's Settings.")
+            }
             }
         }
         // No picker: the Event / Reminder switch above decides the kind, and the calendar or list

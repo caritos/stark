@@ -63,13 +63,15 @@ struct EditItemView: View {
 
     var body: some View {
         NavigationStack {
-            // A plain-style `List`, not `Form`: `Form` on iOS forces inset-grouped rounded
-            // cards regardless of `.listStyle`, and the design has no rounded corners.
             List {
                 Section {
                     TextField("Title", text: $form.title)
                         .focused($focusedField, equals: .title)
                     TagSuggestionRow(text: form.title) { form.title = TagAutocomplete.applying($0, to: form.title) }
+                }
+                .listRowBackground(Colors.card)
+
+                Section {
                     if showsNoDate {
                         // An undated Apple reminder: its row date is a sentinel, never shown, and
                         // saving untouched keeps it undated (`ItemEditForm.showsNoDate`).
@@ -98,7 +100,10 @@ struct EditItemView: View {
                         }
                         Toggle("All day", isOn: $form.allDay)
                     }
+                }
+                .listRowBackground(Colors.card)
 
+                Section {
                     if hasUnrepresentableRepeat {
                         // Never offered for editing and never part of a patch: the stored rule
                         // has a shape Stark's picker can't express.
@@ -131,7 +136,10 @@ struct EditItemView: View {
                             }
                         }
                     }
+                }
+                .listRowBackground(Colors.card)
 
+                Section {
                     if isEvent {
                         TextField("Location", text: $form.location)
                             .focused($focusedField, equals: .location)
@@ -177,7 +185,7 @@ struct EditItemView: View {
                     .font(.footnote)
                     .foregroundStyle(Colors.textSecondary)
                 }
-                .listRowBackground(Colors.background)
+                .listRowBackground(Colors.card)
 
                 if !isConverting, let history, !history.entries.isEmpty {
                     Section("History") {
@@ -187,7 +195,7 @@ struct EditItemView: View {
                                 .foregroundStyle(Colors.textSecondary)
                         }
                     }
-                    .listRowBackground(Colors.background)
+                    .listRowBackground(Colors.card)
                 }
 
                 Section {
@@ -203,13 +211,19 @@ struct EditItemView: View {
                     if !isConverting && showsDone {
                         Button("Done") { markDone() }.foregroundStyle(Colors.accent)
                     }
-                    Button("Delete", role: .destructive) { showDeleteConfirm = true }
                 }
                 .disabled(isWorking)
-                .listRowBackground(Colors.background)
+                .listRowBackground(Colors.card)
+
+                Section {
+                    Button(role: .destructive) { showDeleteConfirm = true } label: {
+                        Text("Delete \(isEvent ? "Event" : "Reminder")").frame(maxWidth: .infinity)
+                    }
+                }
+                .disabled(isWorking)
+                .listRowBackground(Colors.card)
             }
-            // Flat list rows (not inset-grouped rounded cards) to keep hard edges.
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Colors.background)
             .listRowSeparatorTint(Colors.separator)

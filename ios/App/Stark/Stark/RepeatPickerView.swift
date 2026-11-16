@@ -32,6 +32,7 @@ struct RepeatPickerView: View {
 
     var body: some View {
         List {
+            Section {
             ForEach(RepeatPreset.allCases) { preset in
                 if preset == .custom {
                     NavigationLink {
@@ -60,7 +61,12 @@ struct RepeatPickerView: View {
                     }
                 }
             }
+            }
+            .listRowBackground(Colors.card)
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Colors.background)
         .navigationTitle("Repeat")
     }
 

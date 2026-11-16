@@ -39,6 +39,7 @@ struct CustomRepeatView: View {
                     Text(summary).foregroundStyle(Colors.textSecondary)
                 }
             }
+.listRowBackground(Colors.card)
 
             intervalUnitSection
 
@@ -58,6 +59,7 @@ struct CustomRepeatView: View {
                         }
                     }
                 }
+.listRowBackground(Colors.card)
             }
 
             if unit == .monthly || unit == .yearly {
@@ -77,6 +79,7 @@ struct CustomRepeatView: View {
                             }
                         }
                     }
+.listRowBackground(Colors.card)
                 }
 
                 Section {
@@ -112,8 +115,11 @@ struct CustomRepeatView: View {
                         }
                     }
                 }
+.listRowBackground(Colors.card)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Colors.background)
         .navigationTitle("Custom")
         // Deliberately no `.onAppear { commit() }`: that used to commit a default daily rule
         // the instant this screen appeared, so navigating in from "Never" and immediately
@@ -173,6 +179,7 @@ struct CustomRepeatView: View {
                 .labelsHidden()
             }
         }
+.listRowBackground(Colors.card)
 #else
         Section {
             HStack {
@@ -193,6 +200,7 @@ struct CustomRepeatView: View {
             }
             .frame(height: 216)
         }
+.listRowBackground(Colors.card)
 #endif
     }
 
