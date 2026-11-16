@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var showAdd = false
     @State private var showSearch = false
     @State private var showSettings = false
+    @State private var showCalendars = false
     @State private var selectedItem: AgendaItem?
     @State private var selectedDate: Date
     @State private var scrollRequest: ScrollRequest?
@@ -171,20 +172,16 @@ struct ContentView: View {
             }
         }
         .background(Colors.background)
-        // A floating action button (Fantastical-style) instead of a nav-bar "Add" button,
-        // which read as too much real-estate on the iPhone's title bar. Square, not circular —
-        // this app has no rounded corners anywhere else (Braun/Bauhaus), so a circular FAB
-        // would be the one exception. Overlaid on the whole screen (not just the agenda), so
-        // it stays reachable and visible even in year mode, above the YearView overlay.
-        .overlay(alignment: .bottomTrailing) {
-            HStack(spacing: Spacing.sm) {
-                settingsButton
-                searchButton
-                addButton
-            }
-            .padding(Spacing.lg)
+        // Fantastical-style floating bottom bar instead of a nav-bar "Add" button. Overlaid on the
+        // whole screen (not just the agenda), so it stays reachable in year mode too. The agenda
+        // and the year view reserve `FloatingBottomBar.clearance` so their last rows clear it.
+        .overlay(alignment: .bottom) {
+            FloatingBottomBar(onSettings: { showSettings = true },
+                              onCalendars: { showCalendars = true },
+                              onSearch: { showSearch = true },
+                              onAdd: { showAdd = true })
         }
-        // No navigation title and, since the FAB replaced the toolbar Add button above, no
+        // No navigation title and, since the bottom bar replaced the toolbar Add button above, no
         // toolbar content either -- an empty nav bar was still reserving its full height,
         // showing as a band of dead space above the month grid. Hidden entirely; this screen
         // never pushes further destinations from itself (Add/Edit are sheets, not pushes), so
@@ -202,6 +199,7 @@ struct ContentView: View {
             })
         }
         .sheet(isPresented: $showSearch) { SearchView() }
+        .sheet(isPresented: $showCalendars) { CalendarsSheet() }
         .sheet(isPresented: $showSettings) { SettingsView(secrets: secrets) }
         .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item, today: today) }
         .fullScreenCover(item: $planRequest) { request in PlannerView(day: request.day, today: today) }
@@ -246,60 +244,6 @@ struct ContentView: View {
             // EKEventStoreChanged is not reliable after a save (write spike f).
             if case .added = outcome { await overlay.refreshAfterWrite() }
         }
-    }
-
-    /// Square (hard-edged, matching the rest of the app), accent-filled, no shadow or glass
-    /// effect — flat like `SquareToolbarButton`. 56pt is the usual floating-action-button minimum
-    /// touch target. Padding off the screen corner now lives on the HStack wrapping this and
-    /// `searchButton` together, not on each button individually (that would double the gap
-    /// between them).
-    private var addButton: some View {
-        Button {
-            showAdd = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(Circle().fill(Colors.accent))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Add")
-    }
-
-    /// Same square/flat/accent style as `addButton`, magnifying-glass glyph, positioned to its
-    /// left in the bottom-trailing HStack.
-    private var searchButton: some View {
-        Button {
-            showSearch = true
-        } label: {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(Circle().fill(Colors.accent))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Search")
-    }
-
-    /// Same square/flat/accent style as `addButton`/`searchButton`, gearshape glyph, leftmost in
-    /// the bottom-trailing HStack (Add stays rightmost/closest to the corner as the primary action).
-    private var settingsButton: some View {
-        Button {
-            showSettings = true
-        } label: {
-            Image(systemName: "gearshape")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(Circle().fill(Colors.accent))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Settings")
     }
 
     /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone

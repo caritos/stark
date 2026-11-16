@@ -73,6 +73,7 @@ struct YearView: View {
                 .padding(.horizontal, Spacing.md)
                 .padding(.vertical, Spacing.sm)
             }
+            .contentMargins(.bottom, FloatingBottomBar.clearance, for: .scrollContent)
 
             #if !targetEnvironment(macCatalyst)
             ModeHandle(mode: $mode)

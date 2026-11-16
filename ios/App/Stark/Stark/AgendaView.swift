@@ -124,6 +124,7 @@ struct AgendaView: View {
                     }
                 }
                 .listStyle(.plain)
+                .contentMargins(.bottom, FloatingBottomBar.clearance, for: .scrollContent)
                 // Lets a bare empty-day header be as short as its content; every other row
                 // restores the old minimum via `rowMinHeight`.
                 .environment(\.defaultMinListRowHeight, 0)
