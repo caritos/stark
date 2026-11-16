@@ -90,7 +90,8 @@ struct GridDensityTests {
 
     private func appleEvent(_ id: String, cal: String, hex: String?, day: String = "2026-09-15", hour: Double = 2) -> AppleCalendarEvent {
         let info = AppleCalendarInfo(id: cal, title: cal, accountName: "a", colorHex: hex, isReminderList: false)
-        let start = d(day).addingTimeInterval(hour * 3600)
+        // `d` is 12:00 local, so `hour` (a local clock hour) is applied relative to noon.
+        let start = d(day).addingTimeInterval((hour - 12) * 3600)
         return AppleCalendarEvent(id: id, title: id, notes: nil, location: nil, url: nil,
                                   start: start, end: start.addingTimeInterval(3600), isAllDay: false, calendar: info)
     }
@@ -102,19 +103,19 @@ struct GridDensityTests {
 
     @Test("two calendars on one day give both colours in first-seen order")
     func eventColorsTwoCalendars() {
-        #expect(colors([appleEvent("a", cal: "c1", hex: "#FF0000", hour: 2),
-                        appleEvent("b", cal: "c2", hex: "#00FF00", hour: 2.2)]) == [0xFF0000, 0x00FF00])
+        #expect(colors([appleEvent("a", cal: "c1", hex: "#FF0000", hour: 9),
+                        appleEvent("b", cal: "c2", hex: "#00FF00", hour: 9.2)]) == [0xFF0000, 0x00FF00])
     }
 
     @Test("the same calendar twice gives one colour")
     func eventColorsDedup() {
-        #expect(colors([appleEvent("a", cal: "c1", hex: "#FF0000", hour: 2),
-                        appleEvent("b", cal: "c1", hex: "#FF0000", hour: 2.2)]) == [0xFF0000])
+        #expect(colors([appleEvent("a", cal: "c1", hex: "#FF0000", hour: 9),
+                        appleEvent("b", cal: "c1", hex: "#FF0000", hour: 9.2)]) == [0xFF0000])
     }
 
     @Test("six distinct calendars give exactly five colours")
     func eventColorsCap() {
-        let evs = (0..<6).map { appleEvent("e\($0)", cal: "c\($0)", hex: String(format: "#0000%02X", $0 + 1), hour: 2 + Double($0) * 0.1) }
+        let evs = (0..<6).map { appleEvent("e\($0)", cal: "c\($0)", hex: String(format: "#0000%02X", $0 + 1), hour: 9 + Double($0) * 0.1) }
         #expect(colors(evs) == (1...5).map { UInt32($0) })
     }
 
@@ -129,5 +130,36 @@ struct GridDensityTests {
     func eventColorsReminderOnly() {
         let r = gridDensity(events: [], reminders: [Reminder(id: "r", title: "R", dueDate: d("2026-09-25"))], month: sept, today: today)
         #expect(r["2026-09-25"]?.eventColors == [])
+    }
+
+    private func dayColors(_ events: [AppleCalendarEvent], day: Int = 15) -> [UInt32] {
+        dayDensity(events: [], reminders: [], month: sept, today: today,
+                   apple: AppleSnapshot(events: events, reminders: []))[day]?.eventColors ?? []
+    }
+
+    @Test("dayDensity carries an Apple event's calendar colour")
+    func dayDensityEventColor() {
+        #expect(dayColors([appleEvent("a", cal: "c1", hex: "#FF0000")]) == [0xFF0000])
+    }
+
+    @Test("two calendars sharing one colour dedupe to one")
+    func eventColorsSharedColour() {
+        #expect(colors([appleEvent("a", cal: "c1", hex: "#FF0000", hour: 9),
+                        appleEvent("b", cal: "c2", hex: "#FF0000", hour: 9.2)]) == [0xFF0000])
+    }
+
+    @Test("an uncoloured event after a coloured one adds nothing")
+    func eventColorsUncolouredAfter() {
+        let r = gridDensity(events: [], reminders: [], month: sept, today: today,
+                            apple: AppleSnapshot(events: [appleEvent("a", cal: "c1", hex: "#FF0000", hour: 9),
+                                                          appleEvent("b", cal: "c2", hex: nil, hour: 9.2)], reminders: []))["2026-09-15"]
+        #expect(r?.events == 2)
+        #expect(r?.eventColors == [0xFF0000])
+    }
+
+    @Test("a sixth distinct colour does not displace the first five")
+    func eventColorsSixthKeepsFirstFive() {
+        let evs = (0..<6).map { appleEvent("e\($0)", cal: "c\($0)", hex: String(format: "#0000%02X", $0 + 1), hour: 9 + Double($0) * 0.1) }
+        #expect(dayColors(evs) == (1...5).map { UInt32($0) })
     }
 }
