@@ -196,6 +196,14 @@ struct TimelineBlockView: View {
     let day: Date
     let height: CGFloat
     var showsTime = true
+    /// Week's narrow columns: smaller text, a smaller checkbox, tighter padding.
+    var compact = false
+    /// The drawn width, when known: a sliver of an overlap cluster drops the checkbox (under
+    /// 22 pt) and then the title (under 16 pt) rather than showing a glyph and no text.
+    var width: CGFloat = .infinity
+
+    private var showsCheckbox: Bool { block.isReminder && width >= 22 }
+    private var showsTitle: Bool { width >= 16 }
 
     var body: some View {
         let tint = block.colorRGB.map { Color(hex: $0) } ?? (block.isReminder ? Colors.reminderBox : Colors.eventDot)
@@ -203,18 +211,21 @@ struct TimelineBlockView: View {
         HStack(alignment: .top, spacing: 0) {
             Rectangle().fill(tint).frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
-                    if block.isReminder {
+                HStack(alignment: .top, spacing: compact ? 2 : 4) {
+                    if showsCheckbox {
                         RoundedRectangle(cornerRadius: 2.5)
                             .strokeBorder(tint, lineWidth: 1.2)
                             .background(RoundedRectangle(cornerRadius: 2.5).fill(block.isCompleted ? tint : Color.clear))
-                            .frame(width: 11, height: 11)
+                            .frame(width: compact ? 8 : 11, height: compact ? 8 : 11)
+                            .padding(.top, 2)
                     }
-                    Text(block.title)
-                        .font(Fonts.mono(12, weight: .semibold))
-                        .strikethrough(block.isCompleted)
-                        .foregroundStyle(block.isCompleted ? Colors.textSecondary : Colors.text)
-                        .lineLimit(height >= 52 ? 2 : 1)
+                    if showsTitle {
+                        Text(block.title)
+                            .font(Fonts.mono(compact ? 10 : 12, weight: .semibold))
+                            .strikethrough(block.isCompleted)
+                            .foregroundStyle(block.isCompleted ? Colors.textSecondary : Colors.text)
+                            .lineLimit(compact ? max(1, Int((height - 4) / 13)) : (height >= 52 ? 2 : 1))
+                    }
                 }
                 if showsTime && height >= 38 {
                     Text(timeRange)
@@ -223,7 +234,7 @@ struct TimelineBlockView: View {
                         .lineLimit(1)
                 }
             }
-            .padding(.horizontal, 4)
+            .padding(.horizontal, compact ? 2 : 4)
             .padding(.vertical, height >= 30 ? 3 : 1)
             Spacer(minLength: 0)
         }
@@ -255,17 +266,36 @@ struct TimelineBlockView: View {
 /// lilac, as in the full Month).
 struct TimelineChipView: View {
     let chip: TimelineChip
+    /// Week's narrow columns: smaller text and padding.
+    var compact = false
 
     var body: some View {
         let tint = chip.colorRGB.map { Color(hex: $0) } ?? Colors.eventDot
         Text(chip.title)
-            .font(Fonts.mono(12, weight: .medium))
+            .font(Fonts.mono(compact ? 10 : 12, weight: .medium))
             .foregroundStyle(chip.isHoliday ? Colors.holidayText : Colors.text)
             .lineLimit(1)
-            .padding(.horizontal, 6)
+            .padding(.horizontal, compact ? 3 : 6)
             .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 4)
                 .fill(chip.isHoliday ? Colors.holidayChip : tint.opacity(Colors.timelineBlockOpacity)))
+            .dynamicTypeSize(...DynamicTypeSize.xLarge)
+    }
+}
+
+/// The last slot of a full all-day strip: "+N" for the chips that did not fit.
+struct TimelineMoreChipView: View {
+    let count: Int
+    var compact = false
+
+    var body: some View {
+        Text("+\(count)")
+            .font(Fonts.mono(compact ? 10 : 12, weight: .semibold))
+            .foregroundStyle(Colors.textSecondary)
+            .lineLimit(1)
+            .padding(.horizontal, compact ? 3 : 6)
+            .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 4).fill(Colors.hourRule.opacity(0.5)))
             .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 }

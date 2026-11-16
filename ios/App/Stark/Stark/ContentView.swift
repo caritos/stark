@@ -184,6 +184,10 @@ struct ContentView: View {
                     FullDayView(today: today, selectedDate: selectedDate, onSelectDate: leaveFullScreen,
                                 onOpenItem: { selectedItem = $0 })
                         .transition(.opacity)
+                } else if full == .week {
+                    FullWeekView(today: today, selectedDate: selectedDate, onSelectDate: leaveFullScreen,
+                                 onOpenItem: { selectedItem = $0 })
+                        .transition(.opacity)
                 }
             }
         }
@@ -276,10 +280,9 @@ struct ContentView: View {
         }
     }
 
-    /// The year or the full Day/Month/Quarter covers the grid and agenda (which stay alive
+    /// The year or any full-screen calendar (Day, Week, Month, Quarter) covers the grid and agenda (which stay alive
     /// underneath).
-    // Week has no screen yet (stage 4a task 4), so it leaves the agenda showing.
-    private var coversAgenda: Bool { mode == .year || full == .day || full == .month || full == .quarter }
+    private var coversAgenda: Bool { mode == .year || full != .none }
 
     /// A day tapped in the full Month or Quarter (or Day's weekday): select it and return to the DayTicker there.
     private func leaveFullScreen(to date: Date) {

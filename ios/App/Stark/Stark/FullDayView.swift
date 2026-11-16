@@ -19,6 +19,8 @@ struct FullDayView: View {
     /// Start of the day shown.
     @State private var day: Date
     @State private var snapshot: LayoutSnapshot?
+    /// The "+N" of a full chip strip was tapped: every chip, scrolling. Reset on a new day.
+    @State private var chipsExpanded = false
     let today: Date
     let onSelectDate: (Date) -> Void
     let onOpenItem: (AgendaItem) -> Void
@@ -64,7 +66,10 @@ struct FullDayView: View {
                 }
                 .contentMargins(.bottom, FloatingBottomBar.clearance, for: .scrollContent)
                 .onAppear { scrollToStart(scroller) }
-                .onChange(of: day) { _, _ in scrollToStart(scroller) }
+                .onChange(of: day) { _, _ in
+                    chipsExpanded = false
+                    scrollToStart(scroller)
+                }
             }
         }
         .background(Colors.card)
@@ -237,21 +242,33 @@ struct FullDayView: View {
 
     // MARK: - All-day chips
 
+    /// Up to `visibleChips` rows; with more, the last row is "+N", which opens the whole list
+    /// (scrolling in a strip of the same height) instead of showing half a chip.
     @ViewBuilder
     private func chipStrip(_ chips: [TimelineChip], items: [String: AgendaItem]) -> some View {
         if !chips.isEmpty {
+            let overflows = chips.count > Self.visibleChips
+            let shown = overflows && !chipsExpanded ? Array(chips.prefix(Self.visibleChips - 1)) : chips
             let list = VStack(spacing: 3) {
-                ForEach(chips) { chip in
+                ForEach(shown) { chip in
                     Button { items[chip.id].map(onOpenItem) } label: { TimelineChipView(chip: chip) }
                         .buttonStyle(.plain)
                         .accessibilityLabel(chip.title)
                         .accessibilityHint("Opens details")
                 }
+                if overflows && !chipsExpanded {
+                    Button { chipsExpanded = true } label: {
+                        TimelineMoreChipView(count: chips.count - shown.count)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(chips.count - shown.count) more all-day items")
+                    .accessibilityHint("Shows all")
+                }
             }
             .padding(.leading, M.labelWidth)
             .padding(.trailing, Spacing.sm)
             .padding(.bottom, Spacing.xs)
-            if chips.count > Self.visibleChips {
+            if overflows && chipsExpanded {
                 ScrollView(.vertical) { list }
                     .frame(height: CGFloat(Self.visibleChips) * 25 + 12)
             } else {
@@ -268,7 +285,7 @@ struct FullDayView: View {
                 let laneWidth = (width - Spacing.sm) / CGFloat(max(1, block.columnCount))
                 let top = M.y(forMinute: block.startMinute)
                 let height = max(M.minBlockHeight, M.y(forMinute: block.endMinute) - top) - 1
-                let view = TimelineBlockView(block: block, day: day, height: height)
+                let view = TimelineBlockView(block: block, day: day, height: height, width: laneWidth - 2)
                 Button {
                     if let item = layout?.items[block.id] { onOpenItem(item) }
                 } label: { view }
