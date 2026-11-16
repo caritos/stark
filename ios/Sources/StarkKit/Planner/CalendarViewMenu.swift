@@ -29,13 +29,13 @@ public enum CalendarViewMenu {
         return mode == .year ? .year : .dayTicker
     }
 
-    /// The mode and full-month flag after picking `choice`. Month keeps the mode; Year opens
+    /// The mode and full-month flag after picking `choice`. Month keeps the mode (year becomes month, which it would cover); Year opens
     /// year; DayTicker leaves year for the month strip and keeps week or month as they are.
     public static func target(
         after choice: CalendarViewChoice, current mode: CalendarMode
     ) -> (mode: CalendarMode, fullMonth: Bool) {
         switch choice {
-        case .month: return (mode, true)
+        case .month: return (mode == .year ? .month : mode, true)
         case .year: return (.year, false)
         case .dayTicker: return (mode == .year ? .month : mode, false)
         }

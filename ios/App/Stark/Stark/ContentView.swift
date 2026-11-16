@@ -203,9 +203,7 @@ struct ContentView: View {
                                                showViewMenu = false
                                                withAnimation(.easeInOut(duration: 0.2)) {
                                                    let target = CalendarViewMenu.target(after: choice, current: mode)
-                                                   // Month from the Year: the Kit keeps the mode, but the
-                                                   // year would cover Month, so the DayTicker below is month.
-                                                   mode = target.fullMonth && target.mode == .year ? .month : target.mode
+                                                   mode = target.mode
                                                    fullMonth = target.fullMonth
                                                }
                                            },

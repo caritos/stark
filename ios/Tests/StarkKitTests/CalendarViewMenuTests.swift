@@ -17,7 +17,8 @@ import Testing
     @Test func chooseMonthKeepsModeAndTurnsFullMonthOn() {
         for m in [CalendarMode.week, .month, .year] {
             let t = CalendarViewMenu.target(after: .month, current: m)
-            #expect(t.mode == m)
+            // Year would cover Month, so the strip below becomes the month grid.
+            #expect(t.mode == (m == .year ? .month : m))
             #expect(t.fullMonth)
         }
     }
