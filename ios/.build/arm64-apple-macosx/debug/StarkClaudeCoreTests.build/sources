@@ -1,7 +1,7 @@
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/AddCommandTests.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/CLIUsageTests.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/DeviceResolverTests.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/Fakes.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/PairCommandTests.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/ProcessRunnerTests.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/TodayCommandTests.swift
+/Users/eladio/src/stark/ios/Tests/StarkClaudeCoreTests/AddCommandTests.swift
+/Users/eladio/src/stark/ios/Tests/StarkClaudeCoreTests/CLIUsageTests.swift
+/Users/eladio/src/stark/ios/Tests/StarkClaudeCoreTests/DeviceResolverTests.swift
+/Users/eladio/src/stark/ios/Tests/StarkClaudeCoreTests/Fakes.swift
+/Users/eladio/src/stark/ios/Tests/StarkClaudeCoreTests/PairCommandTests.swift
+/Users/eladio/src/stark/ios/Tests/StarkClaudeCoreTests/ProcessRunnerTests.swift
+/Users/eladio/src/stark/ios/Tests/StarkClaudeCoreTests/TodayCommandTests.swift

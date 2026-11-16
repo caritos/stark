@@ -1,9 +1,9 @@
 ---
 triple:          'arm64-apple-darwin'
-binary-path:     '/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/stark-claude'
+binary-path:     '/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/stark-claude'
 relocations:
   - { offset: 0xC3D05, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore10AddRequestV5labelSSSgvpfi', symObjAddr: 0x0, symBinAddr: 0x1000013A0, symSize: 0xC }
-  - { offset: 0xC3D29, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore10AddCommandV8bundleIDSSvpZ', symObjAddr: 0x19DD0, symBinAddr: 0x1001E8A20, symSize: 0x0 }
+  - { offset: 0xC3D29, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore10AddCommandV8bundleIDSSvpZ', symObjAddr: 0x19CD0, symBinAddr: 0x1001E8A20, symSize: 0x0 }
   - { offset: 0xC3D37, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore10AddRequestV5labelSSSgvpfi', symObjAddr: 0x0, symBinAddr: 0x1000013A0, symSize: 0xC }
   - { offset: 0xC3FC5, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore10AddRequestV10CodingKeys33_313B13922EC97B9ED5705E30AF98F3D1LLOAFSHAAWl', symObjAddr: 0x420, symBinAddr: 0x1000017C0, symSize: 0x68 }
   - { offset: 0xC3FD9, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore10AddRequestV10CodingKeys33_313B13922EC97B9ED5705E30AF98F3D1LLOAFs0F3KeyAAWl', symObjAddr: 0x63C, symBinAddr: 0x1000019DC, symSize: 0x68 }
@@ -311,7 +311,7 @@ relocations:
   - { offset: 0xC6FAD, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore10AddFailureVs5ErrorAAsADP19_getEmbeddedNSErroryXlSgyFTW', symObjAddr: 0x1754, symBinAddr: 0x10000CF30, symSize: 0x14 }
   - { offset: 0xC6FC1, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore10AddFailureVs23CustomStringConvertibleAAsADP11descriptionSSvgTW', symObjAddr: 0x1768, symBinAddr: 0x10000CF44, symSize: 0x3C }
   - { offset: 0xC7067, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore8CLIUsageO4text_WZ', symObjAddr: 0x0, symBinAddr: 0x10000D99C, symSize: 0x40 }
-  - { offset: 0xC708B, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore8CLIUsageO4textSSvpZ', symObjAddr: 0x1DF0, symBinAddr: 0x1001E8A30, symSize: 0x0 }
+  - { offset: 0xC708B, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore8CLIUsageO4textSSvpZ', symObjAddr: 0x1CE8, symBinAddr: 0x1001E8A30, symSize: 0x0 }
   - { offset: 0xC7099, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore8CLIUsageO4text_WZ', symObjAddr: 0x0, symBinAddr: 0x10000D99C, symSize: 0x40 }
   - { offset: 0xC70B3, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore8CLIUsageO4textSSvau', symObjAddr: 0x40, symBinAddr: 0x10000D9DC, symSize: 0x50 }
   - { offset: 0xC710E, size: 0x8, addend: 0x0, symName: '_$sSaySSGSayxGSTsWl', symObjAddr: 0x334, symBinAddr: 0x10000DC10, symSize: 0x74 }
@@ -735,7 +735,7 @@ relocations:
   - { offset: 0xCB42F, size: 0x8, addend: 0x0, symName: '_$sSo6NSPipeCABycfcTO', symObjAddr: 0x3280, symBinAddr: 0x10001BA90, symSize: 0x18 }
   - { offset: 0xCB443, size: 0x8, addend: 0x0, symName: '_$sSo6NSLockCABycfcTO', symObjAddr: 0x3298, symBinAddr: 0x10001BAA8, symSize: 0x18 }
   - { offset: 0xCB50F, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore12TodayCommandV11unavailable_WZ', symObjAddr: 0x0, symBinAddr: 0x10001BD98, symSize: 0x40 }
-  - { offset: 0xCB533, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore12TodayCommandV11unavailableSSvpZ', symObjAddr: 0x46B0, symBinAddr: 0x1001E8A40, symSize: 0x0 }
+  - { offset: 0xCB533, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore12TodayCommandV11unavailableSSvpZ', symObjAddr: 0x45B8, symBinAddr: 0x1001E8A40, symSize: 0x0 }
   - { offset: 0xCB541, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore12TodayCommandV11unavailable_WZ', symObjAddr: 0x0, symBinAddr: 0x10001BD98, symSize: 0x40 }
   - { offset: 0xCB55B, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore12TodayCommandV11unavailableSSvau', symObjAddr: 0x40, symBinAddr: 0x10001BDD8, symSize: 0x50 }
   - { offset: 0xCB5F4, size: 0x8, addend: 0x0, symName: '_$s15StarkClaudeCore12TodayCommandV8parseDay_8calendar10Foundation4DateVSS_AF8CalendarVtKFZfA0_', symObjAddr: 0xCC, symBinAddr: 0x10001BE64, symSize: 0x9C }
@@ -947,7 +947,7 @@ relocations:
   - { offset: 0xCDA78, size: 0x8, addend: 0x0, symName: '_$s8StarkKit9AgendaDayVSQAASQ2eeoiySbx_xtFZTW', symObjAddr: 0x410, symBinAddr: 0x10003BF18, symSize: 0x18 }
   - { offset: 0xCDB48, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10DayDensityV5tasksSivg', symObjAddr: 0x0, symBinAddr: 0x10003D338, symSize: 0x4 }
   - { offset: 0xCDB6C, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10DayDensityV14maxEventColorsSivpZ', symObjAddr: 0x6A08, symBinAddr: 0x1001C4C50, symSize: 0x0 }
-  - { offset: 0xCDB86, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10DayDensityV4noneACvpZ', symObjAddr: 0xE768, symBinAddr: 0x1001E8A50, symSize: 0x0 }
+  - { offset: 0xCDB86, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10DayDensityV4noneACvpZ', symObjAddr: 0xE640, symBinAddr: 0x1001E8A50, symSize: 0x0 }
   - { offset: 0xCDD9E, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10DayDensityV14maxEventColors_WZ', symObjAddr: 0xB8, symBinAddr: 0x10003D3F0, symSize: 0x4 }
   - { offset: 0xCDDB8, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10DayDensityV14maxEventColorsSivau', symObjAddr: 0xBC, symBinAddr: 0x10003D3F4, symSize: 0xC }
   - { offset: 0xCDDD6, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10DayDensityV5tasks6events11eventColorsACSi_SiSays6UInt32VGtcfcfA1_', symObjAddr: 0xD4, symBinAddr: 0x10003D40C, symSize: 0x20 }
@@ -1114,7 +1114,7 @@ relocations:
   - { offset: 0xD021B, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13appleEventEnd5start3end8isAllDay8calendar10Foundation4DateVSgAI_AJSbAG8CalendarVtFfA2_', symObjAddr: 0x73B4, symBinAddr: 0x10004772C, symSize: 0x9C }
   - { offset: 0xD0235, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13appleEventEnd5start3end8isAllDay8calendar10Foundation4DateVSgAI_AJSbAG8CalendarVtF', symObjAddr: 0x7450, symBinAddr: 0x1000477C8, symSize: 0x58C }
   - { offset: 0xD0499, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleCalendarInfoV2idSSvg', symObjAddr: 0x0, symBinAddr: 0x100047D54, symSize: 0x34 }
-  - { offset: 0xD04BD, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13AppleSnapshotV5emptyACvpZ', symObjAddr: 0x12A68, symBinAddr: 0x1001E8A68, symSize: 0x0 }
+  - { offset: 0xD04BD, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13AppleSnapshotV5emptyACvpZ', symObjAddr: 0x12940, symBinAddr: 0x1001E8A68, symSize: 0x0 }
   - { offset: 0xD0694, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleCalendarInfoV2id5title11accountName8colorHex14isReminderList0L8WritableACSS_S3SSgS2btcfcfA4_', symObjAddr: 0xE8, symBinAddr: 0x100047E3C, symSize: 0xC }
   - { offset: 0xD06AE, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleCalendarInfoVWOc', symObjAddr: 0x2B8, symBinAddr: 0x10004800C, symSize: 0xC0 }
   - { offset: 0xD06C2, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleCalendarInfoVWOh', symObjAddr: 0x378, symBinAddr: 0x1000480CC, symSize: 0x4C }
@@ -1265,7 +1265,7 @@ relocations:
   - { offset: 0xD1DEC, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleAccessChangeOSHAASH13_rawHashValue4seedS2i_tFTW', symObjAddr: 0x5028, symBinAddr: 0x10004C568, symSize: 0x14 }
   - { offset: 0xD1E0B, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleAccessChangeOSQAASQ2eeoiySbx_xtFZTW', symObjAddr: 0x503C, symBinAddr: 0x10004C57C, symSize: 0x20 }
   - { offset: 0xD1F2F, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10AgendaItemV10isReadOnlySbvg', symObjAddr: 0x0, symBinAddr: 0x1000509F8, symSize: 0xFC }
-  - { offset: 0xD1F53, size: 0x8, addend: 0x0, symName: '_$s8StarkKit16UncompleteNoticeO7messageSSvpZ', symObjAddr: 0x33790, symBinAddr: 0x1001E8A78, symSize: 0x0 }
+  - { offset: 0xD1F53, size: 0x8, addend: 0x0, symName: '_$s8StarkKit16UncompleteNoticeO7messageSSvpZ', symObjAddr: 0x33670, symBinAddr: 0x1001E8A78, symSize: 0x0 }
   - { offset: 0xD1F6D, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12SearchWindowO5yearsSivpZ', symObjAddr: 0x2A440, symBinAddr: 0x1001C51B0, symSize: 0x0 }
   - { offset: 0xD1FD6, size: 0x8, addend: 0x0, symName: '_$s8StarkKit5EventVSgWOc', symObjAddr: 0xBF4, symBinAddr: 0x100051340, symSize: 0x4E0 }
   - { offset: 0xD1FEA, size: 0x8, addend: 0x0, symName: '_$s8StarkKit5EventVSgWOh', symObjAddr: 0x10D4, symBinAddr: 0x100051820, symSize: 0x204 }
@@ -1393,7 +1393,7 @@ relocations:
   - { offset: 0xD3822, size: 0x8, addend: 0x0, symName: '_$s8StarkKit14AppleSelectionV23__derived_struct_equalsySbAC_ACtFZ', symObjAddr: 0x708, symBinAddr: 0x1000770CC, symSize: 0xA0 }
   - { offset: 0xD386A, size: 0x8, addend: 0x0, symName: '_$s8StarkKit14AppleSelectionVSQAASQ2eeoiySbx_xtFZTW', symObjAddr: 0x7A8, symBinAddr: 0x10007716C, symSize: 0x20 }
   - { offset: 0xD3944, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleAccountGroupV11accountNameSSvg', symObjAddr: 0x0, symBinAddr: 0x1000771A0, symSize: 0x30 }
-  - { offset: 0xD3968, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13AppleSettingsO16localAccountNameSSvpZ', symObjAddr: 0x8DD8, symBinAddr: 0x1001E8A88, symSize: 0x0 }
+  - { offset: 0xD3968, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13AppleSettingsO16localAccountNameSSvpZ', symObjAddr: 0x8CB8, symBinAddr: 0x1001E8A88, symSize: 0x0 }
   - { offset: 0xD3A33, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleAccountGroupVWOh', symObjAddr: 0x15C, symBinAddr: 0x1000772FC, symSize: 0x34 }
   - { offset: 0xD3A47, size: 0x8, addend: 0x0, symName: '_$s8StarkKit17AppleCalendarInfoVACSQAAWl', symObjAddr: 0x2BC, symBinAddr: 0x10007745C, symSize: 0x64 }
   - { offset: 0xD3A5B, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13AppleSettingsO16localAccountName_WZ', symObjAddr: 0x390, symBinAddr: 0x100077530, symSize: 0x40 }
@@ -1457,7 +1457,7 @@ relocations:
   - { offset: 0xD4574, size: 0x8, addend: 0x0, symName: '_$sSo18NSComparisonResultVSYSCSY8rawValue03RawD0QzvgTW', symObjAddr: 0x2784, symBinAddr: 0x100078E10, symSize: 0x2C }
   - { offset: 0xD4588, size: 0x8, addend: 0x0, symName: '_$sSo18NSComparisonResultV8rawValueSivg', symObjAddr: 0x27B0, symBinAddr: 0x100078E3C, symSize: 0x1C }
   - { offset: 0xD46A2, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10AgendaItemV10noDateText_WZ', symObjAddr: 0x0, symBinAddr: 0x1000793F4, symSize: 0x40 }
-  - { offset: 0xD46C6, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10AgendaItemV10noDateTextSSvpZ', symObjAddr: 0x4738, symBinAddr: 0x1001E8A98, symSize: 0x0 }
+  - { offset: 0xD46C6, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10AgendaItemV10noDateTextSSvpZ', symObjAddr: 0x4608, symBinAddr: 0x1001E8A98, symSize: 0x0 }
   - { offset: 0xD46D4, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10AgendaItemV10noDateText_WZ', symObjAddr: 0x0, symBinAddr: 0x1000793F4, symSize: 0x40 }
   - { offset: 0xD46EE, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10AgendaItemV10noDateTextSSvau', symObjAddr: 0x40, symBinAddr: 0x100079434, symSize: 0x50 }
   - { offset: 0xD47A1, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12ItemEditFormV10addDueDate2on8calendary10Foundation0H0V_AG8CalendarVtFfA0_', symObjAddr: 0x21F4, symBinAddr: 0x100079C00, symSize: 0x9C }
@@ -2095,8 +2095,8 @@ relocations:
   - { offset: 0xDCA81, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12CalendarModeOSHAASH4hash4intoys6HasherVz_tFTW', symObjAddr: 0x61C, symBinAddr: 0x100098934, symSize: 0x18 }
   - { offset: 0xDCA95, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12CalendarModeOSHAASH13_rawHashValue4seedS2i_tFTW', symObjAddr: 0x634, symBinAddr: 0x10009894C, symSize: 0x14 }
   - { offset: 0xDCAB4, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12CalendarModeOSQAASQ2eeoiySbx_xtFZTW', symObjAddr: 0x648, symBinAddr: 0x100098960, symSize: 0x20 }
-  - { offset: 0xDCBA9, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12ClaudeBridgeC11needsAccessSSvpZ', symObjAddr: 0x1FCF0, symBinAddr: 0x1001E8AA8, symSize: 0x0 }
-  - { offset: 0xDCBC3, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12ClaudeBridgeC3log33_ADDF987D1E163CD97ABF520E9965D5BDLL2os6LoggerVvpZ', symObjAddr: 0x1FD00, symBinAddr: 0x1001ED010, symSize: 0x0 }
+  - { offset: 0xDCBA9, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12ClaudeBridgeC11needsAccessSSvpZ', symObjAddr: 0x1FBA0, symBinAddr: 0x1001E8AA8, symSize: 0x0 }
+  - { offset: 0xDCBC3, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12ClaudeBridgeC3log33_ADDF987D1E163CD97ABF520E9965D5BDLL2os6LoggerVvpZ', symObjAddr: 0x1FBB0, symBinAddr: 0x1001ED010, symSize: 0x0 }
   - { offset: 0xDCF71, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12ClaudeBridgeC7OutcomeOWOy', symObjAddr: 0xA68, symBinAddr: 0x100099724, symSize: 0x5C }
   - { offset: 0xDCF85, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12ClaudeBridgeC7OutcomeO_AEtWOh', symObjAddr: 0xAC4, symBinAddr: 0x100099780, symSize: 0x50 }
   - { offset: 0xDCF99, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12ClaudeBridgeC7OutcomeOWOe', symObjAddr: 0xB14, symBinAddr: 0x1000997D0, symSize: 0x5C }
@@ -3319,7 +3319,7 @@ relocations:
   - { offset: 0xEEF8C, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10EventPatchV4from2toAcA11ItemDetailsV_AA0C0VtcfC', symObjAddr: 0x2128, symBinAddr: 0x1000FE254, symSize: 0x464 }
   - { offset: 0xEEFF3, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13ReminderPatchV4from2to3urlAcA11ItemDetailsV_AA0C0VSSSgtcfC', symObjAddr: 0x38CC, symBinAddr: 0x1000FE6B8, symSize: 0xE80 }
   - { offset: 0xEF1C5, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12AppleItemRefV4KindO21__derived_enum_equalsySbAE_AEtFZ', symObjAddr: 0x0, symBinAddr: 0x1000FFF64, symSize: 0x9C }
-  - { offset: 0xEF1E9, size: 0x8, addend: 0x0, symName: '_$s8StarkKit11ItemDetailsV19unconvertibleReasonSSvpZ', symObjAddr: 0x37FC0, symBinAddr: 0x1001E8AB8, symSize: 0x0 }
+  - { offset: 0xEF1E9, size: 0x8, addend: 0x0, symName: '_$s8StarkKit11ItemDetailsV19unconvertibleReasonSSvpZ', symObjAddr: 0x37EA0, symBinAddr: 0x1001E8AB8, symSize: 0x0 }
   - { offset: 0xEF3DE, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12AppleItemRefV4KindOAESHAAWl', symObjAddr: 0x16C, symBinAddr: 0x1001000D0, symSize: 0x68 }
   - { offset: 0xEF3F2, size: 0x8, addend: 0x0, symName: '_$sS2sSKsWl', symObjAddr: 0x116C, symBinAddr: 0x100100E38, symSize: 0x64 }
   - { offset: 0xEF406, size: 0x8, addend: 0x0, symName: '_$sSSSgxSgSHsSHRzlWl', symObjAddr: 0x3518, symBinAddr: 0x1001016E0, symSize: 0x80 }
@@ -3691,8 +3691,8 @@ relocations:
   - { offset: 0xF2D64, size: 0x8, addend: 0x0, symName: '_$s8StarkKit19ItemRepositoryErrorOs0E0AAsADP19_getEmbeddedNSErroryXlSgyFTW', symObjAddr: 0x13404, symBinAddr: 0x10010CEEC, symSize: 0x14 }
   - { offset: 0xF2D83, size: 0x8, addend: 0x0, symName: '_$s8StarkKit19ItemRepositoryErrorOSQAASQ2eeoiySbx_xtFZTW', symObjAddr: 0x13418, symBinAddr: 0x10010CF00, symSize: 0x38 }
   - { offset: 0xF2EFC, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10ItemOriginO11applePrefix_WZ', symObjAddr: 0x0, symBinAddr: 0x10011CAB8, symSize: 0x40 }
-  - { offset: 0xF2F20, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10ItemOriginO11applePrefixSSvpZ', symObjAddr: 0x3E7E0, symBinAddr: 0x1001E8AC8, symSize: 0x0 }
-  - { offset: 0xF2F3A, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15ItemRouterErrorO22ruleChangeConfirmationSSvpZ', symObjAddr: 0x3E7F0, symBinAddr: 0x1001E8AD8, symSize: 0x0 }
+  - { offset: 0xF2F20, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10ItemOriginO11applePrefixSSvpZ', symObjAddr: 0x3E6B8, symBinAddr: 0x1001E8AC8, symSize: 0x0 }
+  - { offset: 0xF2F3A, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15ItemRouterErrorO22ruleChangeConfirmationSSvpZ', symObjAddr: 0x3E6C8, symBinAddr: 0x1001E8AD8, symSize: 0x0 }
   - { offset: 0xF2F48, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10ItemOriginO11applePrefix_WZ', symObjAddr: 0x0, symBinAddr: 0x10011CAB8, symSize: 0x40 }
   - { offset: 0xF2F62, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10ItemOriginO11applePrefixSSvau', symObjAddr: 0x40, symBinAddr: 0x10011CAF8, symSize: 0x50 }
   - { offset: 0xF3063, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10ItemOriginOWOh', symObjAddr: 0x380, symBinAddr: 0x10011CE38, symSize: 0x48 }
@@ -4821,7 +4821,7 @@ relocations:
   - { offset: 0x107A37, size: 0x8, addend: 0x0, symName: '_$s8StarkKit9PlanBlockVSEAASE6encode2toys7Encoder_p_tKFTW', symObjAddr: 0x20A8, symBinAddr: 0x100158B60, symSize: 0x44 }
   - { offset: 0x107A4B, size: 0x8, addend: 0x0, symName: '_$s8StarkKit9PlanBlockVs12IdentifiableAAsADP2id2IDQzvgTW', symObjAddr: 0x20F8, symBinAddr: 0x100158BB0, symSize: 0x2C }
   - { offset: 0x107B21, size: 0x8, addend: 0x0, symName: '_$s8StarkKit14PlanCacheStateV9hasLoadedSbvpfi', symObjAddr: 0x0, symBinAddr: 0x1001598E4, symSize: 0xC }
-  - { offset: 0x107B45, size: 0x8, addend: 0x0, symName: '_$s8StarkKit14PlanCacheStateV12lockedNoticeSSvpZ', symObjAddr: 0x36B8, symBinAddr: 0x1001E8AF0, symSize: 0x0 }
+  - { offset: 0x107B45, size: 0x8, addend: 0x0, symName: '_$s8StarkKit14PlanCacheStateV12lockedNoticeSSvpZ', symObjAddr: 0x3590, symBinAddr: 0x1001E8AF0, symSize: 0x0 }
   - { offset: 0x107B53, size: 0x8, addend: 0x0, symName: '_$s8StarkKit14PlanCacheStateV9hasLoadedSbvpfi', symObjAddr: 0x0, symBinAddr: 0x1001598E4, symSize: 0xC }
   - { offset: 0x107C98, size: 0x8, addend: 0x0, symName: '_$s8StarkKit14PlanCacheStateV7failureSSSgvpfi', symObjAddr: 0x1C, symBinAddr: 0x100159900, symSize: 0xC }
   - { offset: 0x107CB0, size: 0x8, addend: 0x0, symName: '_$s8StarkKit14PlanCacheStateVWOh', symObjAddr: 0xF0, symBinAddr: 0x1001599D4, symSize: 0x28 }
@@ -5745,9 +5745,9 @@ relocations:
   - { offset: 0x113A04, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13PositionalDayVSHAASH4hash4intoys6HasherVz_tFTW', symObjAddr: 0x3FBC, symBinAddr: 0x10018A2E4, symSize: 0x30 }
   - { offset: 0x113A18, size: 0x8, addend: 0x0, symName: '_$s8StarkKit13PositionalDayVSHAASH13_rawHashValue4seedS2i_tFTW', symObjAddr: 0x3FEC, symBinAddr: 0x10018A314, symSize: 0x14 }
   - { offset: 0x113B27, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO8dayCodes33_2421B1DA032040257FD091B2F3DC0446LL_WZ', symObjAddr: 0x0, symBinAddr: 0x10018C054, symSize: 0x184 }
-  - { offset: 0x113B4B, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO8dayCodes33_2421B1DA032040257FD091B2F3DC0446LLSaySSGvpZ', symObjAddr: 0xD0D8, symBinAddr: 0x1001F2360, symSize: 0x0 }
-  - { offset: 0x113B65, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO16weekdayOnlyCodes33_2421B1DA032040257FD091B2F3DC0446LLSaySSGvpZ', symObjAddr: 0xD0E0, symBinAddr: 0x1001F2368, symSize: 0x0 }
-  - { offset: 0x113B7F, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO15weekendDayCodes33_2421B1DA032040257FD091B2F3DC0446LLSaySSGvpZ', symObjAddr: 0xD0E8, symBinAddr: 0x1001F2370, symSize: 0x0 }
+  - { offset: 0x113B4B, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO8dayCodes33_2421B1DA032040257FD091B2F3DC0446LLSaySSGvpZ', symObjAddr: 0xCFB0, symBinAddr: 0x1001F2360, symSize: 0x0 }
+  - { offset: 0x113B65, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO16weekdayOnlyCodes33_2421B1DA032040257FD091B2F3DC0446LLSaySSGvpZ', symObjAddr: 0xCFB8, symBinAddr: 0x1001F2368, symSize: 0x0 }
+  - { offset: 0x113B7F, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO15weekendDayCodes33_2421B1DA032040257FD091B2F3DC0446LLSaySSGvpZ', symObjAddr: 0xCFC0, symBinAddr: 0x1001F2370, symSize: 0x0 }
   - { offset: 0x113B8D, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO8dayCodes33_2421B1DA032040257FD091B2F3DC0446LL_WZ', symObjAddr: 0x0, symBinAddr: 0x10018C054, symSize: 0x184 }
   - { offset: 0x113BA7, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO8dayCodes33_2421B1DA032040257FD091B2F3DC0446LLSaySSGvau', symObjAddr: 0x1C4, symBinAddr: 0x10018C1D8, symSize: 0x50 }
   - { offset: 0x113C8F, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO16weekdayOnlyCodes33_2421B1DA032040257FD091B2F3DC0446LL_WZ', symObjAddr: 0x240, symBinAddr: 0x10018C254, symSize: 0x12C }
@@ -5787,8 +5787,8 @@ relocations:
   - { offset: 0x11476E, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO18decodeDaySpecifier33_2421B1DA032040257FD091B2F3DC0446LL02byF3Raw0n5MonthfO00N6SetPosSayAA010PositionalF0VGSg10positional_SaySiGSg05monthF0tSaySSGSg_AOSiSgtFZSbSSXEfU_', symObjAddr: 0x5308, symBinAddr: 0x10018FEFC, symSize: 0x4C }
   - { offset: 0x11479E, size: 0x8, addend: 0x0, symName: '_$s8StarkKit10RRuleCodecO18decodeDaySpecifier33_2421B1DA032040257FD091B2F3DC0446LL02byF3Raw0n5MonthfO00N6SetPosSayAA010PositionalF0VGSg10positional_SaySiGSg05monthF0tSaySSGSg_AOSiSgtFZAJSgSSXEfU0_', symObjAddr: 0x5354, symBinAddr: 0x10018FF48, symSize: 0x388 }
   - { offset: 0x1149A0, size: 0x8, addend: 0x0, symName: '_$s8StarkKit20RecurrenceDescriptorV9FrequencyO21__derived_enum_equalsySbAE_AEtFZ', symObjAddr: 0x0, symBinAddr: 0x100190688, symSize: 0x130 }
-  - { offset: 0x1149C4, size: 0x8, addend: 0x0, symName: '_$s8StarkKit20RecurrenceDescriptorV16weekdaysMonToFri33_D7C5732492A1D0A327127DDCFADC72DFLLSayAA7WeekdayOGvpZ', symObjAddr: 0x190A0, symBinAddr: 0x1001F2390, symSize: 0x0 }
-  - { offset: 0x1149DE, size: 0x8, addend: 0x0, symName: '_$s8StarkKit20RecurrenceDescriptorV11weekendDays33_D7C5732492A1D0A327127DDCFADC72DFLLSayAA7WeekdayOGvpZ', symObjAddr: 0x190A8, symBinAddr: 0x1001F2398, symSize: 0x0 }
+  - { offset: 0x1149C4, size: 0x8, addend: 0x0, symName: '_$s8StarkKit20RecurrenceDescriptorV16weekdaysMonToFri33_D7C5732492A1D0A327127DDCFADC72DFLLSayAA7WeekdayOGvpZ', symObjAddr: 0x18F70, symBinAddr: 0x1001F2390, symSize: 0x0 }
+  - { offset: 0x1149DE, size: 0x8, addend: 0x0, symName: '_$s8StarkKit20RecurrenceDescriptorV11weekendDays33_D7C5732492A1D0A327127DDCFADC72DFLLSayAA7WeekdayOGvpZ', symObjAddr: 0x18F78, symBinAddr: 0x1001F2398, symSize: 0x0 }
   - { offset: 0x1150C2, size: 0x8, addend: 0x0, symName: '_$s8StarkKit20RecurrenceDescriptorV9FrequencyOAESHAAWl', symObjAddr: 0x24C, symBinAddr: 0x1001908D4, symSize: 0x68 }
   - { offset: 0x1150D6, size: 0x8, addend: 0x0, symName: '_$s8StarkKit20RecurrenceDescriptorV3EndOMa', symObjAddr: 0x6CC, symBinAddr: 0x100190D54, symSize: 0x60 }
   - { offset: 0x1150EA, size: 0x8, addend: 0x0, symName: '_$s8StarkKit20RecurrenceDescriptorV3EndOWOc', symObjAddr: 0x7AC, symBinAddr: 0x100190DB4, symSize: 0x94 }
@@ -6357,8 +6357,8 @@ relocations:
   - { offset: 0x11BA3D, size: 0x8, addend: 0x0, symName: '_$sSo22NSStringCompareOptionsVSYSCSY8rawValue03RawE0QzvgTW', symObjAddr: 0x7AB4, symBinAddr: 0x1001B03C8, symSize: 0x2C }
   - { offset: 0x11BA51, size: 0x8, addend: 0x0, symName: '_$sSo22NSStringCompareOptionsV8rawValueSuvg', symObjAddr: 0x7AE0, symBinAddr: 0x1001B03F4, symSize: 0x4 }
   - { offset: 0x11BB5B, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15TagAutocompleteO9allSigils_WZ', symObjAddr: 0x0, symBinAddr: 0x1001B0BB8, symSize: 0x100 }
-  - { offset: 0x11BB7F, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15TagAutocompleteO9allSigilsSaySJGvpZ', symObjAddr: 0xA770, symBinAddr: 0x1001E8B00, symSize: 0x0 }
-  - { offset: 0x11BB99, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15TagAutocompleteO6sigils33_DCE2FB726E118B805328CDD3E7C98D09LLShySJGvpZ', symObjAddr: 0xA780, symBinAddr: 0x1001F3790, symSize: 0x0 }
+  - { offset: 0x11BB7F, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15TagAutocompleteO9allSigilsSaySJGvpZ', symObjAddr: 0xA648, symBinAddr: 0x1001E8B00, symSize: 0x0 }
+  - { offset: 0x11BB99, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15TagAutocompleteO6sigils33_DCE2FB726E118B805328CDD3E7C98D09LLShySJGvpZ', symObjAddr: 0xA650, symBinAddr: 0x1001F3790, symSize: 0x0 }
   - { offset: 0x11BBA7, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15TagAutocompleteO9allSigils_WZ', symObjAddr: 0x0, symBinAddr: 0x1001B0BB8, symSize: 0x100 }
   - { offset: 0x11BBC1, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15TagAutocompleteO9allSigilsSaySJGvau', symObjAddr: 0x140, symBinAddr: 0x1001B0CB8, symSize: 0x50 }
   - { offset: 0x11BD57, size: 0x8, addend: 0x0, symName: '_$s8StarkKit15TagAutocompleteO6sigils33_DCE2FB726E118B805328CDD3E7C98D09LL_WZ', symObjAddr: 0x1BC, symBinAddr: 0x1001B0D34, symSize: 0x7C }
@@ -6490,10 +6490,10 @@ relocations:
   - { offset: 0x11DAE1, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12WeeklyReviewV23__derived_struct_equalsySbAC_ACtFZ', symObjAddr: 0x7F64, symBinAddr: 0x1001B8DFC, symSize: 0x200 }
   - { offset: 0x11DB2B, size: 0x8, addend: 0x0, symName: '_$s8StarkKit12WeeklyReviewVSQAASQ2eeoiySbx_xtFZTW', symObjAddr: 0x81D0, symBinAddr: 0x1001B8FFC, symSize: 0x18 }
   - { offset: 0x11DC35, size: 0x8, addend: 0x0, symName: _stark_claude_main, symObjAddr: 0x0, symBinAddr: 0x1001B9AE4, symSize: 0x20B8 }
-  - { offset: 0x11DC59, size: 0x8, addend: 0x0, symName: '_$s12stark_claude4argsSaySSGvp', symObjAddr: 0x6CA0, symBinAddr: 0x1001E8B08, symSize: 0x0 }
-  - { offset: 0x11DC73, size: 0x8, addend: 0x0, symName: '_$s12stark_claude3envSDyS2SGvp', symObjAddr: 0x6CA8, symBinAddr: 0x1001E8B10, symSize: 0x0 }
-  - { offset: 0x11DC8D, size: 0x8, addend: 0x0, symName: '_$s12stark_claude5store8StarkKit19KeychainSecretStoreCvp', symObjAddr: 0x6CB0, symBinAddr: 0x1001E8B18, symSize: 0x0 }
-  - { offset: 0x11DCA7, size: 0x8, addend: 0x0, symName: '_$s12stark_claude5usageSSvp', symObjAddr: 0x6CB8, symBinAddr: 0x1001E8B20, symSize: 0x0 }
+  - { offset: 0x11DC59, size: 0x8, addend: 0x0, symName: '_$s12stark_claude4argsSaySSGvp', symObjAddr: 0x6B78, symBinAddr: 0x1001E8B08, symSize: 0x0 }
+  - { offset: 0x11DC73, size: 0x8, addend: 0x0, symName: '_$s12stark_claude3envSDyS2SGvp', symObjAddr: 0x6B80, symBinAddr: 0x1001E8B10, symSize: 0x0 }
+  - { offset: 0x11DC8D, size: 0x8, addend: 0x0, symName: '_$s12stark_claude5store8StarkKit19KeychainSecretStoreCvp', symObjAddr: 0x6B88, symBinAddr: 0x1001E8B18, symSize: 0x0 }
+  - { offset: 0x11DCA7, size: 0x8, addend: 0x0, symName: '_$s12stark_claude5usageSSvp', symObjAddr: 0x6B90, symBinAddr: 0x1001E8B20, symSize: 0x0 }
   - { offset: 0x11DCB5, size: 0x8, addend: 0x0, symName: _stark_claude_main, symObjAddr: 0x0, symBinAddr: 0x1001B9AE4, symSize: 0x20B8 }
   - { offset: 0x11DEBC, size: 0x8, addend: 0x0, symName: '_$ss10ArraySliceVySSGAByxGSTsWl', symObjAddr: 0x223C, symBinAddr: 0x1001BBB9C, symSize: 0x74 }
   - { offset: 0x11DED0, size: 0x8, addend: 0x0, symName: '_$s12stark_claude4fail_4codes5NeverOSS_s5Int32VtFfA0_', symObjAddr: 0x23F4, symBinAddr: 0x1001BBC68, symSize: 0x8 }

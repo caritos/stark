@@ -1,544 +1,544 @@
 {
   "": {
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/primary.swiftdeps"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleFetchWindow.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleItemProvider.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleMerge.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleModels.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleReadOnly.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleReminderDue.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleSelection.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleSettings.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/AppleUndatedDisplay.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Apple/LatestReloadGate.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Bridge/BridgeAuth.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Bridge/BridgeBatch.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Bridge/BridgeCodec.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Bridge/BridgeReplayGuard.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Bridge/ClaudeBridge.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/DateMath.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/ICS/ICSDateFormat.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/ICS/ICSParser.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/ICS/ICSSerializer.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/ICS/RRuleCodec.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/DefaultDestination.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/FakeItemRepository.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/ItemDeletePrompt.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/ItemEditForm.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/ItemPatchDiff.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/ItemRepository.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/ItemRouter.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/ItemSidecar.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/LocalItemStore.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/RecurrenceDescriptor.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Items/ReminderAlarmShift.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/Event.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/EventSchedule.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/FormFields.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/ItemConversion.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/Month.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/PlanBlock.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/PositionalDay.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/RecurrenceRule+PickerFields.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/RecurrenceRule+Summary.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/RecurrenceRule.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/Reminder.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/ReminderPriority.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/RepeatEnd.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Models/Weekday.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/AgendaBuilder.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/AgendaDays.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/AgendaDensity.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/AgendaScrollTracking.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/AgendaWindow.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/CalendarMode.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/CompletionHistory.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/CompletionNote.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/DayExport.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/DayHistory.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/DayPlanModel.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/EventOutcomeActions.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/Milestone.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/MonthGrid.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/OccurrenceExpander.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/OverdueLabel.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PendingCompletions.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlanAgenda.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlanCacheState.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlanDraft.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlanLayout.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlanRowText.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlanSession.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlannerDays.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlannerFile.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlannerPlans.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/PlannerStore.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/SearchResults.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/TagAutocomplete.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/TrayPane.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/Planner/WeeklyReview.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview.dia"
-  },
-  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkKit/StarkKit.swift": {
-    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit.d",
-    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit.swift.o",
-    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit~partial.swiftmodule",
-    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit.swiftdeps",
-    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit.dia"
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/primary.swiftdeps"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleFetchWindow.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleFetchWindow.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleItemProvider.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleItemProvider.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleMerge.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleMerge.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleModels.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleModels.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleReadOnly.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReadOnly.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleReminderDue.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleReminderDue.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleSelection.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSelection.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleSettings.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleSettings.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/AppleUndatedDisplay.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AppleUndatedDisplay.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Apple/LatestReloadGate.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LatestReloadGate.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Bridge/BridgeAuth.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeAuth.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Bridge/BridgeBatch.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeBatch.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Bridge/BridgeCodec.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeCodec.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Bridge/BridgeReplayGuard.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/BridgeReplayGuard.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Bridge/ClaudeBridge.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ClaudeBridge.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/DateMath.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DateMath.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/ICS/ICSDateFormat.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSDateFormat.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/ICS/ICSParser.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSParser.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/ICS/ICSSerializer.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ICSSerializer.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/ICS/RRuleCodec.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RRuleCodec.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/DefaultDestination.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DefaultDestination.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/FakeItemRepository.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FakeItemRepository.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/ItemDeletePrompt.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemDeletePrompt.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/ItemEditForm.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemEditForm.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/ItemPatchDiff.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemPatchDiff.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/ItemRepository.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRepository.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/ItemRouter.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemRouter.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/ItemSidecar.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemSidecar.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/LocalItemStore.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/LocalItemStore.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/RecurrenceDescriptor.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceDescriptor.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Items/ReminderAlarmShift.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderAlarmShift.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/Event.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Event.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/EventSchedule.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventSchedule.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/FormFields.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/FormFields.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/ItemConversion.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ItemConversion.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/Month.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Month.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/PlanBlock.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanBlock.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/PositionalDay.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PositionalDay.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/RecurrenceRule+PickerFields.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+PickerFields.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/RecurrenceRule+Summary.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule+Summary.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/RecurrenceRule.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RecurrenceRule.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/Reminder.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Reminder.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/ReminderPriority.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/ReminderPriority.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/RepeatEnd.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/RepeatEnd.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Models/Weekday.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Weekday.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/AgendaBuilder.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaBuilder.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/AgendaDays.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDays.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/AgendaDensity.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaDensity.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/AgendaScrollTracking.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaScrollTracking.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/AgendaWindow.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/AgendaWindow.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/CalendarMode.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CalendarMode.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/CompletionHistory.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionHistory.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/CompletionNote.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/CompletionNote.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/DayExport.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayExport.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/DayHistory.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayHistory.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/DayPlanModel.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/DayPlanModel.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/EventOutcomeActions.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/EventOutcomeActions.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/Milestone.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/Milestone.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/MonthGrid.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/MonthGrid.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/OccurrenceExpander.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OccurrenceExpander.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/OverdueLabel.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/OverdueLabel.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PendingCompletions.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PendingCompletions.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlanAgenda.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanAgenda.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlanCacheState.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanCacheState.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlanDraft.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanDraft.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlanLayout.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanLayout.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlanRowText.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanRowText.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlanSession.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlanSession.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlannerDays.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerDays.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlannerFile.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerFile.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlannerPlans.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerPlans.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/PlannerStore.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/PlannerStore.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/SearchResults.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/SearchResults.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/TagAutocomplete.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TagAutocomplete.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/TrayPane.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/TrayPane.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/Planner/WeeklyReview.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/WeeklyReview.dia"
+  },
+  "/Users/eladio/src/stark/ios/Sources/StarkKit/StarkKit.swift": {
+    "dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit.d",
+    "object": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/ios/.build/arm64-apple-macosx/debug/StarkKit.build/StarkKit.dia"
   }
 }

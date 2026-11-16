@@ -1,8 +1,8 @@
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkClaudeCore/AddCommand.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkClaudeCore/CLIError.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkClaudeCore/CLIUsage.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkClaudeCore/DeviceResolver.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkClaudeCore/PairCommand.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkClaudeCore/PhoneLock.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkClaudeCore/ProcessRunning.swift
-/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/StarkClaudeCore/TodayCommand.swift
+/Users/eladio/src/stark/ios/Sources/StarkClaudeCore/AddCommand.swift
+/Users/eladio/src/stark/ios/Sources/StarkClaudeCore/CLIError.swift
+/Users/eladio/src/stark/ios/Sources/StarkClaudeCore/CLIUsage.swift
+/Users/eladio/src/stark/ios/Sources/StarkClaudeCore/DeviceResolver.swift
+/Users/eladio/src/stark/ios/Sources/StarkClaudeCore/PairCommand.swift
+/Users/eladio/src/stark/ios/Sources/StarkClaudeCore/PhoneLock.swift
+/Users/eladio/src/stark/ios/Sources/StarkClaudeCore/ProcessRunning.swift
+/Users/eladio/src/stark/ios/Sources/StarkClaudeCore/TodayCommand.swift
