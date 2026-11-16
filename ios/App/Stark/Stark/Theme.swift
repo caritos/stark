@@ -16,6 +16,13 @@ enum Colors {
     /// A muted purple for event markers (month grid, year view, planner event blocks) until
     /// stages 2-3 of the redesign replace it.
     static let eventDot = Color(hex: 0x8E5FD9)
+    /// The year in the month and year titles.
+    static let yearRed = Color(light: 0xFF3B30, dark: 0xFF453A)
+    /// Year view heat map, by `DayDensity.level` 1 / 2 / 3: pale yellow, amber, salmon. The dark
+    /// values are deep enough to sit on black yet keep `Colors.text` readable.
+    static let heatLow = Color(light: 0xFFF6C8, dark: 0x4D4519)
+    static let heatMedium = Color(light: 0xF9DE9C, dark: 0x70561A)
+    static let heatHigh = Color(light: 0xF2A9A0, dark: 0x83332E)
 }
 
 extension Color {

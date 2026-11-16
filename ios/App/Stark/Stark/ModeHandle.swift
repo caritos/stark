@@ -13,6 +13,8 @@ import StarkKit
 /// month; in the other modes a tap does nothing.
 struct ModeHandle: View {
     @Binding var mode: CalendarMode
+    /// True when the strip floats over scrolling content (year view): no opaque backing.
+    var floating = false
 
     private static let stripHeight: CGFloat = 20
     private static let barSize = CGSize(width: 36, height: 5)
@@ -22,7 +24,7 @@ struct ModeHandle: View {
             .fill(Colors.separator)
             .frame(width: Self.barSize.width, height: Self.barSize.height)
             .frame(maxWidth: .infinity, minHeight: Self.stripHeight, maxHeight: Self.stripHeight)
-            .background(Colors.background)
+            .background(floating ? Color.clear : Colors.background)
             // The whole strip is draggable, not just the 4 pt bar.
             .contentShape(Rectangle())
             .onTapGesture {
