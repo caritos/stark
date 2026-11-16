@@ -34,7 +34,7 @@ struct AppleSettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(Colors.textSecondary)
             }
-            .listRowBackground(Colors.background)
+            .listRowBackground(Colors.card)
 
             if overlay.access == .granted {
                 Section {
@@ -62,7 +62,7 @@ struct AppleSettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(Colors.textSecondary)
                 }
-                .listRowBackground(Colors.background)
+                .listRowBackground(Colors.card)
             }
 
             if AppleSettings.showsCalendars(isEnabled: overlay.isEnabled, access: overlay.access) {
@@ -83,11 +83,11 @@ struct AppleSettingsView: View {
                                 .foregroundStyle(Colors.textSecondary)
                         }
                     }
-                    .listRowBackground(Colors.background)
+                    .listRowBackground(Colors.card)
                 }
             }
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Colors.background)
         .listRowSeparatorTint(Colors.separator)
@@ -131,7 +131,7 @@ private struct AppleCalendarToggleLabel: View {
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            Rectangle()
+            RoundedRectangle(cornerRadius: 3)
                 .fill(calendar.colorRGB.map { Color(hex: $0) } ?? Colors.textSecondary)
                 .frame(width: 10, height: 10)
                 .accessibilityHidden(true)

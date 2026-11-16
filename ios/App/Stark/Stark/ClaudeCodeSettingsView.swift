@@ -44,9 +44,9 @@ struct ClaudeCodeSettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(Colors.textSecondary)
             }
-            .listRowBackground(Colors.background)
+            .listRowBackground(Colors.card)
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Colors.background)
         .listRowSeparatorTint(Colors.separator)

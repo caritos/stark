@@ -40,7 +40,7 @@ struct SettingsView: View {
                         .font(.footnote)
                         .foregroundStyle(Colors.textSecondary)
                 }
-                .listRowBackground(Colors.background)
+                .listRowBackground(Colors.card)
                 #endif
 
                 Section {
@@ -51,7 +51,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Integrations")
                 }
-                .listRowBackground(Colors.background)
+                .listRowBackground(Colors.card)
 
                 Section {
                     Button("Weekly Review") { showReview = true }
@@ -59,7 +59,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Review")
                 }
-                .listRowBackground(Colors.background)
+                .listRowBackground(Colors.card)
 
                 Section {
                     Button {
@@ -94,9 +94,9 @@ struct SettingsView: View {
                 } header: {
                     Text("About")
                 }
-                .listRowBackground(Colors.background)
+                .listRowBackground(Colors.card)
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Colors.background)
             .listRowSeparatorTint(Colors.separator)

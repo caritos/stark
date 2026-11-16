@@ -136,10 +136,10 @@ struct FAQView: View {
                         }
                         .padding(.vertical, Spacing.xs)
                     }
-                    .listRowBackground(Colors.background)
+                    .listRowBackground(Colors.card)
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Colors.background)
             .listRowSeparatorTint(Colors.separator)

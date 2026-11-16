@@ -34,9 +34,9 @@ struct AccessRequiredView: View {
                 } label: {
                     Text(isAsking ? "ASKING…" : "ALLOW ACCESS")
                         .font(Fonts.mono(14, weight: .semibold))
-                        .foregroundStyle(Colors.background)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(Colors.accent)
+                        .background(Colors.accent, in: RoundedRectangle(cornerRadius: 8))
                 }
                 .buttonStyle(.plain)
                 .disabled(isAsking)
@@ -64,7 +64,7 @@ struct AccessRequiredView: View {
         }
         .padding(Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Colors.background)
+        .background(Colors.card)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Colors.separator).frame(height: 1)
         }
