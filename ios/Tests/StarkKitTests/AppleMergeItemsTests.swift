@@ -221,7 +221,7 @@ extension AppleMergeTests {
         let shifts = (10...13).map { d in event("night", start: date(d, 22), end: date(d + 1, 2)) }
         let d = dayDensity(events: [], reminders: [], month: YearMonth(year: 2026, month0: 5), today: today,
                            calendar: Self.cal, apple: AppleSnapshot(events: shifts, reminders: []))
-        for day in 10...14 { #expect(d[day] == DayDensity(tasks: 0, events: 1)) }
+        for day in 10...14 { #expect(d[day]?.tasks == 0); #expect(d[day]?.events == 1) }
     }
 
     private var listInfo: AppleCalendarInfo { AppleCalendarInfo(id: "list", title: "Home", accountName: "iCloud", colorHex: nil, isReminderList: true) }

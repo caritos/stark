@@ -6,10 +6,22 @@ import Foundation
 public struct DayDensity: Equatable, Sendable {
     public var tasks: Int
     public var events: Int
+    /// Distinct `0xRRGGBB` calendar colours of the day's Apple event rows, first-seen order, at
+    /// most `maxEventColors`. Empty when there are no events or none carries a colour (Stark's
+    /// own events have none).
+    public var eventColors: [UInt32]
 
-    public init(tasks: Int, events: Int) {
+    public static let maxEventColors = 5
+
+    public init(tasks: Int, events: Int, eventColors: [UInt32] = []) {
         self.tasks = tasks
         self.events = events
+        self.eventColors = eventColors
+    }
+
+    mutating func addEventColor(_ rgb: UInt32?) {
+        guard let rgb, eventColors.count < Self.maxEventColors, !eventColors.contains(rgb) else { return }
+        eventColors.append(rgb)
     }
 
     /// A day with nothing on it. `dayDensity` never stores these; the view falls back to it.
@@ -91,7 +103,9 @@ public func dayDensity(
         guard range.contains(item.displayDate) else { continue }
         let day = calendar.component(.day, from: item.displayDate)
         switch item.kind {
-        case .event: result[day, default: .none].events += 1
+        case .event:
+            result[day, default: .none].events += 1
+            result[day, default: .none].addEventColor(item.appleSource?.colorRGB)
         case .reminder: result[day, default: .none].tasks += 1
         }
     }
@@ -154,7 +168,9 @@ private func densityCounts(
         guard let year = c.year, let monthNumber = c.month, let day = c.day else { continue }
         let iso = DateMath.isoDate(year: year, month0: monthNumber - 1, day: day)
         switch item.kind {
-        case .event: result[iso, default: .none].events += 1
+        case .event:
+            result[iso, default: .none].events += 1
+            result[iso, default: .none].addEventColor(item.appleSource?.colorRGB)
         case .reminder: result[iso, default: .none].tasks += 1
         }
     }
