@@ -32,6 +32,11 @@ enum Colors {
     static let monthOutline = Color(light: 0x3B82F6, dark: 0x5B9BFF)
     /// Full-screen Month: a reminder's outlined checkbox (Fantastical's red).
     static let reminderBox = Color(light: 0xFF3B30, dark: 0xFF453A)
+    /// Full-screen Quarter: the thicker lines between months and under the weekday strip.
+    static let quarterSeam = Color(light: 0xD1D1D6, dark: 0x48484A)
+    /// Full-screen Quarter: a holiday calendar's thin text-less bar (mid lilac; `holidayChip` is
+    /// too pale to read as a 4 pt line).
+    static let holidayBar = Color(light: 0xC27BDB, dark: 0x9E5FB8)
 }
 
 extension Color {

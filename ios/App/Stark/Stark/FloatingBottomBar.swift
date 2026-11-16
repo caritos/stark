@@ -12,8 +12,8 @@ struct FloatingBottomBar: View {
 
     /// The current mode, read by VoiceOver as the menu button's value.
     let mode: CalendarMode
-    /// True while the full-screen Month is shown (also read as the menu button's value).
-    let fullMonth: Bool
+    /// The full-screen Month or Quarter shown, if any (also read as the menu button's value).
+    let full: FullScreenCalendar
     @Binding var showViewMenu: Bool
     let viewMenu: () -> ViewMenu
     let onCalendars: () -> Void
@@ -32,7 +32,7 @@ struct FloatingBottomBar: View {
             .buttonStyle(.plain)
             .glassBackground(Circle())
             .accessibilityLabel("View menu")
-            .accessibilityValue(CalendarViewMenu.accessibilityValue(for: mode, fullMonth: fullMonth))
+            .accessibilityValue(CalendarViewMenu.accessibilityValue(for: mode, full: full))
             .accessibilityHint("Opens the view and settings menu.")
             .popover(isPresented: $showViewMenu) {
                 viewMenu().presentationCompactAdaptation(.popover)

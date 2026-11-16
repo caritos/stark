@@ -37,9 +37,9 @@ struct ContentView: View {
     @State private var today: Date
     /// How much calendar the grid shows. Always starts as the month grid; not persisted.
     @State private var mode: CalendarMode = .month
-    /// The full-screen Month (view menu > Month) is shown over the DayTicker. A screen state, not
-    /// a `CalendarMode`: the mode underneath stays week or month, so leaving Month returns to it.
-    @State private var fullMonth = false
+    /// The full-screen Month or Quarter (view menu) shown over the DayTicker. A screen state, not
+    /// a `CalendarMode`: the mode underneath stays week or month, so leaving it returns to it.
+    @State private var full: FullScreenCalendar = .none
     /// The day last reported by `AgendaView.onDayInView` (issue #101) — read only by
     /// `MonthGridView`'s `scrollPagingDate`, to page the month grid as the agenda scrolls. A fresh
     /// `GridPagingRequest` every time (even for a repeated date) so scroll always wins over an
@@ -172,39 +172,36 @@ struct ContentView: View {
                         withAnimation(.easeInOut(duration: 0.2)) { mode = .month }
                     }
                     .transition(.opacity)
-                } else if fullMonth {
+                } else if full == .month {
                     // Same slot and rules as the year: the agenda stays underneath, hidden, and a
                     // day tap lands on the DayTicker scrolled to that day.
-                    FullMonthView(today: today, selectedDate: selectedDate) { date in
-                        selectDate(date)
-                        // The mode does not change here (unlike leaving the year), so page the
-                        // month grid to the tapped day's month explicitly.
-                        scrollPagingDate = GridPagingRequest(date: date)
-                        withAnimation(.easeInOut(duration: 0.2)) { fullMonth = false }
-                    }
-                    .transition(.opacity)
+                    FullMonthView(today: today, selectedDate: selectedDate, onSelectDate: leaveFullScreen)
+                        .transition(.opacity)
+                } else if full == .quarter {
+                    FullQuarterView(today: today, selectedDate: selectedDate, onSelectDate: leaveFullScreen)
+                        .transition(.opacity)
                 }
             }
         }
         .background(Colors.background)
-        // Year mode (the Mac sidebar) leaves the full Month; the menu's own choices already set
-        // both together.
-        .onChange(of: mode) { _, newMode in if newMode == .year { fullMonth = false } }
+        // Year mode (the Mac sidebar) leaves the full Month or Quarter; the menu's own choices
+        // already set both together.
+        .onChange(of: mode) { _, newMode in if newMode == .year { full = .none } }
         // Fantastical-style floating bottom bar instead of a nav-bar "Add" button. Overlaid on the
         // whole screen (not just the agenda), so it stays reachable in year mode too. The agenda
         // and the year view reserve `FloatingBottomBar.clearance` so their last rows clear it.
         .overlay(alignment: .bottom) {
             FloatingBottomBar(mode: mode,
-                              fullMonth: fullMonth,
+                              full: full,
                               showViewMenu: $showViewMenu,
                               viewMenu: {
-                                  ViewMenu(current: CalendarViewMenu.current(for: mode, fullMonth: fullMonth),
+                                  ViewMenu(current: CalendarViewMenu.current(for: mode, full: full),
                                            onChoose: { choice in
                                                showViewMenu = false
                                                withAnimation(.easeInOut(duration: 0.2)) {
                                                    let target = CalendarViewMenu.target(after: choice, current: mode)
                                                    mode = target.mode
-                                                   fullMonth = target.fullMonth
+                                                   full = target.full
                                                }
                                            },
                                            onSettings: {
@@ -275,8 +272,17 @@ struct ContentView: View {
         }
     }
 
-    /// The year or the full Month covers the grid and agenda (which stay alive underneath).
-    private var coversAgenda: Bool { mode == .year || fullMonth }
+    /// The year or the full Month/Quarter covers the grid and agenda (which stay alive underneath).
+    private var coversAgenda: Bool { mode == .year || full != .none }
+
+    /// A day tapped in the full Month or Quarter: select it and return to the DayTicker there.
+    private func leaveFullScreen(to date: Date) {
+        selectDate(date)
+        // The mode does not change here (unlike leaving the year), so page the month grid to the
+        // tapped day's month explicitly.
+        scrollPagingDate = GridPagingRequest(date: date)
+        withAnimation(.easeInOut(duration: 0.2)) { full = .none }
+    }
 
     /// The bridge handles URLs one at a time in arrival order, so these tasks may overlap.
     private func handleBridge(_ url: URL) {
