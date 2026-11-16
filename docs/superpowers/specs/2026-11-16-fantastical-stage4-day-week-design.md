@@ -1,6 +1,6 @@
 # Fantastical redesign, stage 4: Day and Week timelines, planner restyle
 
-Date: 2026-11-16. Status: approved by the owner's standing "just go ahead" (2026-11-16). Parent: `2026-11-15-fantastical-visual-design.md`. References: `docs/fantastical/CATALOG.md` IMG_1880 (Day), IMG_1881 (Week).
+Date: 2026-11-16. Status: 4a built (v2.0.30); approved by the owner's standing "just go ahead" (2026-11-16). Parent: `2026-11-15-fantastical-visual-design.md`. References: `docs/fantastical/CATALOG.md` IMG_1880 (Day), IMG_1881 (Week).
 
 ## Intent
 The view menu gets Day and Week: read-only hour timelines of what Apple Calendar and Reminders hold, like Fantastical. The timeboxing planner (tray, drag, plan blocks) stays a separate screen; it is restyled and its 1340-line file split. Two sub-stages, each shipped: 4a Day/Week (v2.0.30), 4b planner restyle + split (v2.0.31).
