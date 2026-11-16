@@ -53,6 +53,16 @@ public func monthLayout(items: [AgendaItem], month: YearMonth, rowCapacity: Int,
         return indexByISO[DateMath.isoDate(year: y, month0: m - 1, day: d)]
     }
 
+    // Same span as `mergeAppleItems`: an Apple timed event ending exactly at midnight stops the
+    // instant before it. Local rows use the plain span, as `buildAgendaItems` does.
+    func span(of event: Event, source: AppleSource?) -> Int {
+        var e = event
+        if source != nil, !e.isAllDay, let end = e.end, end > e.start, calendar.startOfDay(for: end) == end {
+            e.end = end.addingTimeInterval(-1)
+        }
+        return spanDays(of: e, calendar: calendar)
+    }
+
     // Split rows into bar candidates (by event id) and per-day lines.
     var barDays: [String: (event: Event, source: AppleSource?, days: Set<Int>)] = [:]
     var timed = [[(Date, String, MonthLine)]](repeating: [], count: dayCount)
@@ -63,10 +73,12 @@ public func monthLayout(items: [AgendaItem], month: YearMonth, rowCapacity: Int,
         guard let day = index(of: item.displayDate) else { continue }
         switch item.kind {
         case .event(let event):
-            if event.isAllDay || spanDays(of: event, calendar: calendar) > 0 {
-                var entry = barDays[event.id] ?? (event, item.appleSource, [])
+            if event.isAllDay || span(of: event, source: item.appleSource) > 0 {
+                // Every occurrence of an Apple series shares one id but has its own start.
+                let key = item.appleSource == nil ? event.id : "\(event.id)|\(event.start.timeIntervalSince1970)"
+                var entry = barDays[key] ?? (event, item.appleSource, [])
                 entry.days.insert(day)
-                barDays[event.id] = entry
+                barDays[key] = entry
             } else {
                 let line = MonthLine(id: item.id, title: event.title,
                                      kind: .timed(colorRGB: item.appleSource?.colorRGB))
@@ -86,7 +98,7 @@ public func monthLayout(items: [AgendaItem], month: YearMonth, rowCapacity: Int,
         let row: Int; let start: Int; let end: Int; let before: Bool; let after: Bool }
     var pieces: [Piece] = []
     for (eventID, entry) in barDays {
-        let span = spanDays(of: entry.event, calendar: calendar)
+        let span = span(of: entry.event, source: entry.source)
         let present = entry.days.sorted()
         let holiday = entry.source?.calendarTitle.lowercased().contains("holiday") == true
         var i = 0
@@ -104,7 +116,11 @@ public func monthLayout(items: [AgendaItem], month: YearMonth, rowCapacity: Int,
             first = false
             let chunkEnd = chunkStart + span
             var covered: [Int] = []
-            while i < present.count, present[i] <= chunkEnd { covered.append(present[i]); i += 1 }
+            // Follow real occurrence boundaries: stop at a missing day or after span + 1 days.
+            while i < present.count, present[i] <= chunkEnd,
+                  covered.isEmpty || present[i] == covered.last! + 1 {
+                covered.append(present[i]); i += 1
+            }
             for row in 0..<weekCount {
                 let inRow = covered.filter { $0 / 7 == row }
                 guard let lo = inRow.first, let hi = inRow.last else { continue }

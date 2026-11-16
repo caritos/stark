@@ -227,4 +227,60 @@ struct MonthLayoutTests {
 
     // Known gap: a clipped RECURRING event (or an Apple series) has no known real start, so its
     // first grid day is taken as the chunk start and it does not report continuesBefore.
+
+    // MARK: Apple midnight ends, series, local repeating gaps
+
+    private let appleSrc = AppleSource(calendarID: "c", calendarTitle: "Work", colorHex: nil, isReminder: false)
+    private func appleOccurrence(_ day: String, fromHour: Int, toDay: String, toHour: Int) -> AgendaItem {
+        let e = Event(id: "apple-x", title: "Night", start: at(day, fromHour),
+                      end: toHour == 24 ? Calendar(identifier: .gregorian).startOfDay(for: d(toDay))
+                          : at(toDay, toHour))
+        return AgendaItem(kind: .event(e), occurrence: e.start, displayDate: e.start, isOverdue: false,
+                          appleSource: appleSrc)
+    }
+
+    @Test func appleEventEndingAtMidnightIsATimedLine() {
+        let item = appleOccurrence("2026-11-04", fromHour: 19, toDay: "2026-11-05", toHour: 24)
+        let w = layout([item])[0]
+        #expect(w.bars.isEmpty)
+        #expect(w.lines[3].count == 1)
+    }
+
+    @Test func dailyAppleEventEndingAtMidnightGivesSevenLinesNoBars() {
+        let items = (1...7).map { appleOccurrence("2026-11-0\($0)", fromHour: 23,
+                                                    toDay: DateMath.addDays("2026-11-0\($0)", 1), toHour: 24) }
+        let w = layout(items)[0]
+        #expect(w.bars.isEmpty)
+        #expect(w.lines.allSatisfy { $0.count == 1 })
+    }
+
+    @Test func dailyAppleOvernightEventGivesSeparateOneNightPieces() {
+        // The merge keeps each occurrence's own row, so a day has one row; no pairing into 2-day bars.
+        let items = (1...7).map { appleOccurrence("2026-11-0\($0)", fromHour: 22,
+                                                    toDay: DateMath.addDays("2026-11-0\($0)", 1), toHour: 2) }
+        let w = layout(items)[0]
+        #expect(w.bars.count == 7)
+        #expect(w.bars.allSatisfy { $0.startColumn == $0.endColumn })
+    }
+
+    @Test func weeklyMultiDayLocalEventNeverBarsAcrossDaysWithoutRows() {
+        // Thu 09:00 -> Mon 17:00 weekly (span 4). Nov 5-9 is one occurrence, Nov 12-16 the next.
+        let e = Event(id: "w", title: "Retreat", start: at("2026-11-05", 9), end: at("2026-11-09", 17),
+                      recurrence: RecurrenceRule(frequency: .weekly))
+        // Also the occurrence that began Oct 29: only Nov 1-2 are in the grid.
+        let days = ["2026-11-01", "2026-11-02", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08",
+                    "2026-11-09", "2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15", "2026-11-16"]
+        let items = days.map { AgendaItem(kind: .event(e), occurrence: d($0), displayDate: d($0), isOverdue: false) }
+        let w = layout(items)
+        for week in w.prefix(3) {
+            for bar in week.bars {
+                // Every column under a bar has a row: Tue/Wed (cols 2, 3) of week 0 and 1 never do.
+                #expect(bar.startColumn...bar.endColumn != 2...3)
+            }
+        }
+        // Week 0: Nov 1-2 piece (cols 0-1) and Nov 5-7 piece (cols 4-6), nothing over cols 2-3.
+        #expect(w[0].bars.map { [$0.startColumn, $0.endColumn] }.sorted { $0[0] < $1[0] } == [[0, 1], [4, 6]])
+        // Week 1: the Nov 5 occurrence ends Mon (cols 0-1); Nov 12-14 starts Thu (cols 4-6).
+        #expect(w[1].bars.map { [$0.startColumn, $0.endColumn] }.sorted { $0[0] < $1[0] } == [[0, 1], [4, 6]])
+    }
 }
