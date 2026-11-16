@@ -37,15 +37,11 @@ enum Spacing {
     static let lg: CGFloat = 24
 }
 
-// JetBrainsMono-Regular.ttf / JetBrainsMono-SemiBold.ttf (bundled in Fonts/, registered via
-// UIAppFonts in Info.plist — see App/Stark/Info.plist) cover the only two weights this app
-// ever asks for. Titles stay on the default system font.
+// System font with monospaced digits (times and day numbers keep their alignment). The name
+// `mono` is kept so call sites need no edit; a rename is a later cleanup.
 enum Fonts {
     static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        switch weight {
-        case .semibold: return .custom("JetBrainsMono-SemiBold", size: size)
-        default: return .custom("JetBrainsMono-Regular", size: size)
-        }
+        .system(size: size, weight: weight).monospacedDigit()
     }
 }
 
