@@ -60,7 +60,6 @@ struct WeeklyReviewView: View {
             .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item) }
         }
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
         // Load before showing: items in month files that aren't in memory silently vanish.
         .task(id: weekStart) {
             loadWeek()

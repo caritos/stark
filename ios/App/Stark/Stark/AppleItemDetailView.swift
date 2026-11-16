@@ -81,7 +81,6 @@ struct AppleItemEditor: View {
             }
         }
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
     }
 
     private func load() async {
@@ -239,7 +238,6 @@ struct AppleItemDetailView: View {
             }
         }
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
     }
 
     private func field(_ label: String, _ value: String) -> some View {

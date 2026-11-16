@@ -1,23 +1,33 @@
 // ios/App/Stark/Stark/Theme.swift
 import SwiftUI
 
-// Braun/Bauhaus: hard edges, no rounded corners, one accent color, flat geometry.
-// Values match mobile/src/theme.ts exactly, so Stark's native app looks identical
-// to the Expo app it replaces.
+// Fantastical-style: system-grouped look, adaptive light/dark tokens that follow the phone's
+// appearance (nothing forces a colour scheme), one blue accent, white cards on a grey ground.
 enum Colors {
-    static let background = Color(hex: 0x1A1A1A)
-    static let accent = Color(hex: 0xE8461A)
-    static let text = Color(hex: 0xF0F0F0)
-    static let textSecondary = Color(hex: 0x888888)
-    static let separator = Color(hex: 0x333333)
-    static let checkboxBorder = Color(hex: 0x555555)
-    /// A muted purple: a single, deliberate, user-approved exception to the one-accent-color
-    /// rule, so a glance tells task days (accent) from event days. Scoped to exactly three places:
-    /// the month grid's event density markers (`MonthGridView`), the year view's day-cell tint
-    /// (`YearView`, issue #102 — purple wins when a day has both tasks and events), and the day
-    /// planner's dimmed event blocks and all-day banner (`PlannerView`, timeboxing spec). Don't
-    /// use it anywhere else.
+    /// The grouped ground behind cards.
+    static let background = Color(light: 0xF2F2F7, dark: 0x000000)
+    /// Card / row surface sitting on `background`.
+    static let card = Color(light: 0xFFFFFF, dark: 0x1C1C1E)
+    static let accent = Color(light: 0x3B82F6, dark: 0x5B9BFF)
+    static let text = Color(light: 0x1C1C1E, dark: 0xF2F2F7)
+    static let textSecondary = Color(hex: 0x8E8E93)
+    static let separator = Color(light: 0xD1D1D6, dark: 0x38383A)
+    static let checkboxBorder = Color(light: 0xC7C7CC, dark: 0x636366)
+    /// A muted purple for event markers (month grid, year view, planner event blocks) until
+    /// stages 2-3 of the redesign replace it.
     static let eventDot = Color(hex: 0x8E5FD9)
+}
+
+extension Color {
+    /// An appearance-adaptive colour from two 0xRRGGBB values.
+    init(light: UInt32, dark: UInt32) {
+        self.init(UIColor { traits in
+            let v = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: CGFloat((v >> 16) & 0xFF) / 255,
+                           green: CGFloat((v >> 8) & 0xFF) / 255,
+                           blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+        })
+    }
 }
 
 enum Spacing {

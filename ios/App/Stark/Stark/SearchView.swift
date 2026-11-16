@@ -103,7 +103,6 @@ struct SearchView: View {
             }
         }
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
     }
 
     private func refreshResults(events: [Event]? = nil, reminders: [Reminder]? = nil) {

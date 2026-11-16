@@ -150,6 +150,5 @@ struct FAQView: View {
             }
         }
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
     }
 }

@@ -190,7 +190,6 @@ struct PlannerView: View {
             }
         }
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
         .task(id: day) {
             loadDay()
             // Apple data for the viewed day: its range in the shared fetch window, and the
@@ -1329,7 +1328,6 @@ private struct PlanTimePicker: View {
         }
         .presentationDetents([.medium])
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
     }
 
     /// The picked hour and minute on the planned day, snapped to the quarter hour.

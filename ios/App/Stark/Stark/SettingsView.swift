@@ -109,6 +109,5 @@ struct SettingsView: View {
             .sheet(isPresented: $showReview) { WeeklyReviewView() }
         }
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
     }
 }

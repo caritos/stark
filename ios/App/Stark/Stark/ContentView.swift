@@ -84,7 +84,6 @@ struct ContentView: View {
         .tint(Colors.accent)
         // The design is dark-only (Colors.* are dark-theme tokens); without this, system
         // sheets and Forms would render light with near-white text.
-        .preferredColorScheme(.dark)
         .onOpenURL { url in
             if bridgeReady {
                 handleBridge(url)

@@ -277,7 +277,6 @@ struct EditItemView: View {
             }
         }
         .tint(Colors.accent)
-        .preferredColorScheme(.dark)
     }
 
     private func insertSigil(_ sigil: Character) {
