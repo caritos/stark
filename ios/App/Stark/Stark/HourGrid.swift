@@ -244,21 +244,25 @@ struct TimelineBlockView: View {
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
+    /// The occurrence's real times (a block clipped at midnight or clamped near it still reads
+    /// them), with the month and day when that end of it is on another day.
+    private func text(_ date: Date, otherDay: Bool) -> String {
+        otherDay ? "\(AgendaFormat.monthDay(date)), \(AgendaFormat.time(date))" : AgendaFormat.time(date)
+    }
+
     private var timeRange: String {
-        let start = HourGridMetrics.date(minute: block.startMinute, on: day)
-        if block.isReminder { return AgendaFormat.time(start) }
-        let end = HourGridMetrics.date(minute: block.endMinute, on: day)
-        return "\(AgendaFormat.time(start)) – \(AgendaFormat.time(end))"
+        let start = text(block.start, otherDay: block.startIsOtherDay)
+        guard let end = block.end else { return start }
+        return "\(start) – \(text(end, otherDay: block.endIsOtherDay))"
     }
 
     /// "<title>, <start> to <end>" (a reminder: "<title>, reminder at <time>").
     var accessibilityText: String {
-        let start = AgendaFormat.time(HourGridMetrics.date(minute: block.startMinute, on: day))
-        if block.isReminder {
+        let start = text(block.start, otherDay: block.startIsOtherDay)
+        guard let end = block.end else {
             return "\(block.title), reminder at \(start)\(block.isCompleted ? ", completed" : "")"
         }
-        let end = AgendaFormat.time(HourGridMetrics.date(minute: block.endMinute, on: day))
-        return "\(block.title), \(start) to \(end)"
+        return "\(block.title), \(start) to \(text(end, otherDay: block.endIsOtherDay))"
     }
 }
 
@@ -266,15 +270,32 @@ struct TimelineBlockView: View {
 /// lilac, as in the full Month).
 struct TimelineChipView: View {
     let chip: TimelineChip
+
+    /// "<title>, all day" (a reminder: "<title>, reminder, completed").
+    static func accessibilityText(_ chip: TimelineChip) -> String {
+        if chip.isReminder { return "\(chip.title), reminder\(chip.isCompleted ? ", completed" : "")" }
+        return "\(chip.title), all day"
+    }
     /// Week's narrow columns: smaller text and padding.
     var compact = false
 
     var body: some View {
-        let tint = chip.colorRGB.map { Color(hex: $0) } ?? Colors.eventDot
-        Text(chip.title)
-            .font(Fonts.mono(compact ? 10 : 12, weight: .medium))
-            .foregroundStyle(chip.isHoliday ? Colors.holidayText : Colors.text)
-            .lineLimit(1)
+        let tint = chip.colorRGB.map { Color(hex: $0) } ?? (chip.isReminder ? Colors.reminderBox : Colors.eventDot)
+        HStack(spacing: compact ? 2 : 4) {
+            // A date-only reminder: a checkbox glyph, filled and struck through when completed.
+            if chip.isReminder {
+                RoundedRectangle(cornerRadius: 2.5)
+                    .strokeBorder(tint, lineWidth: 1.2)
+                    .background(RoundedRectangle(cornerRadius: 2.5).fill(chip.isCompleted ? tint : Color.clear))
+                    .frame(width: compact ? 8 : 11, height: compact ? 8 : 11)
+            }
+            Text(chip.title)
+                .font(Fonts.mono(compact ? 10 : 12, weight: .medium))
+                .strikethrough(chip.isCompleted)
+                .foregroundStyle(chip.isHoliday ? Colors.holidayText
+                                 : chip.isCompleted ? Colors.textSecondary : Colors.text)
+                .lineLimit(1)
+        }
             .padding(.horizontal, compact ? 3 : 6)
             .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 4)

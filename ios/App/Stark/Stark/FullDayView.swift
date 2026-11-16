@@ -147,14 +147,10 @@ struct FullDayView: View {
         day: Date, today: Date
     ) -> (timeline: DayTimeline, items: [String: AgendaItem]) {
         let calendar = Calendar(identifier: .gregorian)
-        let range = range(for: day)
-        let base = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
-        let items = agendaWithApple(local: base, snapshot: apple, plans: plans, range: range, today: today,
-                                    reminders: reminders, calendar: calendar)
+        let items = timelineAgendaItems(events: events, reminders: reminders, plans: plans, apple: apple,
+                                        days: range(for: day), today: today, calendar: calendar)
         let timeline = timelineLayout(items: items, day: day, calendar: calendar)
-        var byID: [String: AgendaItem] = [:]
-        for item in items { byID[item.id] = item }
-        return (timeline, byID)
+        return (timeline, timeline.items)
     }
 
     /// Not a bare Int: `HourGrid`'s label `ForEach(0..<24, id: \.self)` would claim those ids, and
@@ -253,7 +249,7 @@ struct FullDayView: View {
                 ForEach(shown) { chip in
                     Button { items[chip.id].map(onOpenItem) } label: { TimelineChipView(chip: chip) }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(chip.title)
+                        .accessibilityLabel(TimelineChipView.accessibilityText(chip))
                         .accessibilityHint("Opens details")
                 }
                 if overflows && !chipsExpanded {

@@ -13,7 +13,9 @@ The view menu gets Day and Week: read-only hour timelines of what Apple Calendar
 - Pure layout in StarkKit, tests first, four time zones.
 
 ## Non-goals
-Weather, drag-to-create/move on the timeline, settings for day start/end hours, highlight weekends, multi-day events inside the timed grid (they are all-day chips), pinch zoom.
+Weather, drag-to-create/move on the timeline, settings for day start/end hours, highlight weekends, pinch zoom.
+
+Multi-day timed events (ruling 2026-11-16, review M3): a clipped block on their first and last day, an all-day chip on each fully covered middle day; a block's time text reads the real start and end (with the date when that end is on another day).
 
 ## Constraints
 Data from `buildAgendaItems` + `agendaWithApple` like Month; own `AppleFetchWindow.Screen` cases (`.fullDay`, `.fullWeek`); no change to write paths. Hit targets: blocks may be small (a 15 minute event is 15 pt) but get a 22 pt minimum drawn height.

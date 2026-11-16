@@ -162,8 +162,8 @@ struct FullWeekView: View {
         return start...end.addingTimeInterval(-1)
     }
 
-    /// Per column, the same pipeline as `FullDayView` over that one day, so a multi-day or
-    /// midnight-crossing event reads the same in both views.
+    /// The same pipeline as `FullDayView`, over the whole week, laid out per column, so a
+    /// multi-day or midnight-crossing event reads the same in both views.
     nonisolated private static func computeLayout(
         events: [Event], reminders: [Reminder], plans: [PlanBlock], apple: AppleSnapshot,
         weekStart: Date, today: Date
@@ -171,15 +171,14 @@ struct FullWeekView: View {
         let calendar = Calendar(identifier: .gregorian)
         var columns: [DayTimeline] = []
         var items: [[String: AgendaItem]] = []
+        // Built once over the week, so the agenda's rules (a repeating reminder listed once) hold
+        // across the columns; each column then keeps its own day's rows.
+        let rows = timelineAgendaItems(events: events, reminders: reminders, plans: plans, apple: apple,
+                                       days: range(for: weekStart), today: today, calendar: calendar)
         for day in days(from: weekStart) {
-            let range = FullDayView.range(for: day)
-            let base = buildAgendaItems(events: events, reminders: reminders, in: range, today: today)
-            let rows = agendaWithApple(local: base, snapshot: apple, plans: plans, range: range, today: today,
-                                       reminders: reminders, calendar: calendar)
-            columns.append(timelineLayout(items: rows, day: day, calendar: calendar))
-            var byID: [String: AgendaItem] = [:]
-            for row in rows { byID[row.id] = row }
-            items.append(byID)
+            let column = timelineLayout(items: rows, day: day, calendar: calendar)
+            columns.append(column)
+            items.append(column.items)
         }
         return (columns, items)
     }
@@ -304,7 +303,7 @@ struct FullWeekView: View {
                                 TimelineChipView(chip: chip, compact: true)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel(chip.title)
+                            .accessibilityLabel(TimelineChipView.accessibilityText(chip))
                             .accessibilityHint("Opens details")
                         }
                         if overflows {
