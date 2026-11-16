@@ -1,6 +1,6 @@
 # Fantastical redesign, stage 3: view menu, year, month, quarter
 
-Date: 2026-11-16. Status: approved 2026-11-16; 3a built (v2.0.27), 3b and 3c pending (the menu gets Month and Quarter entries then). Parent: `2026-11-15-fantastical-visual-design.md`. References: `docs/fantastical/CATALOG.md` (IMG_1880-1886, IMG_8832-8834, day-week-year-view/IMG_9158-9159).
+Date: 2026-11-16. Status: approved 2026-11-16; 3a built (v2.0.27), 3b built (v2.0.28), 3c pending (the menu gets its Quarter entry then). Parent: `2026-11-15-fantastical-visual-design.md`. References: `docs/fantastical/CATALOG.md` (IMG_1880-1886, IMG_8832-8834, day-week-year-view/IMG_9158-9159).
 
 ## Intent
 
