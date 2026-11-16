@@ -53,4 +53,22 @@ struct AppleFetchWindowTests {
         window.set(.monthGrid, nil)
         #expect(window.covering == nil)
     }
+
+    @Test func fullQuarterWidensTheHullAndReleases() {
+        // The Quarter's 13 weeks reach past the agenda's window; leaving it shrinks the hull back.
+        var window = AppleFetchWindow()
+        window.set(.agenda, day(-14)...day(60))
+        window.set(.fullQuarter, day(-3)...day(87))
+        #expect(window.covering == day(-14)...day(87))
+        window.set(.fullQuarter, nil)
+        #expect(window.covering == day(-14)...day(60))
+    }
+
+    @Test func fullQuarterAndFullMonthAreSeparateScreens() {
+        var window = AppleFetchWindow()
+        window.set(.fullMonth, day(0)...day(41))
+        window.set(.fullQuarter, day(30)...day(120))
+        window.set(.fullMonth, nil)
+        #expect(window.covering == day(30)...day(120))
+    }
 }

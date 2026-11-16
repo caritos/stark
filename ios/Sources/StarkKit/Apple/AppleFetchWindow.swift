@@ -12,6 +12,8 @@ public struct AppleFetchWindow: Equatable, Sendable {
         case year
         /// The full-screen Month view while it is shown: its visible 6-week grid.
         case fullMonth
+        /// The full-screen Quarter view while it is shown: its visible 13-week grid.
+        case fullQuarter
         /// The Search sheet while it is open (`SearchWindow`, two years either side of today).
         case search
         /// The planner while it is open: the viewed day's `PlannerDays.loadRange`, so Apple
