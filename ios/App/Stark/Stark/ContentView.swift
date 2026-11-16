@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var showSearch = false
     @State private var showSettings = false
     @State private var showCalendars = false
+    @State private var showViewMenu = false
     @State private var selectedItem: AgendaItem?
     @State private var selectedDate: Date
     @State private var scrollRequest: ScrollRequest?
@@ -176,7 +177,25 @@ struct ContentView: View {
         // whole screen (not just the agenda), so it stays reachable in year mode too. The agenda
         // and the year view reserve `FloatingBottomBar.clearance` so their last rows clear it.
         .overlay(alignment: .bottom) {
-            FloatingBottomBar(onSettings: { showSettings = true },
+            FloatingBottomBar(mode: mode,
+                              showViewMenu: $showViewMenu,
+                              viewMenu: {
+                                  ViewMenu(current: CalendarViewMenu.current(for: mode),
+                                           onChoose: { choice in
+                                               showViewMenu = false
+                                               withAnimation(.easeInOut(duration: 0.2)) {
+                                                   mode = CalendarViewMenu.mode(after: choice, current: mode)
+                                               }
+                                           },
+                                           onSettings: {
+                                               showViewMenu = false
+                                               // Present Settings after the popover has gone.
+                                               Task {
+                                                   try? await Task.sleep(nanoseconds: 300_000_000)
+                                                   showSettings = true
+                                               }
+                                           })
+                              },
                               onCalendars: { showCalendars = true },
                               onSearch: { showSearch = true },
                               onAdd: { showAdd = true })

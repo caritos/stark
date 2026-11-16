@@ -1,6 +1,7 @@
 import SwiftUI
+import StarkKit
 
-/// Fantastical-style floating bar: a round Settings button at left, a centred "All Calendars"
+/// Fantastical-style floating bar: a round hamburger (view menu) button at left, a centred "All Calendars"
 /// pill and a right pill holding Search and Add. Glass on iOS 26, an ultra-thin material capsule
 /// on iOS 17+. Every control is at least 44 pt. Content scrolls under it (the lists reserve
 /// `FloatingBottomBar.clearance` of bottom margin).
@@ -9,15 +10,18 @@ struct FloatingBottomBar: View {
     /// content reserves so its last rows can be scrolled clear of the bar.
     static let clearance: CGFloat = 84
 
-    let onSettings: () -> Void
+    /// The current mode, read by VoiceOver as the menu button's value.
+    let mode: CalendarMode
+    @Binding var showViewMenu: Bool
+    let viewMenu: () -> ViewMenu
     let onCalendars: () -> Void
     let onSearch: () -> Void
     let onAdd: () -> Void
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            Button(action: onSettings) {
-                Image(systemName: "gearshape")
+            Button { showViewMenu = true } label: {
+                Image(systemName: "line.3.horizontal")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Colors.text)
                     .frame(width: 52, height: 52)
@@ -25,7 +29,12 @@ struct FloatingBottomBar: View {
             }
             .buttonStyle(.plain)
             .glassBackground(Circle())
-            .accessibilityLabel("Settings")
+            .accessibilityLabel("View menu")
+            .accessibilityValue(CalendarViewMenu.accessibilityValue(for: mode))
+            .accessibilityHint("Opens the view and settings menu.")
+            .popover(isPresented: $showViewMenu) {
+                viewMenu().presentationCompactAdaptation(.popover)
+            }
 
             Spacer(minLength: 0)
 

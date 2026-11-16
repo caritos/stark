@@ -77,6 +77,7 @@ struct YearView: View {
 
             #if !targetEnvironment(macCatalyst)
             ModeHandle(mode: $mode)
+                .padding(.bottom, FloatingBottomBar.clearance)
             #endif
         }
         .background(Colors.background)
