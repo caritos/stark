@@ -20,6 +20,7 @@ struct ViewMenu: View {
         }
         .padding(.vertical, Spacing.xs)
         .frame(minWidth: 220)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .background(.regularMaterial)
     }
 
