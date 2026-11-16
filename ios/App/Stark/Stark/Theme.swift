@@ -23,6 +23,15 @@ enum Colors {
     static let heatLow = Color(light: 0xFFF6C8, dark: 0x4D4519)
     static let heatMedium = Color(light: 0xF9DE9C, dark: 0x70561A)
     static let heatHigh = Color(light: 0xF2A9A0, dark: 0x83332E)
+    /// Full-screen Month: a holiday calendar's all-day chip (pale lilac) and its text (purple).
+    static let holidayChip = Color(light: 0xF1E1F7, dark: 0x3A2645)
+    static let holidayText = Color(light: 0x8A34A8, dark: 0xD9A8EE)
+    /// Full-screen Month: today's whole cell, pale blue.
+    static let todayCell = Color(light: 0xE6F0FD, dark: 0x13243D)
+    /// Full-screen Month: the outline around the displayed month's block of days.
+    static let monthOutline = Color(light: 0x3B82F6, dark: 0x5B9BFF)
+    /// Full-screen Month: a reminder's outlined checkbox (Fantastical's red).
+    static let reminderBox = Color(light: 0xFF3B30, dark: 0xFF453A)
 }
 
 extension Color {
