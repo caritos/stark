@@ -118,7 +118,7 @@ struct ContentView: View {
                 } label: {
                     Text(error)
                         .font(.footnote)
-                        .foregroundStyle(Colors.text)
+                        .foregroundStyle(.white)
                         .padding(Spacing.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Colors.accent)
@@ -135,7 +135,7 @@ struct ContentView: View {
                 } label: {
                     Text(problem)
                         .font(.footnote)
-                        .foregroundStyle(Colors.text)
+                        .foregroundStyle(.white)
                         .padding(Spacing.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Colors.accent)
@@ -259,9 +259,10 @@ struct ContentView: View {
         } label: {
             Image(systemName: "plus")
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Colors.background)
+                .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
-                .background(Colors.accent)
+                .background(Circle().fill(Colors.accent))
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Add")
@@ -275,9 +276,10 @@ struct ContentView: View {
         } label: {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Colors.background)
+                .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
-                .background(Colors.accent)
+                .background(Circle().fill(Colors.accent))
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Search")
@@ -291,9 +293,10 @@ struct ContentView: View {
         } label: {
             Image(systemName: "gearshape")
                 .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Colors.background)
+                .foregroundStyle(.white)
                 .frame(width: 56, height: 56)
-                .background(Colors.accent)
+                .background(Circle().fill(Colors.accent))
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Settings")

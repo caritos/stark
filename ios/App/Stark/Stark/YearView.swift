@@ -202,7 +202,7 @@ struct YearView: View {
         } label: {
             Text("\(day.day)")
                 .font(Fonts.mono(11))
-                .foregroundStyle(isToday ? Colors.background : (day.isInMonth ? Colors.text : Colors.textSecondary))
+                .foregroundStyle(isToday ? Color.white : (day.isInMonth ? Colors.text : Colors.textSecondary))
                 .frame(maxWidth: .infinity, minHeight: Self.cellHeight, maxHeight: Self.cellHeight)
                 .background {
                     if isToday {

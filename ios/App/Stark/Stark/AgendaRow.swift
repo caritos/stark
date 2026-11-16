@@ -144,7 +144,7 @@ struct AgendaRowView: View {
             .overlay {
                 Image(systemName: "checkmark")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Colors.background)
+                    .foregroundStyle(.white)
             }
     }
 

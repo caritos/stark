@@ -247,13 +247,13 @@ struct MonthGridView: View {
             VStack(spacing: 0) {
                 Text("\(day.day)")
                     .font(Fonts.mono(15))
-                    .foregroundStyle(isToday ? Colors.background : (day.isInMonth ? Colors.text : Colors.textSecondary))
+                    .foregroundStyle(isToday ? Color.white : (day.isInMonth ? Colors.text : Colors.textSecondary))
                     .frame(width: Self.cellSize, height: Self.cellSize)
                     .background {
                         if isToday {
-                            Rectangle().fill(Colors.accent)
+                            Circle().fill(Colors.accent)
                         } else if isSelected {
-                            Rectangle().strokeBorder(Colors.accent, lineWidth: 1)
+                            Circle().strokeBorder(Colors.accent, lineWidth: 1)
                         }
                     }
                 busyBar(for: counts)

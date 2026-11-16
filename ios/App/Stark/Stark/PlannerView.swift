@@ -722,8 +722,8 @@ struct PlannerView: View {
         .padding(.horizontal, Spacing.xs)
         .padding(.vertical, 2)
         .frame(width: width, height: height(minutes: minutes), alignment: .topLeading)
-        .background(Colors.background)
-        .overlay { Rectangle().strokeBorder(Colors.accent, lineWidth: 1) }
+        .background(Colors.card, in: RoundedRectangle(cornerRadius: 8))
+        .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(Colors.accent, lineWidth: 1) }
         .clipped()
         .opacity(lift?.id == item.id ? 0.8 : 1)
         .contentShape(Rectangle())
@@ -751,17 +751,17 @@ struct PlannerView: View {
         let visual = Group {
             if shownMinutes < 30 {
                 // A quarter hour is 15 pt: one line, start time then title.
-                (Text(AgendaFormat.time(block.start)).font(Fonts.mono(9)).foregroundColor(Colors.background.opacity(0.8))
-                 + Text("  \(title)").font(Fonts.mono(10, weight: .semibold)).foregroundColor(Colors.background))
+                (Text(AgendaFormat.time(block.start)).font(Fonts.mono(9)).foregroundColor(.white.opacity(0.85))
+                 + Text("  \(title)").font(Fonts.mono(10, weight: .semibold)).foregroundColor(.white))
                     .lineLimit(1)
             } else {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(range)
                         .font(Fonts.mono(9))
-                        .foregroundStyle(Colors.background.opacity(0.8))
+                        .foregroundStyle(.white.opacity(0.85))
                     Text(title)
                         .font(Fonts.mono(11, weight: .semibold))
-                        .foregroundStyle(Colors.background)
+                        .foregroundStyle(.white)
                         .lineLimit(shownMinutes >= 45 ? 2 : 1)
                 }
                 .padding(.vertical, 2)
@@ -778,7 +778,7 @@ struct PlannerView: View {
         // through the title. Pressing along the bottom edge and dragging resizes.
         .overlay(alignment: .bottomTrailing) {
             Rectangle()
-                .fill(Colors.background.opacity(0.6))
+                .fill(Color.white.opacity(0.7))
                 .frame(width: 16, height: 2)
                 .padding(.trailing, 6)
                 .padding(.bottom, 2)
@@ -789,7 +789,7 @@ struct PlannerView: View {
             Button { withAnimation(.easeOut(duration: 0.15)) { draft?.remove(id: block.id) } } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Colors.background)
+                    .foregroundStyle(.white)
                     .frame(width: 28, height: min(24, max(blockHeight - 1, 1)))
                     .contentShape(Rectangle())
             }
