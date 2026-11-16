@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/stark_claude.build/primary.swiftdeps"
+  },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Sources/stark-claude/main.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/stark_claude.build/main.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/stark_claude.build/main.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/stark_claude.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/stark_claude.build/main.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/stark_claude.build/main.dia"
+  }
+}

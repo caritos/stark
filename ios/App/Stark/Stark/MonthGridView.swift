@@ -64,7 +64,7 @@ struct MonthGridView: View {
     let scrollPagingDate: GridPagingRequest?
 
     /// The number's square plus a little air.
-    private static let rowHeight: CGFloat = 38
+    private static let rowHeight: CGFloat = 46
     private static let cellSize: CGFloat = 30
     private static let tintLow = 0.15
     private static let tintMedium = 0.30
@@ -72,7 +72,10 @@ struct MonthGridView: View {
     /// The grid is always 6 full rows (42 cells), which keeps the grid and the agenda below it
     /// from resizing as the user pages between months.
     private static let maxRows = MonthGrid.dayCount / 7
-    private static let weekdayLabels = ["S", "M", "T", "W", "T", "F", "S"]
+    private static let weekdayLabels = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+    private static let dotSize: CGFloat = 4
+    /// Fixed height of the dots/check block under each number.
+    private static let markHeight: CGFloat = 8
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
 
     var body: some View {
@@ -90,8 +93,8 @@ struct MonthGridView: View {
             LazyVGrid(columns: columns, spacing: 0) {
                 ForEach(0..<7, id: \.self) { index in
                     Text(Self.weekdayLabels[index])
-                        .font(Fonts.mono(11))
-                        .foregroundStyle(Colors.textSecondary)
+                        .font(Fonts.mono(12))
+                        .foregroundStyle(index == todayWeekdayIndex ? Colors.accent : Colors.textSecondary)
                         .frame(maxWidth: .infinity, minHeight: 20)
                 }
             }
@@ -112,6 +115,16 @@ struct MonthGridView: View {
             // row and six animates with the mode switch, and cells leaving mid-animation are
             // clipped rather than drawn over the drag bar.
             .frame(height: Self.rowHeight * CGFloat(isWeek ? 1 : Self.maxRows), alignment: .top)
+            // The selected day's week row sits on a light rounded band (month mode only; in week
+            // mode the single row is the whole grid).
+            .background(alignment: .top) {
+                if !isWeek, let row = selectedRow(in: cells, selectedIso: selectedIso) {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Colors.separator.opacity(0.35))
+                        .frame(height: Self.rowHeight)
+                        .offset(y: Self.rowHeight * CGFloat(row))
+                }
+            }
             .clipped()
         }
         .padding(.horizontal, Spacing.sm)
@@ -163,6 +176,13 @@ struct MonthGridView: View {
         }
     }
 
+    private var todayWeekdayIndex: Int { Calendar.current.component(.weekday, from: today) - 1 }
+
+    /// The grid row (0-based) holding the selected day, if it is in the visible grid.
+    private func selectedRow(in cells: [GridDay], selectedIso: String) -> Int? {
+        cells.firstIndex { $0.iso == selectedIso }.map { $0 / 7 }
+    }
+
     private func syncVisibleMonthToSelection() {
         visibleMonth = YearMonth(date: selectedDate)
         loadVisibleMonths()
@@ -203,13 +223,14 @@ struct MonthGridView: View {
     private var header: some View {
         HStack(spacing: 0) {
             Button(action: goToToday) {
-                Text(monthTitle)
-                    .font(Fonts.mono(11, weight: .semibold))
-                    .tracking(2)
-                    .foregroundStyle(Colors.text)
+                (Text(monthTitle.month + " ").foregroundColor(Colors.text)
+                    + Text(monthTitle.year).foregroundColor(Color.red))
+                    .font(Fonts.mono(30, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .padding(.leading, Spacing.sm)
                     .padding(.trailing, Spacing.md)
-                    .frame(minHeight: 44)
+                    .frame(minHeight: 52)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -223,14 +244,14 @@ struct MonthGridView: View {
                 chevron("›", label: "Next month") { changeMonth(by: 1) }
             }
         }
-        .frame(height: 44)
+        .frame(minHeight: 52)
     }
 
     private func chevron(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(symbol)
                 .font(Fonts.mono(22))
-                .foregroundStyle(Colors.text)
+                .foregroundStyle(Colors.accent)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -246,14 +267,14 @@ struct MonthGridView: View {
         } label: {
             VStack(spacing: 0) {
                 Text("\(day.day)")
-                    .font(Fonts.mono(15))
+                    .font(Fonts.mono(17))
                     .foregroundStyle(isToday ? Color.white : (day.isInMonth ? Colors.text : Colors.textSecondary))
                     .frame(width: Self.cellSize, height: Self.cellSize)
                     .background {
                         if isToday {
                             Circle().fill(Colors.accent)
                         } else if isSelected {
-                            Circle().strokeBorder(Colors.accent, lineWidth: 1)
+                            Circle().strokeBorder(Colors.accent, lineWidth: 1.5)
                         }
                     }
                 busyBar(for: counts)
@@ -269,30 +290,35 @@ struct MonthGridView: View {
         ))
     }
 
-    /// Two very thin lines under the number: purple for events on top, accent for tasks below.
-    /// Each one's width is its own load (a third, two thirds or the full width of the number's
-    /// square for 1 / 2-3 / 4+ items) and it is absent when there are none. The block always has
-    /// the same height so rows don't shift.
+    /// Up to five 4 pt dots in the day's calendar colours (one `Colors.eventDot` dot when there
+    /// are events but no colour, i.e. Stark's own events), then a small check-square glyph when
+    /// the day has tasks. The block always has the same height so rows don't shift.
     private func busyBar(for counts: DayDensity) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            busyLine(count: counts.events, color: Colors.eventDot)
-            busyLine(count: counts.tasks, color: Colors.accent)
+        let colors: [Color] = !counts.eventColors.isEmpty
+            ? counts.eventColors.prefix(5).map { Color(hex: $0) }
+            : (counts.events > 0 ? [Colors.eventDot] : [])
+        return HStack(spacing: 2) {
+            ForEach(Array(colors.enumerated()), id: \.offset) { _, c in
+                Circle().fill(c).frame(width: Self.dotSize, height: Self.dotSize)
+            }
+            if counts.tasks > 0 {
+                Image(systemName: "checkmark.square")
+                    .font(.system(size: 7))
+                    .foregroundStyle(Colors.accent)
+            }
         }
-        .frame(width: Self.cellSize, height: 3, alignment: .topLeading)
-        .padding(.top, 2)
+        .frame(height: Self.markHeight)
+        .padding(.top, 1)
     }
 
-    private func busyLine(count: Int, color: Color) -> some View {
-        let fraction = count == 0 ? 0.0 : count == 1 ? 1.0 / 3.0 : count < 4 ? 2.0 / 3.0 : 1.0
-        return Rectangle().fill(color).frame(width: Self.cellSize * fraction, height: 1)
-    }
-
-    private var monthTitle: String {
+    private var monthTitle: (month: String, year: String) {
         // Week mode names the selected day's month (read from the selection itself, so it is
         // right on the very frame the selection changes, before `visibleMonth` has caught up).
-        if mode == .week { return AgendaFormat.monthYear(selectedDate).uppercased() }
-        let first = DateMath.date(from: DateMath.isoDate(year: visibleMonth.year, month0: visibleMonth.month0, day: 1))
-        return AgendaFormat.monthYear(first).uppercased()
+        let date = mode == .week
+            ? selectedDate
+            : DateMath.date(from: DateMath.isoDate(year: visibleMonth.year, month0: visibleMonth.month0, day: 1))
+        let parts = AgendaFormat.monthYear(date).split(separator: " ", maxSplits: 1).map(String.init)
+        return (parts.first ?? "", parts.count > 1 ? parts[1] : "")
     }
 
     /// Tapping the month title returns to today: selects it (which scrolls the agenda there and

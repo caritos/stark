@@ -1,0 +1,54 @@
+{
+  "": {
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/primary.swiftdeps"
+  },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/AddCommandTests.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/AddCommandTests.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/AddCommandTests.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/AddCommandTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/AddCommandTests.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/AddCommandTests.dia"
+  },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/CLIUsageTests.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/CLIUsageTests.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/CLIUsageTests.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/CLIUsageTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/CLIUsageTests.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/CLIUsageTests.dia"
+  },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/DeviceResolverTests.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/DeviceResolverTests.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/DeviceResolverTests.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/DeviceResolverTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/DeviceResolverTests.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/DeviceResolverTests.dia"
+  },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/Fakes.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/Fakes.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/Fakes.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/Fakes~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/Fakes.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/Fakes.dia"
+  },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/PairCommandTests.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/PairCommandTests.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/PairCommandTests.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/PairCommandTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/PairCommandTests.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/PairCommandTests.dia"
+  },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/ProcessRunnerTests.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/ProcessRunnerTests.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/ProcessRunnerTests.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/ProcessRunnerTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/ProcessRunnerTests.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/ProcessRunnerTests.dia"
+  },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkClaudeCoreTests/TodayCommandTests.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/TodayCommandTests.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/TodayCommandTests.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/TodayCommandTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/TodayCommandTests.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkClaudeCoreTests.build/TodayCommandTests.dia"
+  }
+}

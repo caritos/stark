@@ -15,13 +15,14 @@ struct ModeHandle: View {
     @Binding var mode: CalendarMode
 
     private static let stripHeight: CGFloat = 20
-    private static let barSize = CGSize(width: 40, height: 4)
+    private static let barSize = CGSize(width: 36, height: 5)
 
     var body: some View {
         Capsule()
-            .fill(Colors.checkboxBorder)
+            .fill(Colors.separator)
             .frame(width: Self.barSize.width, height: Self.barSize.height)
             .frame(maxWidth: .infinity, minHeight: Self.stripHeight, maxHeight: Self.stripHeight)
+            .background(Colors.background)
             // The whole strip is draggable, not just the 4 pt bar.
             .contentShape(Rectangle())
             .onTapGesture {
