@@ -12,7 +12,7 @@ struct ScrollRequest: Equatable {
 /// Day-grouped agenda. Items come from `buildAgendaItems` and are grouped by `groupAgendaByDay`,
 /// which gives **every calendar day** of the display window a section (header) whether or not it
 /// has items, so the month grid can scroll to any tapped day. An empty day shows just its header;
-/// an empty today also keeps a "No events" row.
+/// an empty today also keeps a "No Events" row.
 ///
 /// The display window is `AgendaWindow.range(around: anchor)`. `anchor` is today until the user
 /// taps a grid day outside the window, when `ContentView` re-centres it on that day. Overdue
@@ -61,7 +61,7 @@ struct AgendaView: View {
 
     private enum ListRow: Identifiable {
         /// `compact` is true for a day with nothing under it (other than today, which keeps its
-        /// "No events" row): List's minimum row height would otherwise pad the bare header.
+        /// "No Events" row): List's minimum row height would otherwise pad the bare header.
         case header(day: Date, compact: Bool)
         case empty(day: Date, divider: Bool)
         case item(AgendaItem, endsSection: Bool, divider: Bool)
@@ -97,7 +97,7 @@ struct AgendaView: View {
                             headerRow(day: day, todayStart: todayStart, compact: compact,
                                       items: sections.first { $0.day == day }?.items ?? [])
                         case .empty(_, let divider):
-                            Text("No events")
+                            Text("No Events")
                                 .font(.subheadline)
                                 .foregroundStyle(Colors.textSecondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -198,10 +198,10 @@ struct AgendaView: View {
         } else {
             word = AgendaFormat.weekdayName(day).uppercased()
         }
-        let title = (Text(word).fontWeight(.bold) + Text("  \(AgendaFormat.shortDate(day))"))
-            .font(Fonts.mono(11))
-            .tracking(2)
-            .foregroundStyle(isToday ? Colors.accent : Colors.textSecondary)
+        // All-caps bold weekday (accent for today) and a regular grey M/D/YY, as Fantastical.
+        let title = (Text(word).fontWeight(.bold).foregroundColor(isToday ? Colors.accent : Colors.text)
+                     + Text("  \(AgendaFormat.shortDate(day))").foregroundColor(Colors.textSecondary))
+            .font(Font.title3.monospacedDigit())
         return HStack(spacing: 0) {
             title
             Spacer(minLength: 0)
@@ -333,7 +333,7 @@ struct AgendaView: View {
             let isBareDay = section.items.isEmpty && section.day != todayStart
             rows.append(.header(day: section.day, compact: isBareDay))
             if section.items.isEmpty {
-                // Only today keeps a "No events" row; other empty days are just their header,
+                // Only today keeps a "No Events" row; other empty days are just their header,
                 // with no rule, so a run of empty days stays compact.
                 if !isBareDay {
                     rows.append(.empty(day: section.day, divider: divider))

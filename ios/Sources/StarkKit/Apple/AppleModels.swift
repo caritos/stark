@@ -34,9 +34,13 @@ public struct AppleSource: Equatable, Sendable {
     public let url: String?
     /// The row's calendar or list can be written to (`AppleCalendarInfo.isWritable`).
     public let isWritable: Bool
+    /// The row is a repeating Apple reminder (`AppleReminder.isRecurring`); the synthetic
+    /// `Reminder` carries no recurrence, so the row's repeat glyph reads this instead.
+    public let isRecurringSeries: Bool
 
     public init(calendarID: String, calendarTitle: String, colorHex: String?, isReminder: Bool,
-                url: String? = nil, isWritable: Bool = true) {
+                url: String? = nil, isWritable: Bool = true, isRecurringSeries: Bool = false) {
+        self.isRecurringSeries = isRecurringSeries
         self.calendarID = calendarID
         self.calendarTitle = calendarTitle
         self.colorHex = colorHex

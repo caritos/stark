@@ -23,6 +23,13 @@
     "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaDensityTests.swiftdeps",
     "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaDensityTests.dia"
   },
+  "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaRepeatGlyphTests.swift": {
+    "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaRepeatGlyphTests.d",
+    "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaRepeatGlyphTests.swift.o",
+    "swiftmodule": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaRepeatGlyphTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaRepeatGlyphTests.swiftdeps",
+    "diagnostics": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaRepeatGlyphTests.dia"
+  },
   "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaScrollTrackingTests.swift": {
     "dependencies": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaScrollTrackingTests.d",
     "object": "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaScrollTrackingTests.swift.o",

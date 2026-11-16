@@ -75,6 +75,10 @@ public struct AgendaItem: Identifiable, Equatable {
         }
     }
 
+    /// The row draws the repeat glyph: a repeating Stark item, or a repeating Apple reminder (whose
+    /// synthetic `Reminder` has no recurrence; the flag is on `appleSource`).
+    public var showsRepeatGlyph: Bool { isRecurring || appleSource?.isRecurringSeries == true }
+
     /// Events only: what the user recorded for *this* occurrence (matched by calendar day), or nil
     /// when nothing is recorded. Always nil for reminders. Derived, so it can never disagree with
     /// the event it came from.

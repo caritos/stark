@@ -93,7 +93,7 @@ func appleReminderValue(_ apple: AppleReminder, calendar: Calendar) -> (Reminder
     let due = apple.due.map { apple.dueHasTime ? $0 : calendar.startOfDay(for: $0) }
     let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
                              colorHex: apple.calendar.colorHex, isReminder: true, url: apple.url,
-                             isWritable: apple.calendar.isWritable)
+                             isWritable: apple.calendar.isWritable, isRecurringSeries: apple.isRecurring)
     let reminder = Reminder(id: ItemOrigin.applePrefix + apple.id, title: apple.title, notes: apple.notes,
                             dueDate: due, isCompleted: apple.isCompleted,
                             completedDate: apple.isCompleted ? due : nil,

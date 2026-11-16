@@ -1313,6 +1313,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaRepeatGlyphTests.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaScrollTrackingTests.swift"
         },
         {
@@ -1723,6 +1727,7 @@
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaBuilderTests.swift.o",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaDaysTests.swift.o",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaDensityTests.swift.o",
+        "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaRepeatGlyphTests.swift.o",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaScrollTrackingTests.swift.o",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaWindowTests.swift.o",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaWithAppleTests.swift.o",
@@ -1883,6 +1888,10 @@
         {
           "kind" : "file",
           "name" : "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaDensityTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaRepeatGlyphTests.swift.o"
         },
         {
           "kind" : "file",
@@ -2286,6 +2295,7 @@
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaBuilderTests.swift",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaDaysTests.swift",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaDensityTests.swift",
+        "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaRepeatGlyphTests.swift",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaScrollTrackingTests.swift",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaWindowTests.swift",
         "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaWithAppleTests.swift",
@@ -2830,6 +2840,7 @@
       "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaBuilderTests.swift",
       "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaDaysTests.swift",
       "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaDensityTests.swift",
+      "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaRepeatGlyphTests.swift",
       "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaScrollTrackingTests.swift",
       "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaWindowTests.swift",
       "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaWithAppleTests.swift",
@@ -3892,6 +3903,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaRepeatGlyphTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/.build/arm64-apple-macosx/debug/StarkKitTests.build/AgendaScrollTrackingTests.swift.o"
         },
         {
@@ -4303,6 +4318,10 @@
         {
           "kind" : "file",
           "name" : "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaDensityTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/eladio/src/stark/.claude/worktrees/fantastical-stage2/ios/Tests/StarkKitTests/AgendaRepeatGlyphTests.swift"
         },
         {
           "kind" : "file",

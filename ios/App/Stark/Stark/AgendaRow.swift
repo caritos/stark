@@ -48,30 +48,93 @@ struct AgendaRowView: View {
         }
     }
 
+    /// The row's calendar colour: the Apple calendar's own colour, else the local-event purple.
+    private var calendarColor: Color {
+        item.appleSource?.colorRGB.map { Color(hex: $0) } ?? Colors.eventDot
+    }
+
+    /// A reminder's checkbox outline: the list colour, `checkboxBorder` for Stark's own.
+    private var listColor: Color {
+        item.appleSource?.colorRGB.map { Color(hex: $0) } ?? Colors.checkboxBorder
+    }
+
+    private var isAllDayEvent: Bool {
+        if case .event(let event) = item.kind { return event.isAllDay && item.plannedRange == nil }
+        return false
+    }
+
+    private var isReminder: Bool {
+        if case .reminder = item.kind { return true }
+        return false
+    }
+
     var body: some View {
+        if isAllDayEvent {
+            allDayChip
+        } else {
+            standardRow
+        }
+    }
+
+    /// An all-day event: a rounded chip filled with the calendar colour, white text, hugging
+    /// the leading margin (not the full row width).
+    private var allDayChip: some View {
+        HStack(spacing: 0) {
+            HStack(spacing: Spacing.xs) {
+                if let milestone = item.milestone {
+                    Text(milestone.emoji).accessibilityHidden(true)
+                }
+                Text(item.title)
+                    .font(.subheadline)
+                    .strikethrough(hasOutcome)
+                    .lineLimit(2)
+                outcomeGlyph(color: .white)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(calendarColor.opacity(hasOutcome ? 0.55 : 1), in: RoundedRectangle(cornerRadius: 8))
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var standardRow: some View {
         let timeLine = self.timeLine
         let milestone = item.milestone
-        HStack(alignment: .top, spacing: Spacing.sm) {
-            marker
-                .frame(width: Self.markerSize, height: Self.markerSize)
-                .opacity(item.isReadOnly ? Self.readOnlyMarkerOpacity : 1)
-                .padding(.top, timeLine == nil ? 2 : 0)
+        let isTimedEvent = !isReminder
+        return HStack(alignment: .top, spacing: Spacing.sm) {
+            if isTimedEvent {
+                // 4 pt rounded bar in the calendar colour; the 16 pt column keeps the text aligned
+                // with the reminders' checkbox column.
+                HStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(calendarColor)
+                        .frame(width: 4)
+                    Spacer(minLength: 0)
+                }
+                .frame(width: Self.markerSize)
+            } else {
+                marker
+                    .frame(width: Self.markerSize, height: Self.markerSize)
+                    .opacity(item.isReadOnly ? Self.readOnlyMarkerOpacity : 1)
+                    .padding(.top, timeLine == nil ? 2 : 1)
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 if let timeLine {
-                    Text(timeLine.text)
-                        .font(Fonts.mono(12))
-                        .foregroundStyle(timeLine.isAccent ? Colors.accent : Colors.textSecondary)
+                    Text(drawnTimeText(timeLine))
+                        .font(Font.footnote.monospacedDigit())
+                        .foregroundStyle(timeLine.isAccent ? Color.red : Colors.textSecondary)
                 }
                 if let secondary = planLines?.secondary {
                     Text(secondary)
-                        .font(Fonts.mono(11))
+                        .font(Font.caption.monospacedDigit())
                         .foregroundStyle(Colors.textSecondary)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
                     if showsPriorityMarks {
                         Text(item.priority.marks)
-                            .font(Fonts.mono(14))
+                            .font(.body)
                             .foregroundStyle(Colors.accent)
                     }
                     // A birthday's cake / an anniversary's party popper, in front of the title so it
@@ -80,9 +143,11 @@ struct AgendaRowView: View {
                         Text(milestone.emoji)
                             .accessibilityHidden(true)
                     }
-                    Text(item.title)
+                    (Text(item.title)
                         .strikethrough(looksDone || hasOutcome)
+                     + repeatGlyph)
                         .foregroundStyle(looksDone || hasOutcome ? Colors.textSecondary : Colors.text)
+                    outcomeGlyph(color: Colors.textSecondary)
                 }
                 if let note = milestone?.note {
                     Text(note)
@@ -95,7 +160,9 @@ struct AgendaRowView: View {
                         .foregroundStyle(Colors.textSecondary)
                         .lineLimit(2)
                 }
-                if let source = item.appleSource {
+                // The calendar colour already shows in the bar / checkbox; a source line stays
+                // only where it says "read only".
+                if let source = item.appleSource, item.isReadOnly {
                     AppleSourceLabel(source: source)
                 }
             }
@@ -103,44 +170,52 @@ struct AgendaRowView: View {
         }
     }
 
+    /// The repeat glyph after the title of a repeating item (concatenated so it follows the
+    /// title's last line instead of floating off at the row's edge).
+    private var repeatGlyph: Text {
+        guard item.showsRepeatGlyph else { return Text("") }
+        return Text(" ") + Text(Image(systemName: "arrow.triangle.2.circlepath"))
+            .font(.footnote)
+            .foregroundColor(Colors.textSecondary)
+    }
+
+    /// An attended check / a "didn't attend" cross after an event's title.
+    @ViewBuilder
+    private func outcomeGlyph(color: Color) -> some View {
+        switch item.outcome {
+        case .attended:
+            Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(color)
+        case .skipped:
+            Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(color)
+        case nil:
+            EmptyView()
+        }
+    }
+
+    /// What the time line draws: an overdue reminder shows only its missed date and time (red);
+    /// the "N days overdue" text stays in `timeLine` for VoiceOver and the detail sheet.
+    private func drawnTimeText(_ line: (text: String, isAccent: Bool)) -> String {
+        guard line.isAccent, case .reminder = item.kind, item.isOverdue, planLines == nil else { return line.text }
+        return AgendaFormat.overdueLabel(item.occurrence)
+    }
+
     // MARK: Marker
 
     @ViewBuilder
     private var marker: some View {
-        switch item.kind {
-        case .event:
-            switch item.outcome {
-            case nil:
-                Rectangle()
-                    .fill(Colors.accent)
-                    .frame(width: 8, height: 8)
-            case .attended:
-                checkedMarker
-            case .skipped:
-                Rectangle()
-                    .strokeBorder(Colors.checkboxBorder, lineWidth: 1.5)
-                    .overlay {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(Colors.textSecondary)
-                    }
-            }
-        case .reminder:
-            if looksDone {
-                checkedMarker
-            } else {
-                // An overdue reminder's outline is accent-coloured (the Expo app's
-                // `agendaIconOverdue`); a pending one is `looksDone` and never gets here.
-                Rectangle()
-                    .strokeBorder(item.isOverdue ? Colors.accent : Colors.checkboxBorder, lineWidth: 1.5)
-            }
+        if looksDone {
+            checkedMarker
+        } else {
+            // Outlined rounded square in the list colour; an overdue one is red.
+            RoundedRectangle(cornerRadius: 4)
+                .strokeBorder(item.isOverdue ? Color.red : listColor, lineWidth: 1.5)
         }
     }
 
-    /// The filled accent square with a check: a completed reminder, or an attended event.
+    /// The filled rounded square with a check: a completed reminder.
     private var checkedMarker: some View {
-        Rectangle()
-            .fill(Colors.accent)
+        RoundedRectangle(cornerRadius: 4)
+            .fill(listColor)
             .overlay {
                 Image(systemName: "checkmark")
                     .font(.system(size: 10, weight: .bold))
