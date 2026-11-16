@@ -283,4 +283,52 @@ struct MonthLayoutTests {
         // Week 1: the Nov 5 occurrence ends Mon (cols 0-1); Nov 12-14 starts Thu (cols 4-6).
         #expect(w[1].bars.map { [$0.startColumn, $0.endColumn] }.sorted { $0[0] < $1[0] } == [[0, 1], [4, 6]])
     }
+
+    // MARK: gridLayout (any grid of whole weeks)
+
+    @Test func gridLayoutOverMonthGridEqualsMonthLayout() {
+        // A mix of bars across weeks, a clipped one-off, lines and an overflow.
+        let a = allDay("a", "2026-10-30", end: "2026-11-02")
+        let b = allDay("b", "2026-11-06", end: "2026-11-12")
+        let r = (0..<5).map { k in
+            reminderRow(Reminder(id: "r\(k)", title: "R\(k)", dueDate: at("2026-11-04", 8 + k)), day: "2026-11-04")
+        }
+        let timed = eventRow(Event(id: "t", title: "T", start: at("2026-12-03", 9)), day: "2026-12-03")
+        let items = rows(a, from: "2026-11-01", days: 2) + rows(b, from: "2026-11-06", days: 7) + r + [timed]
+        for m in [month, YearMonth(year: 2028, month0: 1), YearMonth(year: 2026, month0: 1)] {
+            for cap in [1, 3, 6] {
+                #expect(gridLayout(items: items, days: MonthGrid.days(for: m), rowCapacity: cap)
+                        == monthLayout(items: items, month: m, rowCapacity: cap))
+            }
+        }
+    }
+
+    @Test func gridLayoutOverQuarterGivesThirteenWeeksAndBarCrossesDecemberSeam() {
+        // Quarter from Nov 2026 (Sun Nov 1 .. Sat Jan 30). Nov 29 (Sun, row 4 col 0) .. Dec 9
+        // (Wed, row 5 col 3): crosses the Dec 1 seam inside row 4 and wraps to row 5.
+        let days = QuarterGrid.days(startingAt: month)
+        let e = allDay("trip", "2026-11-29", end: "2026-12-09")
+        let w = gridLayout(items: rows(e, from: "2026-11-29", days: 11), days: days, rowCapacity: 4)
+        #expect(w.count == 13)
+        #expect(w.allSatisfy { $0.lines.count == 7 && $0.overflow.count == 7 })
+        #expect(w[4].bars.count == 1 && w[5].bars.count == 1)
+        let first = w[4].bars[0], second = w[5].bars[0]
+        #expect(first.startColumn == 0 && first.endColumn == 6 && first.lane == 0)
+        #expect(!first.continuesBefore && first.continuesAfter)
+        #expect(second.startColumn == 0 && second.endColumn == 3 && second.lane == 0)
+        #expect(second.continuesBefore && !second.continuesAfter)
+        // A January item lands in the quarter's row 9 (Jan 3-9), which a month grid would drop.
+        let jan = Reminder(id: "j", title: "Jan", dueDate: at("2027-01-05", 9))
+        let w2 = gridLayout(items: [reminderRow(jan, day: "2027-01-05")], days: days, rowCapacity: 4)
+        #expect(w2[9].lines[2].map(\.title) == ["Jan"])
+    }
+
+    @Test func gridLayoutEventEndingAfterQuarterContinuesAfter() {
+        let days = QuarterGrid.days(startingAt: month)
+        let e = allDay("late", "2027-01-29", end: "2027-02-02")
+        let w = gridLayout(items: rows(e, from: "2027-01-29", days: 2), days: days, rowCapacity: 4)
+        #expect(w[12].bars.count == 1)
+        #expect(w[12].bars[0].startColumn == 5 && w[12].bars[0].endColumn == 6)
+        #expect(w[12].bars[0].continuesAfter)
+    }
 }

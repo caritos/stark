@@ -40,9 +40,18 @@ public struct MonthWeek: Equatable, Sendable {
 /// types, no `Date()`. Rows outside the grid are ignored. See the stage 3b plan for the rules.
 public func monthLayout(items: [AgendaItem], month: YearMonth, rowCapacity: Int,
                         calendar: Calendar = Calendar(identifier: .gregorian)) -> [MonthWeek] {
-    let days = MonthGrid.days(for: month)
+    gridLayout(items: items, days: MonthGrid.days(for: month), rowCapacity: rowCapacity, calendar: calendar)
+}
+
+/// `monthLayout` over any Sunday-first grid of whole weeks (`days.count` a multiple of 7, consecutive
+/// days), e.g. `MonthGrid.days(for:)` or `QuarterGrid.days(startingAt:)`. Returns one `MonthWeek`
+/// per row of 7; a trailing partial row is ignored.
+public func gridLayout(items: [AgendaItem], days: [GridDay], rowCapacity: Int,
+                       calendar: Calendar = Calendar(identifier: .gregorian)) -> [MonthWeek] {
+    let weekCount = days.count / 7
+    let days = Array(days.prefix(weekCount * 7))
+    guard !days.isEmpty else { return [] }
     let dayCount = days.count
-    let weekCount = dayCount / 7
     var indexByISO: [String: Int] = [:]
     for (i, d) in days.enumerated() { indexByISO[d.iso] = i }
     func index(of date: Date) -> Int? {
