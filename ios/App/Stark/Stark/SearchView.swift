@@ -34,7 +34,7 @@ struct SearchView: View {
                     .focused($searchFocused)
                     .foregroundStyle(Colors.text)
                     .padding(Spacing.sm)
-                    .background(Colors.separator)
+                    .background(Colors.card, in: RoundedRectangle(cornerRadius: 10))
                     .padding(Spacing.md)
                 // Trimmed (unlike Add/Edit's fields): a trailing space would make the search
                 // require a literal space right after the tag in the matched text, which fails
