@@ -37,6 +37,12 @@ enum Colors {
     /// Full-screen Quarter: a holiday calendar's thin text-less bar (mid lilac; `holidayChip` is
     /// too pale to read as a 4 pt line).
     static let holidayBar = Color(light: 0xC27BDB, dark: 0x9E5FB8)
+    /// Day and Week timelines: the current-time line, its dot and its time label.
+    static let nowLine = yearRed
+    /// Day and Week timelines: an hour rule.
+    static let hourRule = Color(light: 0xE5E5EA, dark: 0x2C2C2E)
+    /// Day and Week timelines: a block's fill is its calendar colour at this opacity.
+    static let timelineBlockOpacity = 0.18
 }
 
 extension Color {
