@@ -32,11 +32,11 @@ struct TagSuggestionRow: View {
                             onApply(tag)
                         } label: {
                             Text(tag)
-                                .font(Fonts.mono(13))
+                                .font(.system(size: 13))
                                 .foregroundStyle(Colors.text)
                                 .padding(.horizontal, Spacing.sm)
                                 .padding(.vertical, Spacing.xs)
-                                .background(Colors.separator)
+                                .background(Capsule().fill(Colors.card))
                         }
                         .buttonStyle(.plain)
                     }

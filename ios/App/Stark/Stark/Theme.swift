@@ -45,9 +45,8 @@ enum Fonts {
     }
 }
 
-/// A square, flat, glyph-only toolbar button (no glass capsule, no rounded corners), in the same
-/// visual family as the floating Add/Search/Settings buttons. `isProminent` fills it with the
-/// accent (the committing action); otherwise it is a neutral dark square (dismiss). A disabled
+/// A round, glyph-only toolbar button. `isProminent` fills it with the accent (the committing
+/// action); otherwise it is a white card circle (glass on iOS 26) for dismiss. A disabled
 /// prominent button drops to the neutral fill with a dimmed glyph. `label` is the VoiceOver name,
 /// since there is no visible text.
 struct SquareToolbarButton: ToolbarContent {
@@ -92,7 +91,7 @@ struct SquareToolbarPlaceholder: ToolbarContent {
     }
 }
 
-/// The plain view behind `SquareToolbarButton`, for placing the same flat square inside another
+/// The plain view behind `SquareToolbarButton`, for placing the same round button inside another
 /// toolbar item (the planner's day chevrons sit in its principal item).
 struct SquareButton: View {
     let systemImage: String
@@ -103,23 +102,33 @@ struct SquareButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(glyphColor)
-                .frame(width: 40, height: 40)
-                .background(fillColor)
+            glyph
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .accessibilityLabel(label)
     }
 
-    private var fillColor: Color {
-        isProminent && !isDisabled ? Colors.accent : Colors.separator
+    private var glyph: some View {
+        let base = Image(systemName: systemImage)
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(glyphColor)
+            .frame(width: 40, height: 40)
+        return Group {
+            if isProminent && !isDisabled {
+                base.background(Circle().fill(Colors.accent))
+            } else if #available(iOS 26.0, *) {
+                base.glassEffect(.regular, in: Circle())
+            } else {
+                base.background(Circle().fill(Colors.card)
+                    .shadow(color: .black.opacity(0.12), radius: 1.5, y: 0.5))
+            }
+        }
+        .contentShape(Circle())
     }
 
     private var glyphColor: Color {
-        if isProminent { return isDisabled ? Colors.textSecondary : Colors.background }
+        if isProminent { return isDisabled ? Colors.textSecondary.opacity(0.6) : .white }
         return Colors.text
     }
 }

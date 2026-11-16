@@ -2,7 +2,7 @@
 import SwiftUI
 import StarkKit
 
-/// The drag bar between the calendar grid and the agenda: a flat 40 x 4 bar centred in a
+/// The drag bar between the calendar grid and the agenda: a rounded 40 x 4 bar centred in a
 /// full-width strip. It is visuals plus one gesture; the rule for what a drag does lives in
 /// `CalendarMode.afterDrag` (StarkKit, tested), so nothing here decides anything. Drag up
 /// collapses, down expands, and the switch happens once, on release, animated (the grid does not
@@ -18,7 +18,7 @@ struct ModeHandle: View {
     private static let barSize = CGSize(width: 40, height: 4)
 
     var body: some View {
-        Rectangle()
+        Capsule()
             .fill(Colors.checkboxBorder)
             .frame(width: Self.barSize.width, height: Self.barSize.height)
             .frame(maxWidth: .infinity, minHeight: Self.stripHeight, maxHeight: Self.stripHeight)

@@ -9,7 +9,7 @@ import StarkKit
 /// Deliberately not a `ToolbarItemGroup(placement: .keyboard)`: on iOS 26 that row is drawn with
 /// no background, so the form shows through it, and on a real iPhone it did not appear at all.
 /// A bottom `safeAreaInset` rides on top of the keyboard's safe area instead and is fully ours to
-/// style, so it stays solid and flat like the rest of the app.
+/// style, so it stays solid, like the rest of the app.
 struct SigilKeyboardBar: View {
     let onTap: (Character) -> Void
 
@@ -20,10 +20,10 @@ struct SigilKeyboardBar: View {
                     onTap(sigil)
                 } label: {
                     Text(String(sigil))
-                        .font(Fonts.mono(22, weight: .semibold))
+                        .font(.system(size: 22, weight: .semibold))
                         .foregroundStyle(Colors.text)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(Colors.separator)
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Colors.card))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Insert \(String(sigil))")

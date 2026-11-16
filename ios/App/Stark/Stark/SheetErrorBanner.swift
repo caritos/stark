@@ -15,9 +15,10 @@ struct SheetErrorBanner: View {
             Text(text)
                 .font(.footnote)
                 .foregroundStyle(Colors.text)
-                .padding(Spacing.sm)
+                .padding(Spacing.sm + 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(isNotice ? Colors.separator : Colors.accent)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isNotice ? Colors.card : Colors.accent.opacity(0.25)))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(text)
