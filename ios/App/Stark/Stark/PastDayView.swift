@@ -21,7 +21,7 @@ struct PastDayView: View {
     var body: some View {
         VStack(spacing: 0) {
             if !history.allDayEvents.isEmpty { banner(history.allDayEvents) }
-            Rectangle().fill(Colors.separator).frame(height: 1)
+            Rectangle().fill(Colors.separator).frame(height: 0.5)
             timeline(history)
         }
     }
@@ -29,23 +29,7 @@ struct PastDayView: View {
     // MARK: Banner
 
     private func banner(_ items: [AgendaItem]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.xs) {
-                ForEach(items) { item in
-                    Text(item.title)
-                        .font(Fonts.mono(11))
-                        .foregroundStyle(Colors.text)
-                        .lineLimit(1)
-                        .padding(.horizontal, Spacing.sm)
-                        .padding(.vertical, Spacing.xs)
-                        .background(Colors.eventDot.opacity(0.35))
-                        .overlay(alignment: .leading) { Rectangle().fill(Colors.eventDot).frame(width: 3) }
-                        .accessibilityLabel("All day: \(item.title)")
-                }
-            }
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.sm)
-        }
+        PlannerAllDayBanner(items: items, gutter: Self.gutter)
     }
 
     // MARK: Timeline
@@ -101,21 +85,14 @@ struct PastDayView: View {
             }
         }
         .frame(width: width, height: contentHeight, alignment: .topLeading)
+        .background(Colors.card)
     }
 
     private func hourRow(_ index: Int) -> some View {
-        ZStack(alignment: .topLeading) {
-            Rectangle().fill(Colors.separator).frame(height: 1).padding(.leading, Self.gutter - Spacing.xs)
-            Text(AgendaFormat.time(dayStart.addingTimeInterval(TimeInterval(index * 3600))))
-                .font(Fonts.mono(10))
-                .foregroundStyle(Colors.textSecondary)
-                .lineLimit(1).minimumScaleFactor(0.7)
-                .frame(width: Self.gutter - Spacing.sm, alignment: .trailing)
-                .offset(y: -6)
-                .accessibilityHidden(true)
-        }
-        .frame(height: Self.hourHeight, alignment: .top)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        let date = dayStart.addingTimeInterval(TimeInterval(index * 3600))
+        return PlannerHourRule(hour: cal.component(.hour, from: date), gutter: Self.gutter)
+            .frame(height: Self.hourHeight, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func blockHeight(_ block: PlanBlock) -> CGFloat {
@@ -131,17 +108,7 @@ struct PastDayView: View {
     }
 
     private func eventBlock(_ item: AgendaItem) -> some View {
-        Text(item.title)
-            .font(Fonts.mono(10))
-            .foregroundStyle(Colors.text.opacity(0.8))
-            .lineLimit(2)
-            .padding(.horizontal, Spacing.xs).padding(.vertical, 2)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(Colors.eventDot.opacity(0.3))
-            .overlay(alignment: .leading) { Rectangle().fill(Colors.eventDot.opacity(0.8)).frame(width: 2) }
-            .clipped()
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Event: \(item.title), \(AgendaFormat.time(item.occurrence))")
+        PlannerEventBlock(item: item)
     }
 
     private func range(_ block: PlanBlock) -> String {
@@ -150,7 +117,7 @@ struct PastDayView: View {
 
     private func doneBlock(_ done: DayPlanModel.DoneBlock) -> some View {
         let block = done.block
-        let title = Text(done.title).font(Fonts.mono(11))
+        let title = Text(done.title).font(Fonts.mono(12, weight: .semibold))
             .strikethrough(true, color: Colors.textSecondary)
             .foregroundStyle(Colors.textSecondary)
         return HStack(alignment: .top, spacing: Spacing.xs) {
@@ -158,21 +125,24 @@ struct PastDayView: View {
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(Colors.accent.opacity(0.8))
                 .padding(.top, 3)
-            if block.minutes < 30 {
+            if block.minutes < 40 {
                 title.lineLimit(1)
             } else {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(range(block)).font(Fonts.mono(9)).foregroundStyle(Colors.textSecondary.opacity(0.8))
                     title.lineLimit(block.minutes >= 45 ? 2 : 1)
+                    Text(range(block)).font(Fonts.mono(11)).foregroundStyle(Colors.textSecondary).lineLimit(1)
                 }
                 .padding(.vertical, 2)
             }
         }
         .padding(.horizontal, Spacing.xs)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Colors.accent.opacity(0.12))
-        .overlay { Rectangle().strokeBorder(Colors.accent.opacity(0.4), lineWidth: 1) }
-        .clipped()
+        .background(Colors.accent.opacity(Colors.timelineBlockOpacity * 0.6))
+        .overlay {
+            RoundedRectangle(cornerRadius: PlannerStyle.blockCorner).strokeBorder(Colors.accent.opacity(0.35), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: PlannerStyle.blockCorner))
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("done: \(done.title), \(range(block))")
     }
@@ -182,18 +152,22 @@ struct PastDayView: View {
         let label = "MISSED"
         return VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: Spacing.xs) {
-                Text(label).font(Fonts.mono(8, weight: .semibold)).tracking(1).foregroundStyle(Colors.accent)
+                Text(label).font(Fonts.mono(10, weight: .bold)).tracking(1).foregroundStyle(Colors.yearRed)
                 if block.minutes >= 30 {
-                    Text(range(block)).font(Fonts.mono(9)).foregroundStyle(Colors.textSecondary)
+                    Text(range(block)).font(Fonts.mono(11)).foregroundStyle(Colors.textSecondary)
                 }
             }
-            Text(open.title).font(Fonts.mono(11)).foregroundStyle(Colors.text)
+            Text(open.title).font(Fonts.mono(12, weight: .semibold)).foregroundStyle(Colors.text)
                 .lineLimit(block.minutes >= 45 ? 2 : 1)
         }
-        .padding(.horizontal, Spacing.xs).padding(.vertical, 2)
+        .padding(.horizontal, 6).padding(.vertical, 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .overlay { Rectangle().strokeBorder(Colors.accent, lineWidth: 1) }
-        .clipped()
+        .overlay {
+            RoundedRectangle(cornerRadius: PlannerStyle.blockCorner)
+                .strokeBorder(Colors.accent, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: PlannerStyle.blockCorner))
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label.lowercased()): \(open.title), \(range(block))")
     }
@@ -207,19 +181,21 @@ struct PastDayHeader: View {
     let weekStats: DayHistory.Stats
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(alignment: .leading, spacing: 3) {
             if let line = DayHistory.summaryLine(stats: history.stats, isToday: false) {
-                Text(line).font(Fonts.mono(10)).tracking(1.5).foregroundStyle(Colors.accent)
+                Text(line).font(Fonts.mono(13, weight: .semibold)).foregroundStyle(Colors.accent)
             }
-            Text(Self.numbers(history)).font(Fonts.mono(10)).foregroundStyle(Colors.textSecondary)
+            Text(Self.numbers(history)).font(Fonts.mono(13)).foregroundStyle(Colors.textSecondary)
             if let week = DayHistory.weekLine(weekStats) {
-                Text(week).font(Fonts.mono(9)).tracking(1).foregroundStyle(Colors.textSecondary.opacity(0.8))
+                Text(week).font(Fonts.mono(12)).foregroundStyle(Colors.textSecondary)
             }
         }
-        .frame(maxWidth: .infinity)
-        .multilineTextAlignment(.center)
-        .padding(.horizontal, Spacing.sm)
-        .padding(.vertical, Spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .multilineTextAlignment(.leading)
+        .padding(.leading, 60)
+        .padding(.trailing, Spacing.sm)
+        .padding(.bottom, Spacing.sm)
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .accessibilityElement(children: .combine)
     }
 

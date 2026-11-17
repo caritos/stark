@@ -62,25 +62,7 @@ extension PlannerView {
     // MARK: Banner
 
     func banner(_ items: [AgendaItem]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.xs) {
-                ForEach(items) { item in
-                    Text(item.title)
-                        .font(Fonts.mono(11))
-                        .foregroundStyle(Colors.text)
-                        .lineLimit(1)
-                        .padding(.horizontal, Spacing.sm)
-                        .padding(.vertical, Spacing.xs)
-                        .background(Colors.eventDot.opacity(0.35))
-                        .overlay(alignment: .leading) {
-                            Rectangle().fill(Colors.eventDot).frame(width: 3)
-                        }
-                        .accessibilityLabel("All day: \(item.title)")
-                }
-            }
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.sm)
-        }
+        PlannerAllDayBanner(items: items, gutter: Self.gutter)
     }
 
     // MARK: Timeline
@@ -151,9 +133,15 @@ extension PlannerView {
                         .zIndex(lift?.id == block.id ? 2 : 1)
                 }
             }
+            // Over the blocks (as in the Day view), under a lifted one.
+            if Self.calendar.isDate(day, inSameDayAs: today) {
+                PlannerNowLine(gutter: laneX, width: width - Spacing.sm, y: { y(for: $0) })
+                    .zIndex(1.5)
+            }
         }
         .frame(width: width, height: contentHeight, alignment: .topLeading)
-        .background(dropTargeted ? Colors.accent.opacity(0.06) : Colors.background)
+        .background(dropTargeted ? Colors.accent.opacity(0.06) : Color.clear)
+        .background(Colors.card)
         .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { contentMinY = $0 }
         // A tray chip dropped here becomes a block. The location is in this (content) view's
         // own coordinates, so y maps straight to a time; the block is centred on the finger.
@@ -166,22 +154,19 @@ extension PlannerView {
         } isTargeted: { dropTargeted = $0 }
     }
 
+    /// One quarter hour: on the hour the `HourGrid` rule and label (noon in red), else a fainter
+    /// quarter-hour hairline, which shows where a block snaps.
     private func slotRow(_ index: Int) -> some View {
         let isHour = index % 4 == 0
+        let date = dayStart.addingTimeInterval(TimeInterval(index * Self.slotMinutes * 60))
         return ZStack(alignment: .topLeading) {
-            Rectangle()
-                .fill(isHour ? Colors.separator : Colors.separator.opacity(0.35))
-                .frame(height: 1)
-                .padding(.leading, Self.gutter - Spacing.xs)
             if isHour {
-                Text(AgendaFormat.time(dayStart.addingTimeInterval(TimeInterval(index * Self.slotMinutes * 60))))
-                    .font(Fonts.mono(10))
-                    .foregroundStyle(Colors.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(width: Self.gutter - Spacing.sm, alignment: .trailing)
-                    .offset(y: -6)
-                    .accessibilityHidden(true)
+                PlannerHourRule(hour: Self.calendar.component(.hour, from: date), gutter: Self.gutter)
+            } else {
+                Rectangle()
+                    .fill(Colors.hourRule.opacity(0.45))
+                    .frame(height: 0.5)
+                    .padding(.leading, Self.gutter - Spacing.xs)
             }
         }
         .frame(height: Self.slotHeight, alignment: .top)
@@ -198,19 +183,7 @@ extension PlannerView {
     }
 
     private func eventBlock(_ item: AgendaItem) -> some View {
-        Text(item.title)
-            .font(Fonts.mono(10))
-            .foregroundStyle(Colors.text.opacity(0.8))
-            .lineLimit(2)
-            .padding(.horizontal, Spacing.xs)
-            .padding(.vertical, 2)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(Colors.eventDot.opacity(0.3))
-            .overlay(alignment: .leading) { Rectangle().fill(Colors.eventDot.opacity(0.8)).frame(width: 2) }
-            .clipped()
-            .allowsHitTesting(false)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Event: \(item.title), \(AgendaFormat.time(item.occurrence))")
+        PlannerEventBlock(item: item)
     }
 
     /// A task due this day at a set time and not yet planned: an outline at its due time.
@@ -218,20 +191,28 @@ extension PlannerView {
     private func timedTask(_ item: AgendaItem, width: CGFloat) -> some View {
         let minutes = Double(PlanLayout.defaultMinutes)
         let visual = VStack(alignment: .leading, spacing: 1) {
-            Text(AgendaFormat.time(item.displayDate))
-                .font(Fonts.mono(9))
-                .foregroundStyle(Colors.accent)
             Text(item.title)
-                .font(Fonts.mono(11))
+                .font(Fonts.mono(12, weight: .semibold))
                 .foregroundStyle(Colors.text)
                 .lineLimit(1)
+            Text(AgendaFormat.time(item.displayDate))
+                .font(Fonts.mono(11))
+                .foregroundStyle(Colors.accent)
+                .lineLimit(1)
         }
-        .padding(.horizontal, Spacing.xs)
+        .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .frame(width: width, height: height(minutes: minutes), alignment: .topLeading)
-        .background(Colors.card, in: RoundedRectangle(cornerRadius: 8))
-        .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(Colors.accent, lineWidth: 1) }
-        .clipped()
+        .frame(width: width, height: max(height(minutes: minutes) - 1, 1), alignment: .topLeading)
+        .background(Colors.accent.opacity(Colors.timelineBlockOpacity),
+                    in: RoundedRectangle(cornerRadius: PlannerStyle.blockCorner))
+        .background(Colors.card, in: RoundedRectangle(cornerRadius: PlannerStyle.blockCorner))
+        .overlay {
+            RoundedRectangle(cornerRadius: PlannerStyle.blockCorner)
+                .strokeBorder(Colors.accent, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: PlannerStyle.blockCorner))
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+        .frame(height: height(minutes: minutes), alignment: .top)
         .opacity(lift?.id == item.id ? 0.8 : 1)
         .contentShape(Rectangle())
         .onTapGesture { timePick = .place(item, initial: item.displayDate) }
@@ -256,37 +237,39 @@ extension PlannerView {
         let title = title(ofReminder: block.reminderID)
         let range = "\(AgendaFormat.time(block.start))–\(AgendaFormat.time(block.end))"
         let visual = Group {
-            if shownMinutes < 30 {
-                // A quarter hour is 15 pt: one line, start time then title.
-                (Text(AgendaFormat.time(block.start)).font(Fonts.mono(9)).foregroundColor(.white.opacity(0.85))
-                 + Text("  \(title)").font(Fonts.mono(10, weight: .semibold)).foregroundColor(.white))
+            if shownMinutes < 40 {
+                // Under 40 pt there is room for one line: title, then the start time.
+                (Text(title).font(Fonts.mono(11, weight: .semibold)).foregroundColor(.white)
+                 + Text("  \(AgendaFormat.time(block.start))").font(Fonts.mono(10)).foregroundColor(.white.opacity(0.85)))
                     .lineLimit(1)
             } else {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(range)
-                        .font(Fonts.mono(9))
-                        .foregroundStyle(.white.opacity(0.85))
                     Text(title)
-                        .font(Fonts.mono(11, weight: .semibold))
+                        .font(Fonts.mono(12, weight: .semibold))
                         .foregroundStyle(.white)
                         .lineLimit(shownMinutes >= 45 ? 2 : 1)
+                    Text(range)
+                        .font(Fonts.mono(11))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, 3)
             }
         }
-        .padding(.leading, Spacing.xs)
+        .padding(.leading, 6)
         .padding(.trailing, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // 1 pt shorter than its slot, so back-to-back blocks read as separate blocks.
         .frame(width: width, height: max(blockHeight - 1, 1))
         .background(Colors.accent)
-        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: PlannerStyle.blockCorner))
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         // The resize grip: a short bar on the bottom edge, at the trailing side so it never runs
         // through the title. Pressing along the bottom edge and dragging resizes.
         .overlay(alignment: .bottomTrailing) {
-            Rectangle()
+            Capsule()
                 .fill(Color.white.opacity(0.7))
-                .frame(width: 16, height: 2)
+                .frame(width: 16, height: 3)
                 .padding(.trailing, 6)
                 .padding(.bottom, 2)
                 .allowsHitTesting(false)
@@ -334,7 +317,7 @@ extension PlannerView {
         let blockHeight = height(minutes: Double(block.minutes))
         let range = "\(AgendaFormat.time(block.start))–\(AgendaFormat.time(block.end))"
         let title = Text(done.title)
-            .font(Fonts.mono(11))
+            .font(Fonts.mono(12, weight: .semibold))
             .strikethrough(true, color: Colors.textSecondary)
             .foregroundStyle(Colors.textSecondary)
         return HStack(alignment: .top, spacing: Spacing.xs) {
@@ -342,14 +325,15 @@ extension PlannerView {
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(Colors.accent.opacity(0.8))
                 .padding(.top, 3)
-            if block.minutes < 30 {
+            if block.minutes < 40 {
                 title.lineLimit(1)
             } else {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(range)
-                        .font(Fonts.mono(9))
-                        .foregroundStyle(Colors.textSecondary.opacity(0.8))
                     title.lineLimit(block.minutes >= 45 ? 2 : 1)
+                    Text(range)
+                        .font(Fonts.mono(11))
+                        .foregroundStyle(Colors.textSecondary)
+                        .lineLimit(1)
                 }
                 .padding(.vertical, 2)
             }
@@ -357,9 +341,12 @@ extension PlannerView {
         .padding(.horizontal, Spacing.xs)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .frame(width: width, height: max(blockHeight - 1, 1))
-        .background(Colors.accent.opacity(0.12))
-        .overlay { Rectangle().strokeBorder(Colors.accent.opacity(0.4), lineWidth: 1) }
-        .clipped()
+        .background(Colors.accent.opacity(Colors.timelineBlockOpacity * 0.6))
+        .overlay {
+            RoundedRectangle(cornerRadius: PlannerStyle.blockCorner).strokeBorder(Colors.accent.opacity(0.35), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: PlannerStyle.blockCorner))
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("done: \(done.title), \(range)")

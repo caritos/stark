@@ -47,38 +47,38 @@ extension PlannerView {
                 Button {
                     withAnimation(.easeOut(duration: 0.2)) { pane = tab }
                 } label: {
-                    VStack(spacing: Spacing.xs) {
-                        (Text(tab.label(dayWord: dayWord))
-                            .foregroundColor(selected ? Colors.text : Colors.textSecondary)
-                         + Text(" \(count(tab))")
-                            .foregroundColor(selected ? Colors.accent : Colors.textSecondary.opacity(0.6)))
-                            .font(Fonts.mono(10, weight: .semibold))
-                            .tracking(1.5)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        Rectangle()
-                            .fill(selected ? Colors.accent : Color.clear)
-                            .frame(height: 2)
-                    }
-                    .padding(.top, Spacing.sm)
-                    .frame(maxWidth: .infinity, minHeight: 36)
-                    .contentShape(Rectangle())
+                    (Text(tab.label(dayWord: dayWord))
+                        .foregroundColor(selected ? .white : Colors.textSecondary)
+                     + Text(" \(count(tab))")
+                        .foregroundColor(selected ? .white.opacity(0.8) : Colors.textSecondary.opacity(0.6)))
+                        .font(Fonts.mono(11, weight: .semibold))
+                        .tracking(0.5)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .padding(.horizontal, Spacing.xs)
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                        .background(Capsule().fill(selected ? Colors.accent : Color.clear))
+                        .frame(minHeight: 36)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.accessibilityLabel(dayWord: dayWord, count: count(tab)))
                 .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
             }
         }
+        .padding(3)
+        .background(Capsule().fill(Colors.card))
         .padding(.horizontal, Spacing.md)
-        .overlay(alignment: .bottom) { Rectangle().fill(Colors.separator).frame(height: 1) }
+        .padding(.top, Spacing.sm)
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     private func trayPane(_ pane: TrayPane) -> some View {
         let items = model.map { pane.items(in: $0) } ?? []
         return VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(liftingBlock ? "DROP HERE TO REMOVE FROM PLAN" : pane.hint(dayWord: dayWord))
-                .font(Fonts.mono(9))
-                .tracking(1.5)
+                .font(Fonts.mono(10, weight: .medium))
+                .tracking(1)
                 .foregroundStyle(liftingBlock ? Colors.accent : Colors.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -106,7 +106,7 @@ extension PlannerView {
     private var trayDots: some View {
         HStack(spacing: Spacing.sm) {
             ForEach(trayPanes, id: \.self) { dot in
-                Rectangle()
+                Circle()
                     .fill(dot == pane ? Colors.accent : Colors.separator)
                     .frame(width: 6, height: 6)
             }
@@ -134,22 +134,25 @@ extension PlannerView {
     private func chipLabel(_ item: AgendaItem) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(item.title)
-                .font(Fonts.mono(11))
+                .font(Fonts.mono(12, weight: .semibold))
                 .foregroundStyle(Colors.text)
                 .lineLimit(1)
             if let note = chipNote(item) {
                 Text(note)
-                    .font(Fonts.mono(9))
+                    .font(Fonts.mono(11))
                     .foregroundStyle(item.isOverdue ? Colors.accent : Colors.textSecondary)
                     .lineLimit(1)
             }
         }
-        .padding(.horizontal, Spacing.sm)
+        .padding(.leading, Spacing.sm + 3)
+        .padding(.trailing, Spacing.sm)
         .padding(.vertical, Spacing.xs)
         .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-        .background(Colors.separator)
-        .overlay(alignment: .leading) { Rectangle().fill(Colors.accent).frame(width: 2) }
-        .contentShape(Rectangle())
+        .background(Colors.card)
+        .overlay(alignment: .leading) { Rectangle().fill(Colors.accent).frame(width: 3) }
+        .clipShape(RoundedRectangle(cornerRadius: PlannerStyle.chipCorner))
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+        .contentShape(RoundedRectangle(cornerRadius: PlannerStyle.chipCorner))
     }
 
     private func chipNote(_ item: AgendaItem) -> String? {

@@ -113,6 +113,7 @@ struct PlannerView: View {
             Group {
                 if isEditable {
                     VStack(spacing: 0) {
+                        header
                         if let notice = planCache.state.plannerNotice { lockedNotice(notice) }
                         if let storeError = store.error, storeError != planCache.state.plannerNotice {
                             storeErrorBanner(storeError)
@@ -125,9 +126,9 @@ struct PlannerView: View {
                         // would not be in the save; the planner also stays open if one slips in)
                         // and until Apple reminders' plans were read once (`PlanCacheState`).
                         VStack(spacing: 0) {
-                            Rectangle().fill(Colors.separator).frame(height: 1)
+                            Rectangle().fill(Colors.separator).frame(height: 0.5)
                             timeline
-                            Rectangle().fill(Colors.separator).frame(height: 1)
+                            Rectangle().fill(Colors.separator).frame(height: 0.5)
                             tray
                         }
                         .allowsHitTesting(!isLocked)
@@ -136,17 +137,17 @@ struct PlannerView: View {
                     }
                 } else {
                     VStack(spacing: 0) {
+                        header
                         if let storeError = store.error { storeErrorBanner(storeError) }
                         if let saveError { saveErrorBanner(saveError) }
                         pastDay
                     }
                 }
             }
-            .background(Colors.background)
+            .background(Colors.card)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Colors.background, for: .navigationBar)
+            .toolbarBackground(Colors.card, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .principal) { header }
                 if isEditable && isSaving {
                     ToolbarItem(placement: .confirmationAction) {
                         ProgressView()
@@ -311,41 +312,69 @@ struct PlannerView: View {
         day = next
     }
 
-    /// `‹  TITLE  ›`: the day word (TODAY / TOMORROW / weekday) over the date line, which says
-    /// VIEW ONLY on a past day, and the done/planned summary on an editable one.
+    /// The Day view's header: "November 16, 2026" (year in red) with the ‹ › chevrons, then the
+    /// day word (TODAY / TOMORROW / weekday, blue on today) and, on an editable day, the
+    /// done/planned summary, or VIEW ONLY on a past day.
     private var header: some View {
-        HStack(spacing: Spacing.sm) {
-            SquareButton(systemImage: "chevron.left", label: "Previous day") { step(-1) }
-                .disabled(isLocked)
-            VStack(spacing: 1) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
+                titleText
+                    .font(Fonts.mono(30, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .padding(.leading, Spacing.md)
+                    .padding(.trailing, Spacing.sm)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 0)
+                chevron("‹", label: "Previous day") { step(-1) }
+                chevron("›", label: "Next day") { step(1) }
+            }
+            .padding(.trailing, Spacing.sm)
+            .frame(minHeight: 48)
+            HStack(spacing: Spacing.sm) {
                 Text(dayWord)
-                    .font(Fonts.mono(12, weight: .bold))
-                    .tracking(2)
-                    .foregroundStyle(Colors.text)
-                Text(dateLine)
-                    .font(Fonts.mono(10))
-                    .tracking(1.5)
-                    .foregroundStyle(Colors.textSecondary)
-                if isEditable, let summary = DayPlanModel.summary(done: model?.doneCount ?? 0, planned: draft?.blocks.count ?? 0) {
-                    Text(summary)
-                        .font(Fonts.mono(9))
-                        .tracking(1.5)
+                    .font(Fonts.mono(15, weight: .semibold))
+                    .foregroundStyle(Self.calendar.isDate(day, inSameDayAs: today) ? Colors.accent : Colors.textSecondary)
+                if let detail = headerDetail {
+                    Text(detail)
+                        .font(Fonts.mono(13))
                         .foregroundStyle(Colors.textSecondary)
                 }
+                Spacer(minLength: 0)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .frame(minWidth: 150)
+            .padding(.leading, Self.gutter)
+            .frame(minHeight: 28, alignment: .leading)
+            .padding(.bottom, Spacing.xs)
             .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
-            SquareButton(systemImage: "chevron.right", label: "Next day") { step(1) }
-                .disabled(isLocked)
         }
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
-    private var dateLine: String {
-        let date = Self.titleFormatter.string(from: day).uppercased()
-        return isEditable ? date : "\(date) - VIEW ONLY"
+    private var titleText: Text {
+        Text(AgendaFormat.monthName(day) + " \(Self.calendar.component(.day, from: day)), ")
+            .foregroundColor(Colors.text)
+            + Text(String(Self.calendar.component(.year, from: day))).foregroundColor(Colors.yearRed)
+    }
+
+    /// VIEW ONLY on a past day; the done/planned summary on an editable one, when there is one.
+    private var headerDetail: String? {
+        guard isEditable else { return "VIEW ONLY" }
+        return DayPlanModel.summary(done: model?.doneCount ?? 0, planned: draft?.blocks.count ?? 0)
+    }
+
+    private func chevron(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(symbol)
+                .font(Fonts.mono(22))
+                .foregroundStyle(isLocked ? Colors.textSecondary : Colors.accent)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isLocked)
+        .accessibilityLabel(label)
     }
 
     /// A past day: the `DayHistory` numbers above the read-only timeline. No tray, no gestures.
