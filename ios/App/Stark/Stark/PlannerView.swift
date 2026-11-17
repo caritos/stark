@@ -59,6 +59,7 @@ struct PlannerView: View {
     @Environment(\.itemRouter) private var router
     @Environment(AppleOverlayModel.self) var overlay
     @Environment(PlanCache.self) private var planCache
+    @Environment(ErrorCenter.self) var errors
 
     @State var draft: PlanDraft?
     /// The model is rebuilt only when the draft or the store changes, never per drag frame.
@@ -115,8 +116,8 @@ struct PlannerView: View {
                     VStack(spacing: 0) {
                         header
                         if let notice = planCache.state.plannerNotice { lockedNotice(notice) }
-                        if let storeError = store.error, storeError != planCache.state.plannerNotice {
-                            storeErrorBanner(storeError)
+                        if let mainError = errors.message, mainError != planCache.state.plannerNotice {
+                            mainErrorBanner(mainError)
                         }
                         if let saveError { saveErrorBanner(saveError) }
                         if let model, !model.allDayEvents.isEmpty {
@@ -138,7 +139,7 @@ struct PlannerView: View {
                 } else {
                     VStack(spacing: 0) {
                         header
-                        if let storeError = store.error { storeErrorBanner(storeError) }
+                        if let mainError = errors.message { mainErrorBanner(mainError) }
                         if let saveError { saveErrorBanner(saveError) }
                         pastDay
                     }

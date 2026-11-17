@@ -5,7 +5,7 @@ import StarkKit
 
 extension PlannerView {
     /// Accent bar above the planner after a failed save, in the style of `ContentView`'s
-    /// store-error bar; a tap dismisses it.
+    /// error bar; a tap dismisses it.
     func saveErrorBanner(_ message: String) -> some View {
         errorBanner(message) { saveError = nil }
     }
@@ -22,10 +22,10 @@ extension PlannerView {
             .accessibilityAddTraits(.isStaticText)
     }
 
-    /// The store's own error (a month file that failed to read), which `ContentView`'s bar
-    /// would show but the full-screen planner covers.
-    func storeErrorBanner(_ message: String) -> some View {
-        errorBanner(message) { store.error = nil }
+    /// The main error banner's message (`ErrorCenter`: a failed Apple write, sidecar read or
+    /// checkbox commit), which `ContentView`'s bar would show but the full-screen planner covers.
+    func mainErrorBanner(_ message: String) -> some View {
+        errorBanner(message) { errors.dismiss() }
     }
 
     private func errorBanner(_ message: String, dismiss: @escaping () -> Void) -> some View {

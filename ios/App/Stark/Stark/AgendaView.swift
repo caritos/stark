@@ -25,6 +25,7 @@ struct AgendaView: View {
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(PlanCache.self) private var planCache
     @Environment(NoticeCenter.self) private var notices
+    @Environment(ErrorCenter.self) private var errors
     @Environment(\.itemRouter) private var router
     /// The real today, owned by `ContentView` (which advances it when the calendar day changes) so
     /// this view re-renders on the new day instead of reading `Date()` once and going stale.
@@ -296,7 +297,7 @@ struct AgendaView: View {
                 do {
                     try await router.uncomplete(id: reminder.id)
                 } catch {
-                    store.error = error.routerMessage
+                    errors.show(error.routerMessage)
                 }
             }
         } else {

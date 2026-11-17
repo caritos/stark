@@ -19,6 +19,7 @@ struct ContentView: View {
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(DefaultDestinationModel.self) private var destinations
     @Environment(NoticeCenter.self) private var notices
+    @Environment(ErrorCenter.self) private var errors
     @Environment(ImportModel.self) private var importModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
@@ -99,9 +100,9 @@ struct ContentView: View {
                         .background(Colors.separator)
                 }
             }
-            if let error = store.error {
+            if let error = errors.message {
                 Button {
-                    store.error = nil
+                    errors.dismiss()
                 } label: {
                     Text(error)
                         .font(.footnote)

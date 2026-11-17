@@ -21,6 +21,8 @@ struct StarkApp: App {
     @State private var planCache: PlanCache
     /// The main screen's notice strip, shared so sheets and the agenda can post to it.
     @State private var notices = NoticeCenter()
+    /// The main screen's error banner (Apple write, plan-read and pending-commit failures).
+    @State private var errors: ErrorCenter
     /// Settings > "Import Stark's own items" (phase 2): its state, the launch hiding of imported
     /// items and the "not imported" mark (`ImportModel.refreshStatus`, run after the store starts).
     @State private var importModel: ImportModel
@@ -33,6 +35,8 @@ struct StarkApp: App {
     init() {
         let store = Self.makeStore()
         _store = StateObject(wrappedValue: store)
+        let errors = ErrorCenter()
+        _errors = State(initialValue: errors)
         // One EKEventStore for the whole app: the provider creates it lazily and the repository
         // writes through it.
         let provider = EventKitProvider()
@@ -51,7 +55,7 @@ struct StarkApp: App {
         let router = ItemRouter(repository: repository, sidecar: sidecar,
                                 destinations: destinations, calendar: .autoupdatingCurrent)
         let planCache = PlanCache(router: router)
-        planCache.onLoadFailure = { [weak store] message in store?.error = message }
+        planCache.onLoadFailure = { [weak errors] message in errors?.show(message) }
         _planCache = State(initialValue: planCache)
         // EKEventStoreChanged is not reliable after a save (write spike f): reload after every write.
         router.onDidWrite = { [weak overlay, weak planCache] in
@@ -87,7 +91,7 @@ struct StarkApp: App {
             do {
                 try await router.complete(id: id, on: occurrence)
             } catch {
-                store.error = error.routerMessage
+                errors.show(error.routerMessage)
             }
         }))
     }
@@ -101,6 +105,7 @@ struct StarkApp: App {
                 .environment(destinations)
                 .environment(planCache)
                 .environment(notices)
+                .environment(errors)
                 .environment(importModel)
                 .environment(\.itemRouter, router)
                 #if targetEnvironment(macCatalyst)
