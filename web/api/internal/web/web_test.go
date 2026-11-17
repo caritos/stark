@@ -76,7 +76,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		"which Apple syncs through iCloud if you use it",
 		"never sent anywhere by Stark (like Stark's other files, it is part of your device backup)",
 		"does not normally add it twice",
-		"copy them into Apple Calendar and Reminders once", "Settings, Stark's own items", "only as a backup", "it deletes nothing",
+		"copy them into Apple Calendar and Reminders once", "Settings, Import Stark's own items", "only as a backup", "it deletes nothing",
 		"unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com",
 	} {
 		if !strings.Contains(lower, strings.ToLower(want)) {
