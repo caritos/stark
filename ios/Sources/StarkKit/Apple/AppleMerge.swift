@@ -7,15 +7,15 @@ import Foundation
 ///
 /// Apple items become synthetic, never-persisted `Event` / `Reminder` values with id
 /// `apple-<id>` and no recurrence (EventKit already expands a series into occurrences), so they
-/// can never collide with Stark's UUIDs. `range` is the display range; reminders are also
-/// considered back `AgendaWindow.overdueLookbackDays` from `today`.
+/// can never collide with Stark's UUIDs. `range` is the display range; open reminders
+/// of any age are considered (EventKit holds one current occurrence, so there is no run to bound).
 ///
 /// - Events: one row per day spanned (same `spanDays` rule as `buildAgendaItems`; an all-day end is its last day, inclusive, as in Stark). A timed event
 ///   ending exactly at a midnight does not spill onto that day (its end is exclusive). Row ids are
 ///   unique: a spill-over row that would repeat a later occurrence's own row (daily overnight
 ///   series) is dropped.
-/// - Open reminders due before today (inside the lookback) are overdue, pinned to start-of-today
-///   with the due date kept in `occurrence`; older ones are dropped.
+/// - Open reminders due before today are overdue at ANY age, pinned to start-of-today with the
+///   due date kept in `occurrence` (the 90-day lookback applies to Stark's own items only).
 /// - Completed reminders show on their due day and are never overdue.
 /// - Reminders without a due date are dropped (they never show in the agenda; see
 ///   `undatedAppleReminders`).
@@ -29,7 +29,6 @@ public func mergeAppleItems(
     calendar: Calendar = Calendar(identifier: .gregorian)
 ) -> [AgendaItem] {
     let todayStart = calendar.startOfDay(for: today)
-    let lookbackStart = calendar.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: todayStart) ?? todayStart
     var merged = items
 
     // Own-day rows first, spill-over rows (k > 0) after, keeping only the first row per id. A
@@ -73,7 +72,6 @@ public func mergeAppleItems(
                                          isOverdue: false, appleSource: source))
             }
         } else if calendar.startOfDay(for: due) < todayStart {
-            guard due >= lookbackStart else { continue }
             merged.append(AgendaItem(kind: .reminder(reminder), occurrence: due, displayDate: todayStart,
                                      isOverdue: true, appleSource: source))
         } else if range.contains(due) {

@@ -89,10 +89,34 @@ extension AppleMergeTests {
         #expect(out[0].occurrence == date(10, 9))
     }
 
-    @Test func reminderOlderThanLookbackNotShown() {
-        let old = Self.cal.date(byAdding: .day, value: -(AgendaWindow.overdueLookbackDays + 5), to: today)!
-        let out = merge(reminders: [reminder(due: old)])
-        #expect(out.isEmpty)
+    @Test(arguments: [169, 400, 89, 91, 90])
+    func openReminderOfAnyAgeIsOverdueToday(daysAgo: Int) {
+        let due = Self.cal.date(byAdding: .day, value: -daysAgo, to: Self.cal.startOfDay(for: today))!
+        let out = merge(reminders: [reminder(due: due, hasTime: false)])
+        #expect(out.count == 1)
+        guard let row = out.first else { return }
+        #expect(row.isOverdue)
+        #expect(row.displayDate == Self.cal.startOfDay(for: today))
+        #expect(row.occurrence == due)
+    }
+
+    @Test func veryOldOverdueRowRendersCappedLabel() {
+        let due = Self.cal.date(byAdding: .day, value: -400, to: Self.cal.startOfDay(for: today))!
+        let out = merge(reminders: [reminder(due: due, hasTime: false)])
+        #expect(out.first?.daysOverdue(today: today, calendar: Self.cal) == 400)
+        #expect(OverdueLabel.text(daysOverdue: 400) == "90+ days overdue")
+    }
+
+    @Test func oldCompletedReminderNotShown() {
+        let due = Self.cal.date(byAdding: .day, value: -400, to: today)!
+        #expect(merge(reminders: [reminder(due: due, done: true)]).isEmpty)
+    }
+
+    @Test func reminderDueTodayAndFutureAsBefore() {
+        let out = merge(reminders: [reminder("t", due: date(15, 18)), reminder("f", due: date(20, 9))])
+        #expect(out.count == 2)
+        #expect(out.allSatisfy { !$0.isOverdue })
+        #expect(out.map(\.displayDate).contains(date(15, 18)))
     }
 
     @Test func completedReminderOnDueDay() {
@@ -182,15 +206,6 @@ extension AppleMergeTests {
     @Test func completedReminderOutsideRangeDropped() {
         #expect(merge(reminders: [reminder("a", due: date(20, 9, month: 5), done: true),
                                   reminder("b", due: date(5, 9, month: 7), done: true)]).isEmpty)
-    }
-
-    @Test func reminderExactlyAtLookbackBoundaryKept() {
-        let boundary = Self.cal.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: Self.cal.startOfDay(for: today))!
-        let out = merge(reminders: [reminder(due: boundary)])
-        #expect(out.count == 1)
-        #expect(out[0].isOverdue)
-        let justBefore = merge(reminders: [reminder(due: boundary.addingTimeInterval(-1))])
-        #expect(justBefore.isEmpty)
     }
 
     @Test func timedEventRunningMidnightToMidnightGivesOneRow() {
