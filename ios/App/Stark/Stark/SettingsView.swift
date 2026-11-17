@@ -6,7 +6,6 @@ import StarkKit
 /// issue #111) plus About. Storage is just the local Documents directory;
 /// there is no iCloud toggle or file picker, unlike the deprecated Expo app's Settings screen.
 struct SettingsView: View {
-    let secrets: SecretStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var showFAQ = false
@@ -46,12 +45,10 @@ struct SettingsView: View {
                 #endif
 
                 Section {
-                    NavigationLink("Claude Code") { ClaudeCodeSettingsView(secrets: secrets) }
-                        .foregroundStyle(Colors.text)
                     NavigationLink("Apple Calendar and Reminders") { AppleSettingsView() }
                         .foregroundStyle(Colors.text)
                 } header: {
-                    Text("Integrations")
+                    Text("Apple")
                 }
                 .listRowBackground(Colors.card)
 

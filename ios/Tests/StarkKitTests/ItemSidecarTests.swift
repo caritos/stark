@@ -35,29 +35,29 @@ struct ItemSidecarTests {
         let data = try await sidecar(tempFile()).load()
         #expect(data == SidecarData())
         #expect(data.version == SidecarData.currentVersion)
-        #expect(data.plans.isEmpty && data.outcomes.isEmpty && data.bridgeLedger.isEmpty)
+        #expect(data.plans.isEmpty && data.outcomes.isEmpty && data.importLedger.isEmpty)
     }
 
     @Test("update then load round-trips through a fresh instance")
     func roundTrip() async throws {
         let url = tempFile()
-        try await sidecar(url).update { $0.bridgeLedger["b1"] = "ID-1" }
+        try await sidecar(url).update { $0.importLedger["b1"] = "ID-1" }
         let data = try await sidecar(url).load()
-        #expect(data.bridgeLedger == ["b1": "ID-1"])
+        #expect(data.importLedger == ["b1": "ID-1"])
     }
 
     @Test("a failing write throws and leaves the old file intact")
     func failedWriteKeepsOldFile() async throws {
         let url = tempFile()
-        try await sidecar(url).update { $0.bridgeLedger["b1"] = "ID-1" }
+        try await sidecar(url).update { $0.importLedger["b1"] = "ID-1" }
         let before = try Data(contentsOf: url)
 
         let failing = ItemSidecar(fileURL: url, calendar: utc, writer: { _, _ in throw WriteFailed() })
         await #expect(throws: WriteFailed.self) {
-            try await failing.update { $0.bridgeLedger["b2"] = "ID-2" }
+            try await failing.update { $0.importLedger["b2"] = "ID-2" }
         }
         #expect(try Data(contentsOf: url) == before)
-        #expect(try await sidecar(url).load().bridgeLedger == ["b1": "ID-1"])
+        #expect(try await sidecar(url).load().importLedger == ["b1": "ID-1"])
     }
 
     @Test("corrupt JSON throws and the file is left untouched")
@@ -67,7 +67,7 @@ struct ItemSidecarTests {
         try Data("{not json".utf8).write(to: url)
         let s = sidecar(url)
         await #expect(throws: (any Error).self) { try await s.load() }
-        await #expect(throws: (any Error).self) { try await s.update { $0.bridgeLedger["x"] = "y" } }
+        await #expect(throws: (any Error).self) { try await s.update { $0.importLedger["x"] = "y" } }
         #expect(try Data(contentsOf: url) == Data("{not json".utf8))
     }
 
@@ -154,54 +154,11 @@ struct ItemSidecarTests {
         #expect(entries.first?.externalID == "X1")
     }
 
-    @Test("bridge ledger records and looks up, re-recording replaces, remap follows")
-    func ledger() async throws {
-        let s = sidecar(tempFile())
-        #expect(try await s.bridgedIdentifier(for: "b1") == nil)
-        try await s.recordBridge(itemID: "b1", identifier: "ID-1", externalID: "EXT-1")
-        try await s.recordBridge(itemID: "b1", identifier: "ID-1", externalID: "EXT-1")
-        #expect(try await s.bridgedIdentifier(for: "b1") == "ID-1")
-        #expect(try await s.load().bridgeLedger.count == 1)
-        try await s.recordBridge(itemID: "b1", identifier: "ID-2", externalID: nil)
-        #expect(try await s.bridgedIdentifier(for: "b1") == "ID-2")
-        try await s.remap(oldID: "ID-2", newID: "ID-3")
-        #expect(try await s.bridgedIdentifier(for: "b1") == "ID-3")
-        #expect(try await s.bridgedIdentifier(for: "nope") == nil)
-    }
-
-    @Test("a batch of ledger entries is one write; a failed write records none of them")
-    func ledgerBatch() async throws {
-        final class Writes: @unchecked Sendable {
-            let lock = NSLock()
-            var count = 0
-            var fail = false
-        }
-        let writes = Writes()
-        let url = tempFile()
-        let s = ItemSidecar(fileURL: url, calendar: utc) { data, target in
-            writes.lock.lock(); writes.count += 1; let fail = writes.fail; writes.lock.unlock()
-            if fail { throw WriteFailed() }
-            try ItemSidecar.atomicWriter(data, target)
-        }
-        try await s.recordBridge([BridgeLedgerEntry(itemID: "a", identifier: "ID-A", externalID: "EXT-A"),
-                                  BridgeLedgerEntry(itemID: "b", identifier: "ID-B", externalID: nil)])
-        #expect(writes.count == 1)
-        let data = try await s.load()
-        #expect(data.bridgeLedger == ["a": "ID-A", "b": "ID-B"])
-        #expect(data.externalIDs == ["ID-A": "EXT-A"])
-
-        writes.fail = true
-        await #expect(throws: WriteFailed.self) {
-            try await s.recordBridge([BridgeLedgerEntry(itemID: "c", identifier: "ID-C", externalID: nil)])
-        }
-        #expect(try await s.load().bridgeLedger == ["a": "ID-A", "b": "ID-B"])
-    }
-
     @Test("the stored data holds no absolute file paths")
     func noAbsolutePaths() async throws {
         let url = tempFile()
         let s = sidecar(url)
-        try await s.recordBridge(itemID: "b1", identifier: "ID-1", externalID: "EXT")
+        try await s.recordImport(ImportRecord(localID: "b1", identifier: "ID-1", externalID: "EXT"))
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(!text.contains(NSTemporaryDirectory()))
     }
@@ -249,18 +206,16 @@ struct ItemSidecarTests {
         #expect(try await s.load().outcomes.count == 2)
     }
 
-    @Test("remap keeps an existing external id for the new identifier and moves plans and ledger")
+    @Test("remap keeps an existing external id for the new identifier and moves plans")
     func remapExternalIDsAndRest() async throws {
         let s = sidecar(tempFile())
         try await s.replacePlans(on: day("2026-11-16"), with: [
             block("p1", ref: "OLD", on: "2026-11-16"), block("p2", ref: "OTHER", on: "2026-11-16", hour: 11),
         ], externalIDs: ["OLD": "EXT-OLD", "NEW": "EXT-NEW", "OTHER": "EXT-O"])
-        try await s.recordBridge(itemID: "b1", identifier: "OLD", externalID: nil)
         try await s.remap(oldID: "OLD", newID: "NEW")
         let data = try await s.load()
         #expect(data.externalIDs == ["NEW": "EXT-NEW", "OTHER": "EXT-O"])
         #expect(data.plans.map(\.reminderID) == ["NEW", "OTHER"])
-        #expect(data.bridgeLedger == ["b1": "NEW"])
         try await s.replacePlans(on: day("2026-11-18"), with: [], externalIDs: ["Z": "EXT-Z"])
         try await s.remap(oldID: "Z", newID: "Y")
         #expect(try await s.load().externalIDs["Y"] == "EXT-Z")

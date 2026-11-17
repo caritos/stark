@@ -5,7 +5,7 @@ import Observation
 import UIKit
 #endif
 
-/// The main screen's short-lived notice strip (bridge results, "reopened the completed copy").
+/// The main screen's short-lived notice strip (e.g. "reopened the completed copy").
 /// Shared through the environment so a sheet or the agenda can post one; `ContentView` draws it.
 @MainActor @Observable
 final class NoticeCenter {

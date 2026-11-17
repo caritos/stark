@@ -252,7 +252,6 @@ private final class Box<T>: @unchecked Sendable {
         let entry = try #require(data.outcomes.first { $0.identifier == eid })
         #expect(entry.externalID == "ext-\(eid)")
         #expect(entry.record.outcome == .skipped)
-        #expect(data.bridgeLedger["local-r"] == rid)
     }
 
     @Test func completedOneOffIsCreatedCompleted() async throws {

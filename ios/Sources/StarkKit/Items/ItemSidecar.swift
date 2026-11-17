@@ -16,7 +16,10 @@ public struct OutcomeEntry: Codable, Equatable, Sendable {
 }
 
 /// Everything Stark keeps locally about Apple-owned items: plan blocks, event outcomes and the
-/// bridge idempotency ledger. Plain data; never holds absolute file paths.
+/// import ledger. Plain data; never holds absolute file paths.
+///
+/// Files written before 2026-11-17 may also hold a `bridgeLedger` key (the removed Claude Code
+/// bridge). It is ignored on decode and dropped on the next save; no version change.
 public struct SidecarData: Codable, Equatable, Sendable {
     public static let currentVersion = 2
 
@@ -25,8 +28,6 @@ public struct SidecarData: Codable, Equatable, Sendable {
     public var plans: [PlanBlock]
     /// Written sorted by (identifier, externalID, date) so identical data gives identical bytes.
     public var outcomes: [OutcomeEntry]
-    /// Bridge item id -> Apple identifier.
-    public var bridgeLedger: [String: String]
     /// Apple identifier -> external identifier, for re-matching plans and ledger entries.
     public var externalIDs: [String: String]
     /// Phase 2 import: local item id -> Apple identifier of the copy created in Apple.
@@ -38,7 +39,6 @@ public struct SidecarData: Codable, Equatable, Sendable {
         version: Int = SidecarData.currentVersion,
         plans: [PlanBlock] = [],
         outcomes: [OutcomeEntry] = [],
-        bridgeLedger: [String: String] = [:],
         externalIDs: [String: String] = [:],
         importLedger: [String: String] = [:],
         importedAt: Date? = nil
@@ -46,14 +46,13 @@ public struct SidecarData: Codable, Equatable, Sendable {
         self.version = version
         self.plans = plans
         self.outcomes = outcomes
-        self.bridgeLedger = bridgeLedger
         self.externalIDs = externalIDs
         self.importLedger = importLedger
         self.importedAt = importedAt
     }
 
     private enum CodingKeys: String, CodingKey {
-        case version, plans, outcomes, bridgeLedger, externalIDs, importLedger, importedAt
+        case version, plans, outcomes, externalIDs, importLedger, importedAt
     }
 
     /// Missing keys (a version 1 file) decode to empty defaults; the version stays as written
@@ -63,7 +62,6 @@ public struct SidecarData: Codable, Equatable, Sendable {
         version = try c.decode(Int.self, forKey: .version)
         plans = try c.decodeIfPresent([PlanBlock].self, forKey: .plans) ?? []
         outcomes = try c.decodeIfPresent([OutcomeEntry].self, forKey: .outcomes) ?? []
-        bridgeLedger = try c.decodeIfPresent([String: String].self, forKey: .bridgeLedger) ?? [:]
         externalIDs = try c.decodeIfPresent([String: String].self, forKey: .externalIDs) ?? [:]
         importLedger = try c.decodeIfPresent([String: String].self, forKey: .importLedger) ?? [:]
         importedAt = try c.decodeIfPresent(Date.self, forKey: .importedAt)
@@ -84,19 +82,6 @@ public struct ImportRecord: Equatable, Sendable {
         self.externalID = externalID
         self.plans = plans
         self.outcomes = outcomes
-    }
-}
-
-/// One bridge item id and the Apple item it created.
-public struct BridgeLedgerEntry: Equatable, Sendable {
-    public var itemID: String
-    public var identifier: String
-    public var externalID: String?
-
-    public init(itemID: String, identifier: String, externalID: String?) {
-        self.itemID = itemID
-        self.identifier = identifier
-        self.externalID = externalID
     }
 }
 
@@ -221,42 +206,17 @@ public actor ItemSidecar {
         }
     }
 
-    // MARK: Bridge ledger
-
-    public func recordBridge(itemID: String, identifier: String, externalID: String?) throws {
-        try update { data in
-            data.bridgeLedger[itemID] = identifier
-            if let externalID { data.externalIDs[identifier] = externalID }
-        }
-    }
-
-    /// Records several bridge items in ONE write (all or none), so a batch the bridge has just
-    /// committed to Apple is ledgered in a single atomic step.
-    public func recordBridge(_ entries: [BridgeLedgerEntry]) throws {
-        try update { data in
-            for entry in entries {
-                data.bridgeLedger[entry.itemID] = entry.identifier
-                if let externalID = entry.externalID { data.externalIDs[entry.identifier] = externalID }
-            }
-        }
-    }
-
-    public func bridgedIdentifier(for itemID: String) throws -> String? {
-        try load().bridgeLedger[itemID]
-    }
-
     // MARK: Import ledger
 
     public func importedIDs() throws -> Set<String> {
         Set(try load().importLedger.keys)
     }
 
-    /// Writes the ledger entry, bridge ledger entry, external id, re-keyed plan blocks and
+    /// Writes the ledger entry, external id, re-keyed plan blocks and
     /// outcomes for one imported item in ONE write (all or none).
     public func recordImport(_ item: ImportRecord) throws {
         try update { data in
             data.importLedger[item.localID] = item.identifier
-            data.bridgeLedger[item.localID] = item.identifier
             if let ext = item.externalID { data.externalIDs[item.identifier] = ext }
             for var block in item.plans {
                 block.reminderID = item.identifier
@@ -275,7 +235,7 @@ public actor ItemSidecar {
 
     // MARK: Identifier changes
 
-    /// Rewrites every stored reference to `oldID` (plans, outcomes, ledger, external-id map).
+    /// Rewrites every stored reference to `oldID` (plans, outcomes, external-id map).
     /// Collisions with records already under `newID` keep one record deterministically: for outcomes
     /// the newest by `record.date` per day (an existing non-nil external id wins over nil); for the
     /// external-id map the value already stored for `newID`.
@@ -302,7 +262,6 @@ public actor ItemSidecar {
                 }
             }
             data.outcomes = merged
-            for (item, id) in data.bridgeLedger where id == oldID { data.bridgeLedger[item] = newID }
             if let ext = data.externalIDs.removeValue(forKey: oldID), data.externalIDs[newID] == nil {
                 data.externalIDs[newID] = ext
             }

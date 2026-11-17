@@ -25,12 +25,10 @@ struct StarkApp: App {
     /// items and the "not imported" mark (`ImportModel.refreshStatus`, run after the store starts).
     @State private var importModel: ImportModel
     /// The one EventKit repository, sidecar and router (Apple write path). Every view write goes
-    /// through the router; the Claude Code bridge writes through the same repository and sidecar.
+    /// through the router.
     private let repository: AppleItemRepository
     private let sidecar: ItemSidecar
     private let router: ItemRouter
-    private let bridge: ClaudeBridge
-    private let secrets: SecretStore
 
     init() {
         let store = Self.makeStore()
@@ -81,17 +79,6 @@ struct StarkApp: App {
                 await overlay?.refreshAfterWrite()
                 await planCache?.refresh()
             }))
-        let secrets = KeychainSecretStore(service: "com.caritos.todo-txt.bridge", account: "pairing")
-        self.secrets = secrets
-        // Bridge items go to Apple (default calendar / list) and are ledgered in the sidecar.
-        bridge = ClaudeBridge(repository: repository, sidecar: sidecar, destinations: destinations,
-                              hasAccess: { provider.accessState() == .granted }, secrets: secrets,
-                              replay: BridgeReplayGuard(store: UserDefaultsReplayStore(), now: Date.init),
-                              calendar: .autoupdatingCurrent,
-                              destinationInfo: { [weak destinations] id in
-                                  destinations?.calendarChoices.first { $0.id == id }
-                                      ?? destinations?.listChoices.first { $0.id == id }
-                              })
         // Through the router: Stark's ids to the local store (idempotence, e.g. already resolved by
         // Done/Skip, lives in `PlannerStore.completeReminder`), Apple ids to EventKit with the
         // OCCURRENCE's own date (the repository ignores a repeating reminder already past that
@@ -108,7 +95,7 @@ struct StarkApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(bridge: bridge, secrets: secrets)
+            ContentView()
                 .environmentObject(store)
                 .environmentObject(pending)
                 .environment(overlay)

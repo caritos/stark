@@ -105,22 +105,6 @@ struct FAQView: View {
             (they may be notified), and an item whose repeat Stark can't copy can't be converted.
             """
         ),
-        Entry(
-            question: "What is the Claude Code bridge?",
-            answer: """
-            An optional way to add tasks and events from Claude Code on your Mac. It does \
-            nothing until you pair it (Settings > Claude Code). Stark makes no network \
-            connection for this: the Mac talks to your phone over your USB or Wi-Fi link to \
-            the phone. A stark://add link is only accepted when it is signed with the pairing \
-            secret. The secret is kept in this phone's Keychain (not in backups) and, once you \
-            pair, in your Mac's login Keychain; Stark never sends it anywhere else. Requests \
-            are added immediately to Apple Calendar and Reminders, in your default calendar and \
-            list, and Stark notes each added item in its small file so that sending the same \
-            request again does not normally add it twice; an item Stark added to Apple and you then deleted there stays deleted. Claude Code cannot read your schedule from the phone for now: stark-claude \
-            today is unavailable until a Mac tool exists. To reset pairing, tap Settings > \
-            Claude Code > Reset pairing.
-            """
-        ),
     ]
 
     var body: some View {

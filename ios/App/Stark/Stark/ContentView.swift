@@ -52,20 +52,10 @@ struct ContentView: View {
     /// dropped when a newer one (or a tap inside the window) comes first.
     @State private var windowMoveToken = 0
 
-    private let bridge: ClaudeBridge
-    private let secrets: SecretStore
-    /// False until the default calendar and list have been resolved (`destinations.refresh()`); a
-    /// bridge URL that arrives earlier (cold launch) waits in `pendingBridgeURLs`, or it would be
-    /// rejected for want of a destination. Drained once, right after. The local store's state does
-    /// not matter: bridge items go to Apple and their idempotency lives in the sidecar ledger.
-    @State private var bridgeReady = false
-    @State private var pendingBridgeURLs: [URL] = []
     /// Set by Add's "Open Settings": Settings opens once the Add sheet has gone.
     @State private var openSettingsAfterAdd = false
 
-    init(bridge: ClaudeBridge, secrets: SecretStore) {
-        self.bridge = bridge
-        self.secrets = secrets
+    init() {
         // One instant for all three, so a launch right at midnight can't split them across days.
         let now = Date()
         _selectedDate = State(initialValue: now)
@@ -88,15 +78,6 @@ struct ContentView: View {
             #endif
         }
         .tint(Colors.accent)
-        // The design is dark-only (Colors.* are dark-theme tokens); without this, system
-        // sheets and Forms would render light with near-white text.
-        .onOpenURL { url in
-            if bridgeReady {
-                handleBridge(url)
-            } else {
-                pendingBridgeURLs.append(url)
-            }
-        }
     }
 
     /// The grid, drag bar (iPhone only — Mac drives `mode` from `CalendarSidebar` instead),
@@ -246,7 +227,7 @@ struct ContentView: View {
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showCalendars) { CalendarsSheet() }
         .sheet(isPresented: $showSettings) {
-            SettingsView(secrets: secrets).interactiveDismissDisabled(importModel.isRunning)
+            SettingsView().interactiveDismissDisabled(importModel.isRunning)
         }
         .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item, today: today) }
         .fullScreenCover(item: $planRequest) { request in PlannerView(day: request.day, today: today) }
@@ -260,10 +241,6 @@ struct ContentView: View {
             // Empty (and no EventKit call) until access was granted from `AccessRequiredView`.
             await overlay.reload(for: .agenda, display: AgendaWindow.range(around: agendaAnchor), today: today)
             await destinations.refresh()
-            bridgeReady = true
-            let waiting = pendingBridgeURLs
-            pendingBridgeURLs = []
-            for url in waiting { handleBridge(url) }
         }
         // Granted from the access screen, or in iOS Settings while Stark was in the background.
         .onChange(of: overlay.access) { _, access in
@@ -297,16 +274,6 @@ struct ContentView: View {
         // tapped day's month explicitly.
         scrollPagingDate = GridPagingRequest(date: date)
         withAnimation(.easeInOut(duration: 0.2)) { full = .none }
-    }
-
-    /// The bridge handles URLs one at a time in arrival order, so these tasks may overlap.
-    private func handleBridge(_ url: URL) {
-        Task {
-            let outcome = await bridge.handle(url)
-            if let text = outcome.notice { notices.show(text) }
-            // EKEventStoreChanged is not reliable after a save (write spike f).
-            if case .added = outcome { await overlay.refreshAfterWrite() }
-        }
     }
 
     /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone

@@ -55,11 +55,9 @@ import Foundation
         #expect(after.version == 2)
         #expect(after.plans.filter { $0.id == "blk-1" } == before.plans)
         #expect(after.outcomes.contains(before.outcomes[0]))
-        #expect(after.bridgeLedger["bridge-1"] == "apple-rem-2")
         #expect(after.externalIDs["apple-rem-1"] == "ext-rem-1")
         #expect(after.externalIDs["apple-rem-2"] == "ext-rem-2")
         #expect(after.importLedger == ["local-1": "apple-new-local-1"])
-        #expect(after.bridgeLedger["local-1"] == "apple-new-local-1")
         #expect(after.externalIDs["apple-new-local-1"] == "ext-new-local-1")
         let block = try #require(after.plans.first { $0.id == "pb-local-1" })
         #expect(block.reminderID == "apple-new-local-1")
@@ -95,7 +93,7 @@ import Foundation
     @Test func version3FileIsRefused() async throws {
         let url = tempURL()
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data(#"{"version":3,"plans":[],"outcomes":[],"bridgeLedger":{},"externalIDs":{}}"#.utf8).write(to: url)
+        try Data(#"{"version":3,"plans":[],"outcomes":[],"externalIDs":{}}"#.utf8).write(to: url)
         let sidecar = ItemSidecar(fileURL: url, calendar: Self.utc)
         await #expect(throws: ItemSidecarError.unsupportedVersion(3)) { _ = try await sidecar.load() }
         await #expect(throws: ItemSidecarError.unsupportedVersion(3)) { try await sidecar.recordImport(record()) }
@@ -108,6 +106,57 @@ import Foundation
         let sidecar = ItemSidecar(fileURL: url, calendar: Self.utc)
         await #expect(throws: ItemSidecarError.self) { _ = try await sidecar.importedIDs() }
         await #expect(throws: ItemSidecarError.self) { try await sidecar.markImportFinished(at: Date()) }
+    }
+
+    // MARK: Files written while the Claude Code bridge existed (removed 2026-11-17)
+
+    /// The raw top-level keys of the file as written to disk.
+    private func rawKeys(_ url: URL) throws -> Set<String> {
+        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+        return Set(try #require(object as? [String: Any]).keys)
+    }
+
+    @Test func oldSidecarWithBridgeLedgerKeyStillLoads() async throws {
+        let url = try copyFixture()
+        #expect(try rawKeys(url).contains("bridgeLedger"))
+        let data = try await ItemSidecar(fileURL: url, calendar: Self.utc).load()
+        #expect(data.version == 1)
+        #expect(data.plans.map(\.id) == ["blk-1"])
+        #expect(data.plans.first?.reminderID == "apple-rem-1")
+        #expect(data.outcomes.map(\.identifier) == ["apple-evt-1"])
+        #expect(data.externalIDs == ["apple-rem-1": "ext-rem-1", "apple-rem-2": "ext-rem-2"])
+        #expect(data.importLedger.isEmpty)
+    }
+
+    @Test func v2SidecarWithImportLedgerAndBridgeLedgerKeyStillLoads() async throws {
+        let url = tempURL()
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"""
+        {"bridgeLedger":{"bridge-1":"apple-rem-2","local-1":"apple-new-local-1"},\#
+        "externalIDs":{"apple-new-local-1":"ext-new-local-1"},\#
+        "importLedger":{"local-1":"apple-new-local-1"},"importedAt":"2027-01-16T10:00:00Z",\#
+        "outcomes":[],"plans":[],"version":2}
+        """#.utf8).write(to: url)
+        let sidecar = ItemSidecar(fileURL: url, calendar: Self.utc)
+        let data = try await sidecar.load()
+        #expect(data.version == 2)
+        #expect(data.importLedger == ["local-1": "apple-new-local-1"])
+        #expect(data.externalIDs == ["apple-new-local-1": "ext-new-local-1"])
+        #expect(data.importedAt == ISO8601DateFormatter().date(from: "2027-01-16T10:00:00Z"))
+        #expect(try await sidecar.importedIDs() == ["local-1"])
+    }
+
+    @Test func recordImportNoLongerWritesBridgeLedger() async throws {
+        let url = try copyFixture()
+        let sidecar = ItemSidecar(fileURL: url, calendar: Self.utc)
+        try await sidecar.recordImport(record())
+        let keys = try rawKeys(url)
+        #expect(!keys.contains("bridgeLedger"))
+        #expect(keys.contains("importLedger"))
+        let after = try await sidecar.load()
+        #expect(after.importLedger == ["local-1": "apple-new-local-1"])
+        #expect(after.plans.contains { $0.id == "blk-1" })
+        #expect(after.externalIDs["apple-rem-2"] == "ext-rem-2")
     }
 
     @Test func markImportFinishedStoresDate() async throws {

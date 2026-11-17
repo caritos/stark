@@ -209,7 +209,7 @@ enum ItemRepositoryContract {
         #expect(await h.itemCount() == before + 2)
     }
 
-    /// One ref per item, in input order, events first (the bridge ledgers items by position).
+    /// One ref per item, in input order, events first.
     static func batchReturnsRefsInInputOrder(_ make: () async -> RepositoryHarness) async throws {
         let h = await make()
         let refs = try await h.repository.addBatch(
