@@ -62,20 +62,19 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 	body := get(Handler(), http.MethodGet, "/privacy").Body.String()
 	// Stark's policy: dated, says the app collects nothing, where the data lives, and how to ask.
 	// Since the Apple write path (2026-11-15) Stark WRITES to Calendar and Reminders, still makes
-	// no network connection itself, the bridge's items land in Apple, plans and attended marks
-	// for Apple items live in a small file of Stark's own on the device, and `today` is unavailable.
+	// no network connection itself, and plans, attended marks and the import record for Apple
+	// items live in a small file of Stark's own on the device. The Claude Code bridge was removed
+	// on 2026-11-17 (TestPagesDoNotMentionClaudeCodeBridge).
 	lower := strings.ToLower(body)
 	for _, want := range []string{
-		"LAST UPDATED: NOVEMBER 2026", "CLAUDE CODE BRIDGE", "APPLE CALENDAR AND REMINDERS",
+		"LAST UPDATED: NOVEMBER 2026", "APPLE CALENDAR AND REMINDERS",
 		"saves what you add, edit, complete or delete in Stark to Apple Calendar and Reminders",
 		"Stark itself makes no network connection",
-		"items Claude Code adds go to Apple Calendar and Reminders",
 		"small file of Stark's own on this device",
-		"stark-claude today is unavailable",
+		"the record of which of Stark's own items were already imported",
 		"the share button in Weekly Review exports that week's summary",
 		"which Apple syncs through iCloud if you use it",
 		"never sent anywhere by Stark (like Stark's other files, it is part of your device backup)",
-		"does not normally add it twice",
 		"copy them into Apple Calendar and Reminders once", "Settings, Import Stark's own items", "only as a backup", "it deletes nothing",
 		"unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com",
 	} {
@@ -87,6 +86,18 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them"} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
+		}
+	}
+}
+
+// The Claude Code bridge was removed on 2026-11-17: no page may still describe it.
+func TestPagesDoNotMentionClaudeCodeBridge(t *testing.T) {
+	for _, p := range []string{"/", "/faq", "/privacy", "/terms", "/support"} {
+		lower := strings.ToLower(get(Handler(), http.MethodGet, p).Body.String())
+		for _, gone := range []string{"claude code", "stark://", "stark-claude", "pairing", "keychain", "bridge"} {
+			if strings.Contains(lower, gone) {
+				t.Errorf("%s still mentions %q", p, gone)
+			}
 		}
 	}
 }
