@@ -57,6 +57,10 @@ struct AgendaView: View {
     /// a neighbouring-month day must never page the month grid, even though it does scroll the
     /// agenda there).
     @State private var scrollSuppressUntil = Date.distantPast
+    /// True once the list has been scrolled into place after the first Apple fetch. Until then
+    /// the list is invisible (`AgendaFirstLoad.hidesAgenda`), so launch never shows empty days or
+    /// the window's first day before the jump to today.
+    @State private var isPositioned = false
 
     private static let calendar = Calendar(identifier: .gregorian)
 
@@ -87,6 +91,8 @@ struct AgendaView: View {
         let rows = makeRows(sections, todayStart: todayStart)
         let itemCount = sections.reduce(0) { $0 + $1.items.count }
         let rowDayLookup = makeRowDayLookup(sections, todayStart: todayStart)
+
+        let hidesList = overlay.firstLoad.hidesAgenda(access: overlay.access, isPositioned: isPositioned)
 
         GeometryReader { geometry in
             ScrollViewReader { proxy in
@@ -131,9 +137,35 @@ struct AgendaView: View {
                 .environment(\.defaultMinListRowHeight, 0)
                 .listRowSeparatorTint(Colors.separator)
                 .scrollContentBackground(.hidden)
+                .opacity(hidesList ? 0 : 1)
+                .accessibilityHidden(hidesList)
                 .background(Colors.background)
+                .overlay {
+                    if hidesList {
+                        // Quiet loading state until the first Apple fetch has landed and the list
+                        // is scrolled to today (a failed fetch ends it too).
+                        ProgressView()
+                            .tint(Colors.textSecondary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Colors.background)
+                            .accessibilityLabel("Loading")
+                    }
+                }
                 .onAppear {
-                    scrollToToday(proxy, todayStart: todayStart)
+                    if !overlay.firstLoad.isWaiting(access: overlay.access) {
+                        scrollToToday(proxy, todayStart: todayStart, reveal: true)
+                    }
+                }
+                // The first Apple fetch finished: position the list on today (or on a day tapped
+                // meanwhile), then reveal it.
+                .onChange(of: overlay.firstLoad.hasFinishedOnce) { _, finished in
+                    guard finished else { return }
+                    let target = scrollRequest.map { Self.calendar.startOfDay(for: $0.date) } ?? todayStart
+                    guard let section = sections.first(where: { $0.day >= target }) ?? sections.last else {
+                        isPositioned = true
+                        return
+                    }
+                    scroll(proxy, to: Self.headerID(section.day), reveal: true)
                 }
                 // Never drop a still-pending completion when the agenda goes away.
                 .onDisappear { pending.flush() }
@@ -158,7 +190,7 @@ struct AgendaView: View {
                     // The exact day's header; falls back to the first section after it
                     // (else the last) if it is somehow missing from the window.
                     guard let section = sections.first(where: { $0.day >= target }) ?? sections.last else { return }
-                    scroll(proxy, to: Self.headerID(section.day))
+                    scroll(proxy, to: Self.headerID(section.day), reveal: true)
                 }
                 // Debounced (matches YearView's own 150ms debounce for its density recompute):
                 // `.task(id:)` cancels the previous wait whenever the displayed rows change
@@ -167,6 +199,9 @@ struct AgendaView: View {
                     try? await Task.sleep(for: .milliseconds(150))
                     guard !Task.isCancelled else { return }
                     guard Date() >= scrollSuppressUntil else { return }
+                    // The hidden list sits at the window's first day until it is positioned;
+                    // never report that as the day in view (it would select it in the grid).
+                    guard !overlay.firstLoad.hidesAgenda(access: overlay.access, isPositioned: isPositioned) else { return }
                     guard let top = AgendaScrollTracking.topRowID(displayed: displayedRowIDs,
                                                                   orderedRowIDs: rows.map(\.id)),
                           let day = rowDayLookup[top] else { return }
@@ -372,11 +407,12 @@ struct AgendaView: View {
         "day-\(Int(day.timeIntervalSince1970))"
     }
 
-    private func scrollToToday(_ proxy: ScrollViewProxy, todayStart: Date) {
-        scroll(proxy, to: Self.headerID(todayStart))
+    private func scrollToToday(_ proxy: ScrollViewProxy, todayStart: Date, reveal: Bool = false) {
+        scroll(proxy, to: Self.headerID(todayStart), reveal: reveal)
     }
 
-    private func scroll(_ proxy: ScrollViewProxy, to id: String) {
+    /// `reveal` makes the list visible once the scroll has been applied (`isPositioned`).
+    private func scroll(_ proxy: ScrollViewProxy, to id: String, reveal: Bool = false) {
         // Deferred one runloop turn so the rows exist by the time the scroll is applied.
         DispatchQueue.main.async {
             // Re-armed here too (not just in the scrollRequest onChange): this covers the
@@ -386,6 +422,7 @@ struct AgendaView: View {
             // reruns over the whole display range before this deferred scroll even happens).
             scrollSuppressUntil = Date().addingTimeInterval(0.3)
             proxy.scrollTo(id, anchor: .top)
+            if reveal { isPositioned = true }
         }
     }
 }

@@ -36,6 +36,9 @@ final class AppleOverlayModel {
     }
     /// The filtered items for the agenda; empty unless enabled and granted.
     private(set) var snapshot = AppleSnapshot(events: [], reminders: [])
+    /// Whether the first fetch after launch (or after access was granted) has finished, landed or
+    /// failed: until then the agenda shows a loading state instead of empty days.
+    private(set) var firstLoad = AgendaFirstLoad()
 
     @ObservationIgnored private let provider: AppleItemProvider
     @ObservationIgnored private let defaults: UserDefaults
@@ -158,15 +161,23 @@ final class AppleOverlayModel {
             apply: { [weak self] result in
                 self?.fetched = result
                 self?.applySelection()
+                self?.markFirstLoadFinished()
             },
-            failed: { error in
+            failed: { [weak self] error in
                 Self.log.error("Apple overlay fetch failed: \(error.localizedDescription, privacy: .public)")
+                self?.markFirstLoadFinished()
             },
             clear: { self.emptySnapshots() }
         )
     }
 
     // MARK: - Private
+
+    /// Writes only the first time, so later fetches never redraw the screens reading it.
+    private func markFirstLoadFinished() {
+        guard !firstLoad.hasFinishedOnce else { return }
+        firstLoad.fetchFinished()
+    }
 
     private func refreshCalendars() async {
         guard access == .granted else { return }

@@ -109,6 +109,8 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Colors.accent)
                 }
+                .accessibilityLabel(error)
+                .accessibilityHint("Dismisses the message.")
             }
             // Without full access Stark cannot show or keep Apple items: say why and ask (or point
             // to iOS Settings). Nothing else can show without it (Stark keeps no items of its own).
