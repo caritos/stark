@@ -481,12 +481,12 @@ public final class ItemRouter {
         }
     }
 
-    static func newEvent(_ event: Event) -> NewEvent {
+    nonisolated static func newEvent(_ event: Event) -> NewEvent {
         NewEvent(title: event.title, notes: event.notes, start: event.start, end: event.end, isAllDay: event.isAllDay,
                  location: event.location, url: event.url, recurrence: event.recurrence)
     }
 
-    static func newReminder(_ reminder: Reminder, url: String?) -> NewReminder {
+    nonisolated static func newReminder(_ reminder: Reminder, url: String?) -> NewReminder {
         NewReminder(title: reminder.title, notes: reminder.notes, due: reminder.dueDate,
                     dueHasTime: FormFields.dueHasTime(reminder), priority: reminder.priority,
                     recurrence: reminder.recurrence, url: url)
