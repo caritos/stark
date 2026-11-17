@@ -228,7 +228,7 @@ public final class PlannerStore: ObservableObject {
     /// The plan blocks whose `start` falls on `day`, in stored order.
     public func plans(on day: Date) -> [PlanBlock] {
         let calendar = Calendar(identifier: .gregorian)
-        return plans.filter { calendar.isDate($0.start, inSameDayAs: day) }
+        return plans.filter { calendar.isDate($0.start, inSameDayAs: day) && !importedIDs.contains($0.reminderID) }
     }
 
     /// Replaces every block starting on `day` with `blocks` and persists the day's month.
@@ -242,7 +242,8 @@ public final class PlannerStore: ObservableObject {
         let month = YearMonth(date: day)
         loadMonth(month)
         guard loadedMonths.contains(month) else { return false }
-        monthPlans[month]?.removeAll { calendar.isDate($0.start, inSameDayAs: day) }
+        // Hidden (imported) reminders' plan blocks are not in the caller's draft: keep them.
+        monthPlans[month]?.removeAll { calendar.isDate($0.start, inSameDayAs: day) && !importedIDs.contains($0.reminderID) }
         monthPlans[month, default: []].append(contentsOf: blocks.filter { calendar.isDate($0.start, inSameDayAs: day) })
         persistMonth(month)
         rebuild()

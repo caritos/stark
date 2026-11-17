@@ -58,8 +58,10 @@ public func applyPlans(_ items: [AgendaItem], plans: [PlanBlock], today: Date,
         if !calendar.isDate(item.displayDate, inSameDayAs: plan.start) {
             result.append(item)
         }
-        result.append(AgendaItem(kind: item.kind, occurrence: item.occurrence, displayDate: plan.start,
-                                 isOverdue: item.isOverdue, plan: plan, appleSource: item.appleSource))
+        var planned = AgendaItem(kind: item.kind, occurrence: item.occurrence, displayDate: plan.start,
+                                 isOverdue: item.isOverdue, plan: plan, appleSource: item.appleSource)
+        planned.isNotImported = item.isNotImported
+        result.append(planned)
         changed = true
     }
     // Open dated Apple reminders as synthetic one-offs, with their source.

@@ -137,4 +137,57 @@ struct PlannerStoreImportHidingTests {
         #expect(Set(store.reminders.map(\.id)) == ["r1", "r2"])
         #expect(store.plans.map(\.id) == ["p1"])
     }
+
+    @Test("saving the planner for a day keeps hidden plan blocks, in memory and on disk")
+    @MainActor
+    func replacePlansKeepsHiddenPlans() {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        func makeFile() -> PlannerFile {
+            PlannerFile(directory: root.appendingPathComponent("docs"), pendingDirectory: root.appendingPathComponent("pending"))
+        }
+        let store = PlannerStore(file: makeFile())
+        let range = AgendaWindow.loadRange(around: today)
+        store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
+        seed(store)
+        store.setImportedIDs(["r1"])
+        let visible = PlanBlock(id: "p2", reminderID: "r2", occurrence: eventDay,
+                                start: eventDay.addingTimeInterval(11 * 3600), minutes: 30)
+        #expect(store.replacePlans(on: eventDay, with: [visible]))
+        #expect(Set(store.allPlans.map(\.id)) == ["p1", "p2"])
+        #expect(store.plans.map(\.id) == ["p2"])
+
+        let fresh = PlannerStore(file: makeFile())
+        fresh.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
+        #expect(Set(fresh.allPlans.map(\.id)) == ["p1", "p2"])
+        store.setImportedIDs([])
+        #expect(Set(store.plans.map(\.id)) == ["p1", "p2"])
+    }
+
+    @Test("the not-imported flag survives applyPlans and the Apple merge, and marked() sets it on synthesised rows")
+    @MainActor
+    func notImportedFlagSurvivesPipeline() {
+        let (store, root) = makeStore()
+        defer { try? FileManager.default.removeItem(at: root) }
+        seed(store)
+        let range = AgendaWindow.range(around: today)
+        let items = buildAgendaItems(events: store.events, reminders: store.reminders, in: range, today: today,
+                                     notImported: ["r1"])
+        let planned = applyPlans(items, plans: store.plans, today: today)
+        let call = planned.filter { $0.title == "Call" }
+        #expect(!call.isEmpty && call.allSatisfy { $0.plan != nil || $0.isNotImported })
+        #expect(planned.first { $0.title == "Call" && $0.plan != nil }?.isNotImported == true)
+        #expect(planned.first { $0.title == "Keep" }?.isNotImported == false)
+
+        let merged = mergeAppleItems(planned, snapshot: .empty, in: range, today: today)
+        #expect(merged.first { $0.title == "Call" && $0.plan != nil }?.isNotImported == true)
+
+        // Synthesised planned row (the reminder is outside the agenda items) is marked by the helper.
+        let synthesised = applyPlans([], plans: store.plans, today: today, reminders: store.reminders)
+            .marked(notImported: ["r1"])
+        #expect(synthesised.first { $0.title == "Call" }?.isNotImported == true)
+        let search = SearchResults.find(events: store.events, reminders: store.reminders, query: "Keep", today: today)
+            .marked(notImported: ["r2"])
+        #expect(search.first?.isNotImported == true)
+    }
 }

@@ -100,6 +100,23 @@ public struct AgendaItem: Identifiable, Equatable {
     }
 }
 
+extension Array where Element == AgendaItem {
+    /// Sets `isNotImported` from each row's local event/reminder id. A pure function, applied once
+    /// at the END of an agenda pipeline (after `applyPlans`, search, the Apple merge), so rows
+    /// built or synthesised along the way (planned copies, tray rows, search rows) are marked too.
+    public func marked(notImported ids: Set<String>) -> [AgendaItem] {
+        guard !ids.isEmpty else { return self }
+        return map { item in
+            var item = item
+            switch item.kind {
+            case .event(let e): item.isNotImported = ids.contains(e.id)
+            case .reminder(let r): item.isNotImported = ids.contains(r.id)
+            }
+            return item
+        }
+    }
+}
+
 /// Expands every event/reminder into concrete dated agenda rows and sorts them. The single
 /// source of truth `AgendaView` and `MonthGridView` build on — never duplicate this in a view.
 ///
