@@ -188,7 +188,8 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
                           accountName: calendar.source?.title ?? "",
                           colorHex: hex(calendar.cgColor),
                           isReminderList: isReminderList,
-                          isWritable: calendar.allowsContentModifications)
+                          isWritable: calendar.allowsContentModifications,
+                          isLocalOnly: calendar.source?.sourceType == .local)
     }
 
     /// "#RRGGBB" in sRGB, or nil if the colour cannot be converted.

@@ -11,9 +11,13 @@ public struct AppleCalendarInfo: Equatable, Identifiable, Sendable {
     /// Stark may add, change and delete items in it (`EKCalendar.allowsContentModifications`;
     /// false for Birthdays and subscribed calendars).
     public let isWritable: Bool
+    /// The calendar lives in the device-only source ("On My iPhone", `EKSourceType.local`) and never
+    /// syncs to the owner's other devices.
+    public let isLocalOnly: Bool
 
     public init(id: String, title: String, accountName: String, colorHex: String?, isReminderList: Bool,
-                isWritable: Bool = true) {
+                isWritable: Bool = true, isLocalOnly: Bool = false) {
+        self.isLocalOnly = isLocalOnly
         self.id = id
         self.title = title
         self.accountName = accountName
