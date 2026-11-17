@@ -99,7 +99,12 @@ public final class PlannerStore: ObservableObject {
             loadRecurring()
             rebuild()
         }
-        for month in file.availableMonths() where !loadedMonths.contains(month) {
+        let months: [YearMonth]
+        do { months = try file.availableMonths() } catch {
+            self.error = "Couldn't list Stark's month files: \(error.localizedDescription)"
+            return
+        }
+        for month in months where !loadedMonths.contains(month) {
             loadMonth(month)
             await Task.yield()
         }

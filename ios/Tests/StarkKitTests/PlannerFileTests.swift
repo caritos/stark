@@ -91,17 +91,28 @@ struct PlannerFileTests {
         try file.saveRecurring(events: [], reminders: [])
         try "not an ics file".write(to: directory.appendingPathComponent("notes.txt"), atomically: true, encoding: .utf8)
 
-        let months = Set(file.availableMonths())
+        let months = Set(try file.availableMonths())
 
         #expect(months == Set([YearMonth(year: 2026, month0: 0), YearMonth(year: 2025, month0: 11)]))
     }
 
     @Test("availableMonths returns empty when the directory doesn't exist yet")
-    func availableMonthsEmptyWhenMissing() {
+    func availableMonthsEmptyWhenMissing() throws {
         let (directory, pending) = makeTempDirs()
         let file = PlannerFile(directory: directory, pendingDirectory: pending)
 
-        #expect(file.availableMonths().isEmpty)
+        #expect(try file.availableMonths().isEmpty)
+    }
+
+    @Test("availableMonths throws when the directory exists but cannot be listed")
+    func availableMonthsThrowsWhenUnlistable() throws {
+        let (directory, pending) = makeTempDirs()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // Execute-only: known files can be opened, the directory cannot be listed.
+        try FileManager.default.setAttributes([.posixPermissions: 0o311], ofItemAtPath: directory.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path) }
+        let file = PlannerFile(directory: directory, pendingDirectory: pending)
+        #expect(throws: (any Error).self) { try file.availableMonths() }
     }
 
     @Test("a save failure queues a pending write, retried later")

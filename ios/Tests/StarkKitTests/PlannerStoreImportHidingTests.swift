@@ -190,4 +190,20 @@ struct PlannerStoreImportHidingTests {
             .marked(notImported: ["r2"])
         #expect(search.first?.isNotImported == true)
     }
+
+    @Test("loadAllMonths surfaces a directory listing failure instead of treating it as no months")
+    @MainActor
+    func loadAllMonthsSurfacesListingFailure() async throws {
+        let (store, root) = makeStore()
+        let docs = root.appendingPathComponent("docs")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: docs.path)
+            try? FileManager.default.removeItem(at: root)
+        }
+        try FileManager.default.createDirectory(at: docs, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o311], ofItemAtPath: docs.path)
+        store.error = nil
+        await store.loadAllMonths()
+        #expect(store.error != nil)
+    }
 }

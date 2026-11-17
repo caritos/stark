@@ -63,12 +63,12 @@ public final class PlannerFile {
     /// (`YYYY-MM.ics`) rather than assumed — the app has no other way to know which months
     /// have ever been saved, which Search needs in order to load everything rather than just
     /// the agenda's display window. Skips `recurring.ics` and anything that isn't a two-part
-    /// `YYYY-MM` filename. Returns `[]` if `directory` doesn't exist yet or can't be
-    /// enumerated (a normal state for a brand-new install, not an error).
-    public func availableMonths() -> [YearMonth] {
-        guard let files = try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else {
-            return []
-        }
+    /// `YYYY-MM` filename. Returns `[]` if `directory` doesn't exist yet (a normal state
+    /// for a brand-new install); throws if it exists but cannot be listed, so that never looks like
+    /// "no months".
+    public func availableMonths() throws -> [YearMonth] {
+        guard fileManager.fileExists(atPath: directory.path) else { return [] }
+        let files = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
         return files.compactMap { url -> YearMonth? in
             let name = url.lastPathComponent
             guard name.hasSuffix(".ics"), name != "recurring.ics" else { return nil }
