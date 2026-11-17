@@ -24,7 +24,7 @@ public final class PlannerStore: ObservableObject {
     /// so persistence never loses them.
     public private(set) var importedIDs: Set<String> = []
     /// Local ids the last import plan could not represent in Apple; their rows carry the
-    /// "not imported" mark (`AgendaItem.isNotImported`), passed to `buildAgendaItems(notImported:)`.
+    /// "not imported" mark (`AgendaItem.isNotImported`), applied with `marked(notImported:)`.
     @Published public var notImportedIDs: Set<String> = []
     /// True once `recurring.ics` was read (or found missing) this session. False after a read
     /// failure, so the import scan never plans from a store missing every repeating item.

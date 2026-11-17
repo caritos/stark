@@ -117,8 +117,8 @@ struct PlannerStoreImportHidingTests {
         let range = AgendaWindow.range(around: today)
         let plain = buildAgendaItems(events: store.events, reminders: store.reminders, in: range, today: today)
         #expect(plain.allSatisfy { !$0.isNotImported })
-        let marked = buildAgendaItems(events: store.events, reminders: store.reminders, in: range, today: today,
-                                      notImported: ["e1", "r2"])
+        let marked = buildAgendaItems(events: store.events, reminders: store.reminders, in: range, today: today)
+            .marked(notImported: ["e1", "r2"])
         #expect(Set(marked.filter(\.isNotImported).map(\.title)) == ["Dentist", "Keep"])
         #expect(marked.first { $0.title == "Call" }?.isNotImported == false)
         // Not part of the id.
@@ -171,8 +171,8 @@ struct PlannerStoreImportHidingTests {
         defer { try? FileManager.default.removeItem(at: root) }
         seed(store)
         let range = AgendaWindow.range(around: today)
-        let items = buildAgendaItems(events: store.events, reminders: store.reminders, in: range, today: today,
-                                     notImported: ["r1"])
+        let items = buildAgendaItems(events: store.events, reminders: store.reminders, in: range, today: today)
+            .marked(notImported: ["r1"])
         let planned = applyPlans(items, plans: store.plans, today: today)
         let call = planned.filter { $0.title == "Call" }
         #expect(!call.isEmpty && call.allSatisfy { $0.plan != nil || $0.isNotImported })
