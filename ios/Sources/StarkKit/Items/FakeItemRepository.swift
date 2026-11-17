@@ -283,6 +283,9 @@ public actor FakeItemRepository: ItemRepository {
         if reminder.recurrence != nil, reminder.due == nil {
             throw ItemRepositoryError.unrepresentable("A repeating reminder must have a due date.")
         }
+        if reminder.recurrence != nil, reminder.completedAt != nil {
+            throw ItemRepositoryError.unrepresentable("completed repeating reminder")
+        }
     }
 
     private func externalID(for identifier: String) -> String? {
@@ -308,7 +311,11 @@ public actor FakeItemRepository: ItemRepository {
         reminders[id] = StoredReminder(
             reminder: Reminder(id: id, title: new.title, notes: new.notes,
                                dueDate: Self.dueDate(new.due, hasTime: new.dueHasTime),
-                               priority: new.priority, recurrence: new.recurrence),
+                               isCompleted: new.completedAt != nil,
+                               completedDate: new.completedAt == nil ? nil
+                                   : Self.dueDate(new.due, hasTime: new.dueHasTime),
+                               priority: new.priority, recurrence: new.recurrence,
+                               completedAt: new.completedAt),
             dueHasTime: new.dueHasTime, url: new.url, calendarID: listID)
         return AppleItemRef(kind: .reminder, identifier: id, externalID: externalID(for: id))
     }

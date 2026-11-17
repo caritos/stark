@@ -83,9 +83,13 @@ public struct NewReminder: Equatable, Sendable {
     public var priority: Int?
     public var recurrence: RecurrenceRule?
     public var url: String?
+    /// Non-nil creates the reminder already completed, with this completion date (for importing
+    /// finished one-offs). A repeating reminder cannot be created completed.
+    public var completedAt: Date?
 
     public init(title: String, notes: String? = nil, due: Date? = nil, dueHasTime: Bool = true,
-                priority: Int? = nil, recurrence: RecurrenceRule? = nil, url: String? = nil) {
+                priority: Int? = nil, recurrence: RecurrenceRule? = nil, url: String? = nil,
+                completedAt: Date? = nil) {
         self.title = title
         self.notes = notes
         self.due = due
@@ -93,6 +97,7 @@ public struct NewReminder: Equatable, Sendable {
         self.priority = priority
         self.recurrence = recurrence
         self.url = url
+        self.completedAt = completedAt
     }
 }
 

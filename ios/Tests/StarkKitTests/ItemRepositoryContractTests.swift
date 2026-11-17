@@ -171,6 +171,27 @@ enum ItemRepositoryContract {
         #expect(try await h.repository.details(ref).reminder?.isCompleted == false)
     }
 
+    // Spike (iPhone 17 simulator, iOS 26.5, 2026-11-17): an EKReminder saved with isCompleted = true and
+    // completionDate = 40 days ago reads back from a second EKEventStore completed, with the same date.
+    static func addReminderCompletedKeepsCompletionDate(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        let done = Date().addingTimeInterval(-40 * 86_400)
+        let ref = try await h.repository.addReminder(
+            NewReminder(title: "Old", due: done, completedAt: done), listID: h.listID)
+        let r = try #require(try await h.repository.details(ref).reminder)
+        #expect(r.isCompleted)
+        let at = try #require(r.completedAt)
+        #expect(abs(at.timeIntervalSince(done)) < 1)
+    }
+
+    static func addRecurringCompletedThrows(_ make: () async -> RepositoryHarness) async throws {
+        let h = await make()
+        await #expect(throws: ItemRepositoryError.self) {
+            _ = try await h.repository.addReminder(
+                NewReminder(title: "x", due: start, recurrence: daily, completedAt: start), listID: h.listID)
+        }
+    }
+
     static func batchFailureRollsBack(_ make: () async -> RepositoryHarness) async throws {
         let h = await make()
         let before = await h.itemCount()
@@ -410,6 +431,12 @@ struct FakeItemRepositoryContractTests {
     }
     @Test func completeAndUncompleteOneOff() async throws {
         try await ItemRepositoryContract.completeAndUncompleteOneOff(Self.make)
+    }
+    @Test func addReminderCompletedKeepsCompletionDate() async throws {
+        try await ItemRepositoryContract.addReminderCompletedKeepsCompletionDate(Self.make)
+    }
+    @Test func addRecurringCompletedThrows() async throws {
+        try await ItemRepositoryContract.addRecurringCompletedThrows(Self.make)
     }
     @Test func batchFailureRollsBack() async throws { try await ItemRepositoryContract.batchFailureRollsBack(Self.make) }
     @Test func completingDailyAdvancesPastNow() async throws {

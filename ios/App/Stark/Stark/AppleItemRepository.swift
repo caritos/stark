@@ -400,6 +400,9 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         if new.recurrence != nil, new.due == nil {
             throw ItemRepositoryError.unrepresentable("A repeating reminder must have a due date.")
         }
+        if new.recurrence != nil, new.completedAt != nil {
+            throw ItemRepositoryError.unrepresentable("completed repeating reminder")
+        }
         let reminder = EKReminder(eventStore: store)
         reminder.calendar = list
         reminder.title = new.title
@@ -409,6 +412,10 @@ nonisolated final class AppleItemRepository: ItemRepository, @unchecked Sendable
         reminder.dueDateComponents = new.due.map { Self.dueComponents($0, hasTime: new.dueHasTime) }
         if let rule = new.recurrence {
             reminder.recurrenceRules = [Self.ekRule(try RecurrenceDescriptor(rule), isAllDay: false)]
+        }
+        if let completedAt = new.completedAt {
+            reminder.isCompleted = true
+            reminder.completionDate = completedAt
         }
         return reminder
     }
