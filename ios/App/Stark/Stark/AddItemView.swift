@@ -12,6 +12,7 @@ struct AddItemView: View {
     @Environment(\.itemRouter) private var router
     @Environment(DefaultDestinationModel.self) private var destinations
     @Environment(AppleOverlayModel.self) private var overlay
+    @Environment(NoticeCenter.self) private var notices
     /// Closes Add and opens Stark's Settings (access, default calendar and list).
     private let onOpenSettings: () -> Void
 
@@ -254,6 +255,9 @@ struct AddItemView: View {
                 } else {
                     try await router.add(reminder: reminder, listID: destination)
                 }
+                // Posted on the main screen's strip (the sheet's presenter), which shows once the
+                // sheet closes. Plain "Added" when the destination's info is not in the list.
+                notices.show(DestinationLabel.addedNotice(calendar: choices.first { $0.id == destination }))
                 dismiss()
             } catch {
                 errorMessage = error.routerMessage

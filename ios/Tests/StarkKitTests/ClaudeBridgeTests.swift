@@ -61,7 +61,8 @@ struct ClaudeBridgeTests {
 
     @MainActor
     private func rig(secret: Data? = Data(repeating: 7, count: 32), secrets: SecretStore? = nil,
-                     calendarID: String? = "cal", listID: String? = "list") -> Rig {
+                     calendarID: String? = "cal", listID: String? = "list",
+                     namesDestinations: Bool = false) -> Rig {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let sidecarURL = root.appendingPathComponent("sidecar.json")
         let writer = Writer()
@@ -73,7 +74,8 @@ struct ClaudeBridgeTests {
         let access = Access()
         let bridge = ClaudeBridge(repository: repository, sidecar: sidecar, destinations: destinations,
                                   hasAccess: { access.granted },
-                                  secrets: secrets ?? InMemorySecretStore(initial: secret), replay: replay)
+                                  secrets: secrets ?? InMemorySecretStore(initial: secret), replay: replay,
+                                  destinationInfo: { id in namesDestinations ? Self.calendars.first { $0.id == id } : nil })
         return Rig(bridge: bridge, repository: repository, sidecar: sidecar, sidecarURL: sidecarURL, root: root,
                    replay: replay, destinations: destinations, writer: writer, access: access)
     }
@@ -361,6 +363,54 @@ struct ClaudeBridgeTests {
         #expect(out == .rejected(BridgeError.emptyTitle(id: "i1").description))
         #expect(await r.count == 0)
         #expect(try await r.ledger.isEmpty)
+    }
+
+    // MARK: Named destinations (#123)
+
+    private let eventItem = BridgeItem(id: "ev", kind: .event, title: "Class", start: "2026-09-17T19:00", end: "20:00")
+    private let reminderItem = BridgeItem(id: "rem", kind: .reminder, title: "Read", start: "2026-09-18")
+
+    @Test("an events-only batch names the calendar")
+    @MainActor func namesCalendar() async throws {
+        let r = rig(namesDestinations: true)
+        let out = await r.bridge.handle(try url(batch(label: nil, items: [eventItem])))
+        #expect(out.notice == "Added 1 item to Home · iCloud")
+    }
+
+    @Test("a reminders-only batch names the list")
+    @MainActor func namesList() async throws {
+        let r = rig(namesDestinations: true)
+        let out = await r.bridge.handle(try url(batch(label: nil, items: items())))
+        #expect(out.notice == "Added 2 items to Tasks · iCloud")
+    }
+
+    @Test("a mixed batch names both")
+    @MainActor func namesBoth() async throws {
+        let r = rig(namesDestinations: true)
+        let out = await r.bridge.handle(try url(batch(label: nil, items: [eventItem, reminderItem])))
+        #expect(out.notice == "Added 2 items: Home calendar, Tasks list")
+    }
+
+    @Test("the label stays after the destination")
+    @MainActor func namesAndLabel() async throws {
+        let r = rig(namesDestinations: true)
+        let out = await r.bridge.handle(try url(batch(items: [eventItem])))
+        #expect(out.notice == "Added 1 item to Home · iCloud (swift-course)")
+    }
+
+    @Test("missing destination info falls back to the plain text")
+    @MainActor func namesFallBack() async throws {
+        let r = rig(namesDestinations: false)
+        let out = await r.bridge.handle(try url(batch(label: nil, items: [eventItem, reminderItem])))
+        #expect(out.notice == "Added 2 items")
+    }
+
+    @Test("a re-sent batch still says Already added")
+    @MainActor func alreadyAddedUnchanged() async throws {
+        let r = rig(namesDestinations: true)
+        let u = try url(batch(items: [eventItem]))
+        _ = await r.bridge.handle(u)
+        #expect(await r.bridge.handle(u).notice == "Already added")
     }
 
     @Test("notice text")

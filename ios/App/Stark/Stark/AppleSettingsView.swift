@@ -40,16 +40,23 @@ struct AppleSettingsView: View {
                 Section {
                     Picker("Default calendar", selection: calendarBinding) {
                         ForEach(destinations.calendarChoices) { calendar in
-                            Text(calendar.title).tag(calendar.id)
+                            DestinationChoiceLabel(info: calendar).tag(calendar.id)
                         }
                     }
+                    .pickerStyle(.navigationLink)
                     .foregroundStyle(Colors.text)
                     Picker("Default list", selection: listBinding) {
                         ForEach(destinations.listChoices) { list in
-                            Text(list.title).tag(list.id)
+                            DestinationChoiceLabel(info: list).tag(list.id)
                         }
                     }
+                    .pickerStyle(.navigationLink)
                     .foregroundStyle(Colors.text)
+                    ForEach(localOnlyWarnings, id: \.self) { warning in
+                        Text(warning)
+                            .font(.footnote)
+                            .foregroundStyle(Colors.accent)
+                    }
                     if let error = destinations.error {
                         Text(error)
                             .font(.footnote)
@@ -99,6 +106,15 @@ struct AppleSettingsView: View {
         }
     }
 
+    /// One line per current default (calendar, then list) that stays on this iPhone.
+    private var localOnlyWarnings: [String] {
+        let calendar = destinations.calendarChoices.first { $0.id == destinations.calendarID }
+        let list = destinations.listChoices.first { $0.id == destinations.listID }
+        return [calendar, list].compactMap { info in
+            DestinationLabel.warning(for: info).map { "\(info?.title ?? ""): \($0)" }
+        }
+    }
+
     private func isLocked(_ id: String) -> Bool {
         AppleSettings.isLockedOn(id, calendarID: destinations.calendarID, listID: destinations.listID)
     }
@@ -121,6 +137,25 @@ struct AppleSettingsView: View {
         Binding(
             get: { overlay.selection.isShown(id) },
             set: { overlay.setShown(id, $0) })
+    }
+}
+
+/// A picker row: the title, then the account under it (`DestinationLabel.subtitle`), so two
+/// calendars with one title are told apart. A long title truncates; the account stays visible.
+private struct DestinationChoiceLabel: View {
+    let info: AppleCalendarInfo
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(info.title)
+                .foregroundStyle(Colors.text)
+                .lineLimit(1)
+            Text(DestinationLabel.subtitle(info))
+                .font(.footnote)
+                .foregroundStyle(Colors.textSecondary)
+                .lineLimit(1)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

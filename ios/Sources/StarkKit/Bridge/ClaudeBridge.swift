@@ -20,21 +20,36 @@ import os
 public final class ClaudeBridge {
     public enum Outcome: Equatable, Sendable {
         case ignored
-        case added(count: Int, label: String?)
+        case added(count: Int, label: String?, destination: Destination? = nil)
         case alreadyAdded
         case rejected(String)
 
         public var notice: String? {
             switch self {
             case .ignored: return nil
-            case .added(let count, let label):
+            case .added(let count, let label, let destination):
                 var text = "Added \(count) \(count == 1 ? "item" : "items")"
+                switch destination {
+                case .calendar(let name)?, .list(let name)?: text += " to \(name)"
+                case .both(let calendar, let list)?: text += ": \(calendar) calendar, \(list) list"
+                case nil: break
+                }
                 if let label, !label.isEmpty { text += " (\(label))" }
                 return text
             case .alreadyAdded: return "Already added"
             case .rejected(let text): return text
             }
         }
+    }
+
+    /// Where a batch went, as display names. Nil on the outcome when the destination's info was
+    /// not available.
+    public enum Destination: Equatable, Sendable {
+        /// "Home · iCloud" (title with account).
+        case calendar(String)
+        case list(String)
+        /// Plain titles: the notice adds "calendar" and "list".
+        case both(calendar: String, list: String)
     }
 
     /// Shown when Calendar or Reminders access is missing.
@@ -50,6 +65,8 @@ public final class ClaudeBridge {
     private let secrets: SecretStore
     private let replay: BridgeReplayGuard
     private let calendar: Calendar
+    /// Looks up a calendar or list by id for the banner text; nil when it is not in the loaded list.
+    private let destinationInfo: @MainActor (String) -> AppleCalendarInfo?
     /// The previous call; each call waits for it so two sends of one file cannot both pass the
     /// ledger check before either has written to it.
     private var tail: Task<Void, Never>?
@@ -57,7 +74,9 @@ public final class ClaudeBridge {
     /// `hasAccess` is true when Stark has full Calendar and Reminders access.
     public init(repository: any ItemRepository, sidecar: ItemSidecar, destinations: any DefaultDestinations,
                 hasAccess: @escaping @MainActor () -> Bool, secrets: SecretStore, replay: BridgeReplayGuard,
-                calendar: Calendar = .current) {
+                calendar: Calendar = .current,
+                destinationInfo: @escaping @MainActor (String) -> AppleCalendarInfo? = { _ in nil }) {
+        self.destinationInfo = destinationInfo
         self.repository = repository
         self.sidecar = sidecar
         self.destinations = destinations
@@ -77,7 +96,7 @@ public final class ClaudeBridge {
         let outcome = await work.value
         switch outcome {
         case .ignored: break
-        case .added(let count, _): Self.log.info("bridge: added \(count, privacy: .public) items")
+        case .added(let count, _, _): Self.log.info("bridge: added \(count, privacy: .public) items")
         case .alreadyAdded: Self.log.info("bridge: already added")
         case .rejected: Self.log.info("bridge: rejected")
         }
@@ -177,7 +196,18 @@ public final class ClaudeBridge {
             Self.log.error("bridge: added \(refs.count, privacy: .public) items but the ledger write failed")
         }
         replay.record(batch)
-        return .added(count: refs.count, label: BridgeLabel.sanitize(batch.label))
+        let calendarInfo = events.isEmpty ? nil : calendarID.flatMap(destinationInfo)
+        let listInfo = reminders.isEmpty ? nil : listID.flatMap(destinationInfo)
+        let destination: Destination?
+        switch (events.isEmpty, reminders.isEmpty) {
+        case (false, true): destination = calendarInfo.map { .calendar(DestinationLabel.named($0)) }
+        case (true, false): destination = listInfo.map { .list(DestinationLabel.named($0)) }
+        default:
+            if let calendarInfo, let listInfo {
+                destination = .both(calendar: calendarInfo.title, list: listInfo.title)
+            } else { destination = nil }
+        }
+        return .added(count: refs.count, label: BridgeLabel.sanitize(batch.label), destination: destination)
     }
 
     private static func saveFailed(_ error: Error) -> String {

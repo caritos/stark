@@ -87,7 +87,11 @@ struct StarkApp: App {
         bridge = ClaudeBridge(repository: repository, sidecar: sidecar, destinations: destinations,
                               hasAccess: { provider.accessState() == .granted }, secrets: secrets,
                               replay: BridgeReplayGuard(store: UserDefaultsReplayStore(), now: Date.init),
-                              calendar: .autoupdatingCurrent)
+                              calendar: .autoupdatingCurrent,
+                              destinationInfo: { [weak destinations] id in
+                                  destinations?.calendarChoices.first { $0.id == id }
+                                      ?? destinations?.listChoices.first { $0.id == id }
+                              })
         // Through the router: Stark's ids to the local store (idempotence, e.g. already resolved by
         // Done/Skip, lives in `PlannerStore.completeReminder`), Apple ids to EventKit with the
         // OCCURRENCE's own date (the repository ignores a repeating reminder already past that
