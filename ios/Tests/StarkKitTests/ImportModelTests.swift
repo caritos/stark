@@ -137,6 +137,18 @@ struct ImportModelTests {
         #expect(model.showsSettingsRow)
     }
 
+    @Test("an unreadable sidecar at launch surfaces an error and keeps the Settings row")
+    func unreadableSidecarAtLaunchShowsError() async throws {
+        let env = try makeEnv()
+        defer { try? FileManager.default.removeItem(at: env.root) }
+        try FileManager.default.createDirectory(at: env.sidecarURL, withIntermediateDirectories: true)
+        let model = model(env)
+        await model.refreshStatus()
+        let error = try #require(env.store.error)
+        #expect(error.contains("imported items"))
+        #expect(model.showsSettingsRow)
+    }
+
     @Test("confirm runs the plan, publishes progress, hides the imported items and ignores a second confirm")
     func confirmRunsAndPublishesProgress() async throws {
         let env = try makeEnv()

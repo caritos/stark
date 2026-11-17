@@ -88,6 +88,7 @@ public final class ImportModel {
         let data: SidecarData
         do { data = try await sidecar.load() } catch {
             importFinished = false
+            store.error = "Stark couldn't read its record of imported items; some items may show twice."
             return
         }
         let imported = Set(data.importLedger.keys)
