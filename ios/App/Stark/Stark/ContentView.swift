@@ -245,7 +245,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showCalendars) { CalendarsSheet() }
-        .sheet(isPresented: $showSettings) { SettingsView(secrets: secrets) }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(secrets: secrets).interactiveDismissDisabled(importModel.isRunning)
+        }
         .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item, today: today) }
         .fullScreenCover(item: $planRequest) { request in PlannerView(day: request.day, today: today) }
         .task {

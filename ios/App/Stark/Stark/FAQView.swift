@@ -34,7 +34,7 @@ struct FAQView: View {
             question: "What about the items I made in Stark before?",
             answer: """
             Settings > Import Stark's own items copies them into Apple Calendar and Reminders once, \
-            after showing what it will import and where. Stark then shows only the Apple copy. \
+            after showing what it will import and where. Stark then hides the imported originals (completed copies of an imported repeating reminder still show in past days and Search). \
             Stark's own files stay on this device as a backup; to undo, delete the items in Apple's \
             apps. An item whose repeat Apple can't hold stays in Stark's files, marked "Not \
             imported", and a repeating reminder starts in Apple at the occurrence Stark shows today.

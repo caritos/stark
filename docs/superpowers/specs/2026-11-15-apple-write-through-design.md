@@ -205,9 +205,9 @@ My calls (the owner can override):
 7. Import of repeating reminders: the due date is set to the occurrence the agenda shows today (the
    oldest unresolved miss inside the 90-day lookback, else the next one), and a fixed occurrence count is
    reduced by the occurrences already used. A repeating event's skip dates become deleted occurrences.
-8. The import writes its ledger entry right after each successful save (a crash cannot cause
-   duplicates on a second run). Items that cannot be represented stay local and visible with a "not
-   imported" mark, and phase 3 cannot start while any remain.
+8. The import writes its ledger entry right after each successful save (a rerun adds only what is missing; a kill between the save
+   and the ledger write can duplicate that one item). Items that cannot be represented stay local and visible with a "not
+   imported" mark, and phase 3 cannot start until a full scan returns an empty plan with no unrepresentable items (a local item can fall outside both the import and the mark, e.g. after an edit that drops a COUNT).
 9. Sidecar keys store the event/calendar-item identifier plus the external identifier; on a miss the
    sidecar tries to re-match on the external identifier and never drops an orphan automatically.
 10. Search and tag autocomplete read events within two years either side of today and all reminders.

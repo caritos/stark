@@ -19,7 +19,9 @@ Fantastical-parity work in #120) assumes one store.
   cannot be represented (listed by title), and a read-only "N look already in Apple" count (title plus
   start/due time match against Apple data already loaded for Search). The count never blocks or skips.
 - Idempotent: a second run adds nothing. A ledger entry is written right after each successful save, so
-  a crash or kill mid-run cannot cause duplicates on the next run.
+  a rerun adds only what is missing. A kill between the EventKit commit and the ledger write can duplicate at
+  most that one item (decision 1 accepts this; the preview's probable-duplicate count shows it); a failed
+  ledger write is rolled back by deleting the item again.
 - Imported local items stop being displayed (hidden by the ledger), so no item shows twice.
 - Plan blocks and attended/skipped marks follow their item to its new Apple identifier.
 - Nothing is lost: items that cannot be represented stay local, visible, with a "not imported" mark.
@@ -93,7 +95,7 @@ Apple's apps. No analytics, no network.
 
 **Docs.** Update the in-app FAQ, web FAQ and privacy page if wording changes (the import adds nothing new
 that leaves the phone), `docs/ios-feature-notes.md` and the CLAUDE.md log (Done / Not yet verified on
-device / Deferred), and the phase 3 prerequisite: removal cannot start while any "not imported" item remains.
+device / Deferred), and the phase 3 prerequisite: removal cannot start until a full scan returns an empty plan with no unrepresentable items (a local item can fall outside both the import and the mark).
 
 ## Done when
 
