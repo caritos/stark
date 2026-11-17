@@ -11,18 +11,18 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
 - **Week, month and year views**, switched with a drag bar. Scrolling the agenda moves the calendar selection.
 - **Recurrence**: daily, weekly, monthly or yearly, including custom repeats, positional days ("first Tuesday"), and
   an end date or count. Complete a reminder, or remove a single occurrence of an event.
-- **Event attendance**: mark each occurrence attended or skipped.
 - **Search** titles, notes and locations, plus tag suggestions for `+project`, `@context`, `%label` and `~person`.
 - **Plan your day**: drag tasks onto a timeline as time blocks; a Weekly Review of what got done.
 - **Private.** Events and to-dos live in Apple Calendar and Reminders (Apple syncs them through iCloud if you use it);
   Stark itself makes no network connection. Items made in Stark before it saved to Apple Calendar and Reminders
-  stay in `.ics` files in the app's Documents folder until a later update imports them. No account, no subscription.
+  were kept in `.ics` files in the app's Documents folder; Stark no longer reads them, and they stay there untouched
+  until the app is deleted. No account, no subscription.
 
 ## Repository layout
 
 | Path | What it is |
 |---|---|
-| `ios/Sources/StarkKit` | SwiftPM package with all testable logic (agenda, recurrence, the Apple item router and sidecar, the older `.ics` store). Tested with Swift Testing. |
+| `ios/Sources/StarkKit` | SwiftPM package with all testable logic (agenda, recurrence, the Apple item router and sidecar). Tested with Swift Testing. |
 | `ios/App/Stark` | The SwiftUI app: thin views over StarkKit, plus the EventKit code. Builds for iPhone and Mac Catalyst. |
 | `web/` | The stark.caritos.com marketing site: one Go binary serving static pages (see `web/CLAUDE.md`). |
 | `docs/superpowers/` | Design specs and implementation plans. |

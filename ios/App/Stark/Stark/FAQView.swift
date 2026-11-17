@@ -4,7 +4,7 @@ import SwiftUI
 /// A short, static list of frequently asked questions, embedded in the app itself (opened from
 /// Settings) rather than linking out to the website's /support page — available without a
 /// network connection, like the rest of the app. Add entries here as they come up; there is no
-/// mechanism to fetch or update this remotely by design (matches the app's local-first stance).
+/// mechanism to fetch or update this remotely by design. Keep it in step with web/public/pages/faq.html.
 struct FAQView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -25,19 +25,19 @@ struct FAQView: View {
             them there. If you use iCloud, Apple syncs them to your other devices; Stark itself \
             sends nothing anywhere and adds no network connection. iOS asks for access the first \
             time you tap Allow Access on Stark's main screen, after Stark says what it is for. \
-            Planner blocks for Apple reminders and attended/skipped marks on Apple events are kept \
-            in a small file of Stark's own on this device. The day export (today and \
+            Planner blocks for Apple reminders are kept in a small file of Stark's own on this \
+            device. The day export (today and \
             yesterday) and the Weekly Review share include the Apple items they show.
             """
         ),
         Entry(
             question: "What about the items I made in Stark before?",
             answer: """
-            Settings > Import Stark's own items copies them into Apple Calendar and Reminders once, \
-            after showing what it will import and where. Stark then hides the imported originals (completed copies of an imported repeating reminder still show in past days and Search). \
-            Stark's own files stay on this device as a backup; to undo, delete the items in Apple's \
-            apps. An item whose repeat Apple can't hold stays in Stark's files, marked "Not \
-            imported", and a repeating reminder starts in Apple at the occurrence Stark shows today.
+            Earlier versions of Stark kept them in files of its own and could copy them into \
+            Apple Calendar and Reminders once. Stark now shows only Apple Calendar and Reminders \
+            and no longer reads those files. They remain on this device, untouched, as a backup, \
+            and are deleted only when you delete the app. Completed copies of repeating reminders \
+            made in Stark were not copied into Apple, so that history is only in the old files.
             """
         ),
         Entry(
@@ -89,17 +89,15 @@ struct FAQView: View {
             pane. Planning never changes a task's due date: a task you do not finish keeps its \
             original due date. The arrows in the header step to another day, so a whole week \
             can be planned, and past days are shown view only with what got done and what was \
-            missed. Weekly Review counts Apple reminders in the week they were completed and \
-            Stark's older ones in the week they were due.
+            missed. Weekly Review counts reminders in the week they were completed.
             """
         ),
         Entry(
             question: "Can I turn an event into a task?",
             answer: """
             Yes. Open the event, use the Event/Reminder switch at the top and tap the check. The \
-            event's end time is dropped, its location moves into the task's notes, and, for \
-            Stark's older events, any attended/skipped marks are dropped (Stark asks first). It works the other way round \
-            too: a task becomes an event, and its priority is dropped. For an Apple item Stark \
+            event's end time is dropped and its location moves into the task's notes. It works \
+            the other way round too: a task becomes an event, and its priority is dropped. For an Apple item Stark \
             creates the other kind and deletes the original, so its alerts, invitees and any \
             occurrences edited one by one are lost; Stark asks first when the event has invitees \
             (they may be notified), and an item whose repeat Stark can't copy can't be converted.
