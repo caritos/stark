@@ -28,23 +28,49 @@ public enum QuarterHour {
     }
 
     /// The value to store after the owner changed a quarter-hour picker. The picker shows an odd
-    /// `previous` time floored (10:07 as 10:00) and reports that shown time on ANY change, so a
-    /// change of only the day would silently move 10:07 to 10:00. When the picked wall-clock time
-    /// is exactly the shown one, the owner did not touch the time: the new day keeps `previous`'s
-    /// exact time. Any other pick is taken as is.
+    /// `previous` time on a quarter hour (iOS 26 floors 10:07 to 10:00; another version might show
+    /// the nearest) and reports that shown time on ANY change, so changing only the day would
+    /// silently move 10:07. The rule does not depend on how UIKit rounds:
+    /// - same calendar day as `previous`: the pick always wins (the owner moved the time wheel);
+    /// - another day, and the picked wall-clock time within 15 minutes of `previous`'s: the owner
+    ///   changed only the day, so `previous`'s exact time is kept on the new day;
+    /// - anything else is taken as is.
+    /// The kept value is the PICK moved by the wall-clock difference (in elapsed seconds), not a
+    /// date rebuilt from components, so in a repeated or missing DST hour it stays next to what
+    /// the owner picked and never jumps an hour.
     public static func keepingUntouchedTime(picked: Date, previous: Date,
                                             calendar: Calendar = .current) -> Date {
-        guard !isOnQuarter(previous, calendar: calendar) else { return picked }
-        let clock: Set<Calendar.Component> = [.hour, .minute]
-        let shown = calendar.dateComponents(clock, from: floored(previous, calendar: calendar))
-        guard calendar.dateComponents(clock, from: picked) == shown else { return picked }
-        var kept = calendar.dateComponents([.era, .year, .month, .day], from: picked)
-        let time = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: previous)
-        kept.hour = time.hour
-        kept.minute = time.minute
-        kept.second = time.second
-        kept.nanosecond = time.nanosecond
-        return calendar.date(from: kept) ?? picked
+        guard !calendar.isDate(picked, inSameDayAs: previous) else { return picked }
+        let difference = secondsIntoDay(previous, calendar: calendar) - secondsIntoDay(picked, calendar: calendar)
+        guard abs(difference) <= TimeInterval(minutes * 60) else { return picked }
+        return picked.addingTimeInterval(difference)
+    }
+
+    /// "Saved time 10:07" (the locale's short time format) when `date`'s minute is not on a
+    /// quarter hour, so the owner sees why the picker shows 10:00 for an item stored at 10:07;
+    /// nil when the picker shows the stored time (seconds alone do not count).
+    public static func savedTimeCaption(for date: Date, calendar: Calendar = .current,
+                                        locale: Locale = .current) -> String? {
+        guard calendar.component(.minute, from: date) % minutes != 0 else { return nil }
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.locale = locale
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return "Saved time \(formatter.string(from: date))"
+    }
+
+    /// Wall-clock seconds since midnight (hour, minute, second, fraction), so 01:07 EDT and
+    /// 01:07 EST read the same.
+    private static func secondsIntoDay(_ date: Date, calendar: Calendar) -> TimeInterval {
+        let c = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: date)
+        let hours: Int = c.hour ?? 0
+        let minutesIn: Int = c.minute ?? 0
+        let seconds: Int = c.second ?? 0
+        let whole = TimeInterval(hours * 3600 + minutesIn * 60 + seconds)
+        let fraction = TimeInterval(c.nanosecond ?? 0) / 1_000_000_000
+        return whole + fraction
     }
 
     /// True when `date`'s minute is a multiple of 15 and it has no seconds or fraction of one.

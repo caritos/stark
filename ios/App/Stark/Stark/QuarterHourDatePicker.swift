@@ -8,8 +8,9 @@ import StarkKit
 ///
 /// The binding is written ONLY when the user changes the picker (its `.valueChanged` action),
 /// never from `updateUIView`, so an existing item at an odd minute (10:07) keeps its exact time
-/// until the owner edits it, even though the pill shows it floored (10:00). Changing only the
-/// day keeps the odd time too. External changes (the
+/// until the owner edits it, even though the pill shows it on a quarter hour (10:00); a caption
+/// "Saved time 10:07" says so. Changing only the day keeps the odd time too
+/// (`QuarterHour.keepingUntouchedTime`). External changes (the
 /// end following the start, the All day toggle) are pushed into the picker without echoing back.
 struct QuarterHourDatePicker: View {
     enum Components { case date, time, dateAndTime }
@@ -30,16 +31,39 @@ struct QuarterHourDatePicker: View {
         self.style = style
     }
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         switch resolvedStyle {
         case .compact:
-            // Looks like the stock DatePicker row: the label on the left, the pills on the right.
-            LabeledContent(title) {
-                picker
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    // Large text: the label on its own line, the pills under it, so neither is cut.
+                    Text(title)
+                    picker.frame(maxWidth: .infinity, alignment: .trailing)
+                } else {
+                    // Looks like the stock DatePicker row: the label on the left, the pills on the right.
+                    LabeledContent(title) {
+                        picker
+                    }
+                }
+                if let savedTimeCaption {
+                    // The pill shows 10:00 for an item stored at 10:07; say what is really saved.
+                    Text(savedTimeCaption)
+                        .font(.footnote)
+                        .foregroundStyle(Colors.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
             }
         case .wheel:
             picker
         }
+    }
+
+    /// "Saved time 10:07" while the bound time is not on a quarter hour (never for a date-only row).
+    private var savedTimeCaption: String? {
+        guard components != .date else { return nil }
+        return QuarterHour.savedTimeCaption(for: selection)
     }
 
     private var picker: some View {
@@ -117,8 +141,8 @@ private struct QuarterHourPickerRepresentable: UIViewRepresentable {
         init(selection: Binding<Date>) { self.selection = selection }
 
         /// The user moved the picker: the only place the binding is written. The picker reports
-        /// its shown (floored) time even when only the day was changed, so an odd time the owner
-        /// did not touch is kept (`QuarterHour.keepingUntouchedTime`).
+        /// its shown (quarter-hour) time even when only the day was changed, so an odd time the
+        /// owner did not touch is kept (`QuarterHour.keepingUntouchedTime`).
         @objc func valueChanged(_ picker: UIDatePicker) {
             let value = QuarterHour.keepingUntouchedTime(picked: picker.date,
                                                          previous: selection.wrappedValue,

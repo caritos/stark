@@ -125,6 +125,116 @@ struct QuarterHourTests {
         #expect(kept == at(2026, 11, 2, 10, 7, calendar: ny))
     }
 
+    // MARK: review fixes: independent of how UIKit rounds the shown time
+
+    @Test("a day change restores the odd time whether UIKit reports it floored, nearest or exact")
+    func dayChangeRestoresWhateverTheRounding() {
+        let previous = at(2026, 11, 17, 10, 13)
+        for reported in [at(2026, 11, 18, 10, 0), at(2026, 11, 18, 10, 15), at(2026, 11, 18, 10, 13)] {
+            #expect(QuarterHour.keepingUntouchedTime(picked: reported, previous: previous, calendar: local)
+                    == at(2026, 11, 18, 10, 13))
+        }
+    }
+
+    @Test("on the same day the pick always wins, even the rounded-down or nearest time")
+    func sameDayPickAlwaysWins() {
+        let previous = at(2026, 11, 17, 10, 13)
+        #expect(QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 17, 10, 15), previous: previous,
+                                                 calendar: local) == at(2026, 11, 17, 10, 15))
+        #expect(QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 17, 10, 0), previous: previous,
+                                                 calendar: local) == at(2026, 11, 17, 10, 0))
+    }
+
+    @Test("a day change with the hour moved by two hours keeps the pick")
+    func dayChangeAndHourMovedKeepsPick() {
+        let previous = at(2026, 11, 17, 10, 13)
+        let picked = at(2026, 11, 18, 12, 0)
+        #expect(QuarterHour.keepingUntouchedTime(picked: picked, previous: previous, calendar: local) == picked)
+    }
+
+    @Test("23:50 to the next day at 00:05 is a real change, not a restore to the old day")
+    func acrossMidnightKeepsPick() {
+        let previous = at(2026, 11, 17, 23, 50)
+        let picked = at(2026, 11, 18, 0, 5)
+        #expect(QuarterHour.keepingUntouchedTime(picked: picked, previous: previous, calendar: local) == picked)
+        // The day before, the same: the pick stands.
+        let earlier = at(2026, 11, 16, 23, 45)
+        #expect(QuarterHour.keepingUntouchedTime(picked: earlier, previous: at(2026, 11, 17, 0, 5),
+                                                 calendar: local) == earlier)
+    }
+
+    @Test("day change, then the hour away and back: the later same-day picks are taken")
+    func hourRoundTripIsTaken() {
+        var value = at(2026, 11, 17, 10, 13)
+        value = QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 18, 10, 0), previous: value, calendar: local)
+        #expect(value == at(2026, 11, 18, 10, 13))
+        value = QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 18, 11, 0), previous: value, calendar: local)
+        #expect(value == at(2026, 11, 18, 11, 0))
+        value = QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 18, 10, 0), previous: value, calendar: local)
+        #expect(value == at(2026, 11, 18, 10, 0))
+    }
+
+    @Test("fall back: a day change onto 01:00 EDT or 01:00 EST lands 7 minutes after the pick, never an hour off")
+    func fallBackRestoreStaysNextToThePick() {
+        let ny = newYork()
+        let previous = at(2026, 10, 31, 1, 7, calendar: ny)
+        let firstOne = at(2026, 11, 1, 1, 0, calendar: ny)
+        #expect(ny.timeZone.isDaylightSavingTime(for: firstOne))
+        let secondOne = firstOne.addingTimeInterval(3600)
+        #expect(ny.component(.hour, from: secondOne) == 1)
+        for picked in [firstOne, secondOne] {
+            let kept = QuarterHour.keepingUntouchedTime(picked: picked, previous: previous, calendar: ny)
+            #expect(kept.timeIntervalSince(picked) == 7 * 60)
+            #expect(ny.dateComponents([.hour, .minute], from: kept) == DateComponents(hour: 1, minute: 7))
+        }
+    }
+
+    @Test("spring forward: an odd time inside the missing hour never moves the item an hour")
+    func springForwardStaysNextToThePick() {
+        let ny = newYork()
+        // 02:07 does not exist on 2026-03-08; whatever UIKit reports, the item stays next to the pick.
+        let previous = at(2026, 3, 7, 2, 7, calendar: ny)
+        let reported = at(2026, 3, 8, 3, 0, calendar: ny) // 02:00 does not exist either
+        let kept = QuarterHour.keepingUntouchedTime(picked: reported, previous: previous, calendar: ny)
+        #expect(abs(kept.timeIntervalSince(reported)) <= 15 * 60)
+        // An odd time on the DST day itself, moved to the next day, keeps its wall-clock time.
+        let onDSTDay = at(2026, 3, 8, 3, 7, calendar: ny)
+        let nextDay = QuarterHour.keepingUntouchedTime(picked: at(2026, 3, 9, 3, 0, calendar: ny),
+                                                       previous: onDSTDay, calendar: ny)
+        #expect(nextDay == at(2026, 3, 9, 3, 7, calendar: ny))
+    }
+
+    @Test("floored on the DST days stays on the wall-clock quarter")
+    func flooredOnDSTDays() {
+        let ny = newYork()
+        #expect(QuarterHour.floored(at(2026, 3, 8, 3, 7, calendar: ny), calendar: ny)
+                == at(2026, 3, 8, 3, 0, calendar: ny))
+        let firstOneSeven = at(2026, 11, 1, 1, 7, calendar: ny)
+        #expect(QuarterHour.floored(firstOneSeven, calendar: ny).timeIntervalSince(firstOneSeven) == -7 * 60)
+        let secondOneSeven = firstOneSeven.addingTimeInterval(3600)
+        #expect(QuarterHour.floored(secondOneSeven, calendar: ny).timeIntervalSince(secondOneSeven) == -7 * 60)
+    }
+
+    // MARK: savedTimeCaption
+
+    @Test("the caption names the saved odd time in the locale's format, nil on a quarter hour")
+    func savedTimeCaption() {
+        var gb = Calendar(identifier: .gregorian)
+        gb.timeZone = TimeZone(identifier: "Europe/London")!
+        let odd = gb.date(from: DateComponents(year: 2026, month: 11, day: 17, hour: 10, minute: 7))!
+        #expect(QuarterHour.savedTimeCaption(for: odd, calendar: gb, locale: Locale(identifier: "en_GB"))
+                == "Saved time 10:07")
+        let us = QuarterHour.savedTimeCaption(for: odd, calendar: gb, locale: Locale(identifier: "en_US"))
+        #expect(us?.hasPrefix("Saved time 10:07") == true)
+        #expect(us?.contains("AM") == true)
+        let quarter = gb.date(from: DateComponents(year: 2026, month: 11, day: 17, hour: 10, minute: 15))!
+        #expect(QuarterHour.savedTimeCaption(for: quarter, calendar: gb, locale: Locale(identifier: "en_GB")) == nil)
+        // Seconds alone do not change what the picker shows: no caption.
+        let withSeconds = quarter.addingTimeInterval(31)
+        #expect(QuarterHour.savedTimeCaption(for: withSeconds, calendar: gb,
+                                             locale: Locale(identifier: "en_GB")) == nil)
+    }
+
     @Test("seconds and nanoseconds are dropped from the result")
     func ignoresSecondsAndNanoseconds() {
         let date = at(2026, 11, 17, 10, 7, 42, nanosecond: 123_000_000)
