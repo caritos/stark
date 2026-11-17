@@ -26,6 +26,10 @@ public struct AgendaItem: Identifiable, Equatable {
     /// Not part of `id`.
     public let appleSource: AppleSource?
 
+    /// A local item the import could not move into Apple (set from its local id by
+    /// `buildAgendaItems(notImported:)`). Not part of `id`.
+    public var isNotImported: Bool = false
+
     public init(kind: Kind, occurrence: Date, displayDate: Date, isOverdue: Bool, plan: PlanBlock? = nil,
                 appleSource: AppleSource? = nil) {
         self.kind = kind
@@ -124,7 +128,8 @@ public func buildAgendaItems(
     reminders: [Reminder],
     in displayRange: ClosedRange<Date>,
     today: Date = Date(),
-    overdueLookbackDays: Int = AgendaWindow.overdueLookbackDays
+    overdueLookbackDays: Int = AgendaWindow.overdueLookbackDays,
+    notImported: Set<String> = []
 ) -> [AgendaItem] {
     let calendar = Calendar(identifier: .gregorian)
     let todayStart = calendar.startOfDay(for: today)
@@ -217,6 +222,14 @@ public func buildAgendaItems(
         }
     }
 
+    if !notImported.isEmpty {
+        for i in items.indices {
+            switch items[i].kind {
+            case .event(let e): items[i].isNotImported = notImported.contains(e.id)
+            case .reminder(let r): items[i].isNotImported = notImported.contains(r.id)
+            }
+        }
+    }
     return sortAgendaItems(items, calendar: calendar)
 }
 

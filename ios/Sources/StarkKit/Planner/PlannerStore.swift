@@ -15,6 +15,18 @@ public final class PlannerStore: ObservableObject {
     /// this is a running diagnostic log for the app's lifetime, not per-load state.
     @Published public private(set) var warnings: [String] = []
 
+    /// Unfiltered contents (including items already imported into Apple), for the import scan.
+    public private(set) var allEvents: [Event] = []
+    public private(set) var allReminders: [Reminder] = []
+    public private(set) var allPlans: [PlanBlock] = []
+    /// Local ids whose Apple copy exists (the import ledger). `events`, `reminders` and `plans`
+    /// exclude them (and the plans of those reminders); the private month data stays unfiltered
+    /// so persistence never loses them.
+    public private(set) var importedIDs: Set<String> = []
+    /// Local ids the last import plan could not represent in Apple; their rows carry the
+    /// "not imported" mark (`AgendaItem.isNotImported`), passed to `buildAgendaItems(notImported:)`.
+    @Published public var notImportedIDs: Set<String> = []
+
     private let file: PlannerFile
     private var loadedMonths: Set<YearMonth> = []
     private var recurringEvents: [Event] = []
@@ -163,7 +175,7 @@ public final class PlannerStore: ObservableObject {
             if !loadedMonths.contains(month) { throw ImportFailure.unreadableMonth(month.fileName) }
         }
 
-        var seen = Set(events.map(\.id)).union(reminders.map(\.id))
+        var seen = Set(allEvents.map(\.id)).union(allReminders.map(\.id))
         var outcome = ImportOutcome(added: 0, alreadyPresent: 0)
         for event in newEvents {
             if seen.insert(event.id).inserted {
@@ -589,14 +601,24 @@ public final class PlannerStore: ObservableObject {
         return OccurrenceExpander.expand(reminder: reminder, in: after...todayEnd)
     }
 
+    /// Hides every local event/reminder in `ids` (and plans of those reminders) from the published
+    /// arrays; `[]` shows them all again.
+    public func setImportedIDs(_ ids: Set<String>) {
+        importedIDs = ids
+        rebuild()
+    }
+
     private func rebuild() {
         // Dictionary.values has no ordering guarantee, so flattening it directly would make
         // events/reminders order depend on hash-bucket layout rather than anything meaningful —
         // sorting the keys first (YearMonth: Comparable) makes the result deterministic:
         // chronological across months, in each month's own parse/append order within it.
-        events = recurringEvents + monthEvents.keys.sorted().flatMap { monthEvents[$0] ?? [] }
-        reminders = recurringReminders + monthReminders.keys.sorted().flatMap { monthReminders[$0] ?? [] }
-        plans = monthPlans.keys.sorted().flatMap { monthPlans[$0] ?? [] }
+        allEvents = recurringEvents + monthEvents.keys.sorted().flatMap { monthEvents[$0] ?? [] }
+        allReminders = recurringReminders + monthReminders.keys.sorted().flatMap { monthReminders[$0] ?? [] }
+        allPlans = monthPlans.keys.sorted().flatMap { monthPlans[$0] ?? [] }
+        events = allEvents.filter { !importedIDs.contains($0.id) }
+        reminders = allReminders.filter { !importedIDs.contains($0.id) }
+        plans = allPlans.filter { !importedIDs.contains($0.reminderID) }
     }
 
     private enum StoreLocation: Hashable {
