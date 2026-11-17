@@ -76,6 +76,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		"which Apple syncs through iCloud if you use it",
 		"never sent anywhere by Stark (like Stark's other files, it is part of your device backup)",
 		"does not normally add it twice",
+		"copy them into Apple Calendar and Reminders once", "Settings, Stark's own items", "only as a backup", "it deletes nothing",
 		"unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com",
 	} {
 		if !strings.Contains(lower, strings.ToLower(want)) {
@@ -83,7 +84,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		}
 	}
 	// Statements that stopped being true with the write path.
-	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device"} {
+	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them"} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
 		}
