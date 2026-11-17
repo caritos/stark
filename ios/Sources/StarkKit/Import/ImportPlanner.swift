@@ -16,7 +16,11 @@ import Foundation
 ///   only the occurrences from that one on; a series with none left is a finished series.
 public enum ImportPlanner {
     public static func plan(events: [Event], reminders: [Reminder], plans: [PlanBlock], alreadyImported: Set<String>,
-                            apple: [AgendaItem], today: Date, calendar: Calendar) -> ImportPlan {
+                            apple: [AgendaItem], today: Date, calendar userCalendar: Calendar) -> ImportPlan {
+        // Day, month and year math is Gregorian whatever the phone's calendar is (Stark's rules and
+        // `buildAgendaItems` are Gregorian); only the time zone is the caller's.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = userCalendar.timeZone
         var result = ImportPlan()
         let plansByItem = Dictionary(grouping: plans, by: \.reminderID)
 

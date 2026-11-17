@@ -185,6 +185,29 @@ struct ImportPlannerTests {
         #expect(result.steps.first?.reminder?.recurrence?.count == 6)
     }
 
+    @Test func nonGregorianPhoneCalendarStillPinsTheGregorianDay() throws {
+        // The same clamped "31st" series planned with a Hebrew calendar (a phone set to it): day and
+        // month math must stay Gregorian, as buildAgendaItems and completeReminder do.
+        var hebrew = Calendar(identifier: .hebrew)
+        hebrew.timeZone = cal.timeZone
+        let master = Reminder(id: "c", title: "Statement", dueDate: date(2026, 8, 31),
+                              recurrence: RecurrenceRule(frequency: .monthly),
+                              exceptionDates: [date(2026, 8, 31), date(2026, 9, 30), date(2026, 10, 31)])
+        let copy = completedCopy(of: master, on: date(2026, 10, 31))
+        let result = ImportPlanner.plan(events: [], reminders: [master, copy], plans: [], alreadyImported: [],
+                                        apple: [], today: today, calendar: hebrew)
+        let step = try #require(result.steps.first)
+        #expect(step.reminder?.due == date(2026, 11, 30))
+        #expect(step.reminder?.recurrence?.byMonthDay == [31])
+        #expect(result.shortMonthRepeats == ["Statement"])
+
+        let event = Event(id: "e", title: "Pay", start: date(2026, 10, 31, 9),
+                          recurrence: RecurrenceRule(frequency: .monthly))
+        let eventPlan = ImportPlanner.plan(events: [event], reminders: [], plans: [], alreadyImported: [],
+                                           apple: [], today: today, calendar: hebrew)
+        #expect(eventPlan.steps.first?.event?.recurrence?.byMonthDay == [31])
+    }
+
     @Test func clampedMonthlyOccurrenceKeepsTheSeriesDay() throws {
         // "Every month on the 31st" whose next occurrence Stark clamps to Nov 30: the new series
         // starts on Nov 30 but still repeats on the 31st.
