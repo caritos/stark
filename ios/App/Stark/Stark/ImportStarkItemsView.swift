@@ -205,7 +205,7 @@ struct ImportStarkItemsView: View {
         }
 
         Section {
-            if !result.failed.isEmpty || result.cancelled || result.stoppedBecauseSidecar != nil {
+            if result.canRetry {
                 Button("Try Again") { Task { await model.scan() } }
                     .foregroundStyle(Colors.accent)
             }

@@ -8,11 +8,13 @@ private actor ScriptedRepository: ItemRepository {
     let inner: FakeItemRepository
     var failTitles: Set<String> = []
     var failOccurrenceDeletes = false
+    var failDeletes = false
     var onAdd: (@Sendable (String) async -> Void)?
 
     init(inner: FakeItemRepository) { self.inner = inner }
 
     func setFailTitles(_ titles: Set<String>) { failTitles = titles }
+    func setFailDeletes(_ value: Bool) { failDeletes = value }
     func setFailOccurrenceDeletes(_ value: Bool) { failOccurrenceDeletes = value }
     func setOnAdd(_ hook: (@Sendable (String) async -> Void)?) { onAdd = hook }
 
@@ -31,7 +33,10 @@ private actor ScriptedRepository: ItemRepository {
     func details(_ ref: AppleItemRef) async throws -> ItemDetails { try await inner.details(ref) }
     func update(_ ref: AppleItemRef, event patch: EventPatch) async throws { try await inner.update(ref, event: patch) }
     func update(_ ref: AppleItemRef, reminder patch: ReminderPatch) async throws { try await inner.update(ref, reminder: patch) }
-    func delete(_ ref: AppleItemRef) async throws { try await inner.delete(ref) }
+    func delete(_ ref: AppleItemRef) async throws {
+        if failDeletes { throw Injected() }
+        try await inner.delete(ref)
+    }
     func deleteOccurrence(_ ref: AppleItemRef, on date: Date) async throws {
         if failOccurrenceDeletes { throw Injected() }
         try await inner.deleteOccurrence(ref, on: date)
@@ -197,9 +202,11 @@ private final class Box<T>: @unchecked Sendable {
         let result = await runner(repo, sidecar).run(plan, progress: { _, _ in })
         #expect(result.imported == ["1"])
         let stopped = try #require(result.stoppedBecauseSidecar)
-        // The second item was created in Apple but could not be ledgered: it is named, the third is never created.
+        // The second item was created in Apple but could not be ledgered: it is named and rolled back
+        // (deleted again), the third is never created.
         #expect(stopped.contains("Two"))
-        #expect(await repo.itemCount == 2)
+        #expect(await repo.itemCount == 1)
+        #expect(!result.rollbackFailed && result.canRetry)
         #expect(result.failed.isEmpty)
         #expect(try await ItemSidecar(fileURL: url, calendar: Self.utc).importedIDs() == ["1"])
     }
@@ -272,5 +279,44 @@ private final class Box<T>: @unchecked Sendable {
         #expect(await repo.itemCount == 0)
         #expect(try await sidecar.importedIDs().isEmpty)
         #expect(try await sidecar.load().importedAt == nil)
+    }
+
+    @Test func failedLedgerWriteRollsTheItemBackSoARerunIsClean() async throws {
+        struct Boom: Error {}
+        let writer: SidecarWriter = { _, _ in throw Boom() }
+        let sidecar = ItemSidecar(fileURL: tempURL(), calendar: Self.utc, writer: writer)
+        let repo = fake()
+        let plan = ImportPlan(steps: [eventStep("1", "One"), reminderStep("2", "Two")])
+        let result = await runner(repo, sidecar).run(plan, progress: { _, _ in })
+        #expect(await repo.itemCount == 0)
+        #expect(result.imported.isEmpty)
+        #expect(result.stoppedBecauseSidecar?.contains("One") == true)
+        #expect(!result.rollbackFailed && result.canRetry)
+    }
+
+    @Test func failedLedgerWriteWithFailedRollbackNamesTheItemAndForbidsRetry() async throws {
+        struct Boom: Error {}
+        let writer: SidecarWriter = { _, _ in throw Boom() }
+        let sidecar = ItemSidecar(fileURL: tempURL(), calendar: Self.utc, writer: writer)
+        let repo = ScriptedRepository(inner: fake())
+        await repo.setFailDeletes(true)
+        let result = await runner(repo, sidecar).run(ImportPlan(steps: [eventStep("1", "One")]), progress: { _, _ in })
+        #expect(result.rollbackFailed)
+        let stopped = try #require(result.stoppedBecauseSidecar)
+        #expect(stopped.contains("One") && stopped.contains("twice"))
+        #expect(!result.canRetry)
+    }
+
+    @Test func canRetryRule() {
+        var result = ImportResult()
+        #expect(!result.canRetry)
+        result.failed = [(title: "A", message: "x")]
+        #expect(result.canRetry)
+        result.rollbackFailed = true
+        result.stoppedBecauseSidecar = "x"
+        #expect(!result.canRetry)
+        result = ImportResult()
+        result.cancelled = true
+        #expect(result.canRetry)
     }
 }

@@ -14,13 +14,26 @@ public struct ImportResult: Sendable {
     /// item that was created in Apple but could not be ledgered (if any).
     public var stoppedBecauseSidecar: String?
     public var cancelled = false
+    /// Set when the sidecar write failed AND the just-created item could not be deleted again, so
+    /// it exists in Apple unrecorded and a rerun may add it a second time.
+    public var rollbackFailed = false
+
+    /// Whether the screen may offer "Try Again": only when a rerun cannot duplicate an item, i.e.
+    /// something is left to retry (failed steps, a cancelled run, a sidecar stop) and no stop left
+    /// an unrecorded item behind.
+    public var canRetry: Bool {
+        guard !rollbackFailed else { return false }
+        return !failed.isEmpty || cancelled || stoppedBecauseSidecar != nil
+    }
 
     public init() {}
 }
 
 /// Runs an `ImportPlan` against Apple, one item at a time. Each item is created, then ledgered in
-/// ONE sidecar write, before the next starts, so a kill at any point loses at most the item in
-/// flight and a rerun adds only what is missing. It never reads or writes the `.ics` files.
+/// ONE sidecar write, before the next starts, so a rerun adds only what is missing. A kill between
+/// the EventKit commit and the ledger write can leave at most that one item in Apple unrecorded (a
+/// rerun may then add it a second time; the preview's probable-duplicate count shows it). A failed
+/// ledger write is rolled back by deleting the item again. It never reads or writes the `.ics` files.
 public actor ImportRunner {
     private let repository: ItemRepository
     private let sidecar: ItemSidecar
@@ -84,8 +97,18 @@ public actor ImportRunner {
                     localID: step.localID, identifier: ref.identifier, externalID: ref.externalID,
                     plans: step.plans, outcomes: step.outcomes))
             } catch {
-                result.stoppedBecauseSidecar = "\"\(step.title)\" was created in Apple but Stark could not record it "
-                    + "(\(Self.message(error))). Stopped; running the import again may add it twice."
+                // The item exists in Apple but is not ledgered: delete it again so a rerun is clean.
+                let reason = Self.message(error)
+                do {
+                    try await repository.delete(ref)
+                    result.stoppedBecauseSidecar = "\"\(step.title)\" could not be recorded (\(reason)), so it was "
+                        + "removed from Apple again. Stopped; nothing was added twice."
+                } catch {
+                    result.rollbackFailed = true
+                    result.stoppedBecauseSidecar = "\"\(step.title)\" was created in Apple but Stark could not record "
+                        + "it (\(reason)) or remove it again. Stopped; check Apple, and running the import again "
+                        + "may add it twice."
+                }
                 return result
             }
             result.imported.append(step.localID)
