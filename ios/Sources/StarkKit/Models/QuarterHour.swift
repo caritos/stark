@@ -35,15 +35,21 @@ public enum QuarterHour {
     /// - another day, and the picked wall-clock time within 15 minutes of `previous`'s: the owner
     ///   changed only the day, so `previous`'s exact time is kept on the new day;
     /// - anything else is taken as is.
+    /// A restore that would fall below `minimumDate` (the picker's own minimum) is not made: the
+    /// pick, which UIKit already clamped to the minimum, is taken instead.
     /// The kept value is the PICK moved by the wall-clock difference (in elapsed seconds), not a
     /// date rebuilt from components, so in a repeated or missing DST hour it stays next to what
     /// the owner picked and never jumps an hour.
-    public static func keepingUntouchedTime(picked: Date, previous: Date,
+    public static func keepingUntouchedTime(picked: Date, previous: Date, minimumDate: Date? = nil,
                                             calendar: Calendar = .current) -> Date {
         guard !calendar.isDate(picked, inSameDayAs: previous) else { return picked }
         let difference = secondsIntoDay(previous, calendar: calendar) - secondsIntoDay(picked, calendar: calendar)
         guard abs(difference) <= TimeInterval(minutes * 60) else { return picked }
-        return picked.addingTimeInterval(difference)
+        let restored = picked.addingTimeInterval(difference)
+        // The Ends picker's minimum is Starts: UIKit clamped the pick to it, and a restore below it
+        // would make the end precede the start (stored as no end). Take the clamped pick then.
+        if let minimumDate, restored < minimumDate { return picked }
+        return restored
     }
 
     /// "Saved time 10:07" (the locale's short time format) when `date`'s minute is not on a

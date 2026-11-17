@@ -215,6 +215,43 @@ struct QuarterHourTests {
         #expect(QuarterHour.floored(secondOneSeven, calendar: ny).timeIntervalSince(secondOneSeven) == -7 * 60)
     }
 
+    // MARK: minimumDate (the Ends picker never goes before Starts)
+
+    @Test("an end restored below the minimum takes the clamped pick instead")
+    func restoreBelowMinimumTakesClampedPick() {
+        // Start Nov 18 10:30, end Nov 19 10:15; the end's day moved to the 18th; UIKit clamps to 10:30.
+        let minimum = at(2026, 11, 18, 10, 30)
+        let kept = QuarterHour.keepingUntouchedTime(picked: minimum, previous: at(2026, 11, 19, 10, 15),
+                                                    minimumDate: minimum, calendar: local)
+        #expect(kept == minimum)
+    }
+
+    @Test("an odd end restored below an odd minimum takes the clamp")
+    func oddEndBelowOddMinimum() {
+        let minimum = at(2026, 11, 18, 10, 20)
+        let kept = QuarterHour.keepingUntouchedTime(picked: minimum, previous: at(2026, 11, 19, 10, 13),
+                                                    minimumDate: minimum, calendar: local)
+        #expect(kept == minimum)
+    }
+
+    @Test("a restore that stays above the minimum still restores")
+    func restoreAboveMinimumStillRestores() {
+        let kept = QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 18, 10, 0),
+                                                    previous: at(2026, 11, 17, 10, 13),
+                                                    minimumDate: at(2026, 11, 18, 9, 0), calendar: local)
+        #expect(kept == at(2026, 11, 18, 10, 13))
+    }
+
+    @Test("no minimum behaves as before, and a same-day pick is unchanged with a minimum")
+    func nilMinimumAndSameDay() {
+        let previous = at(2026, 11, 17, 10, 13)
+        #expect(QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 18, 10, 0), previous: previous,
+                                                 minimumDate: nil, calendar: local) == at(2026, 11, 18, 10, 13))
+        let minimum = at(2026, 11, 17, 9, 0)
+        #expect(QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 17, 10, 30), previous: previous,
+                                                 minimumDate: minimum, calendar: local) == at(2026, 11, 17, 10, 30))
+    }
+
     // MARK: savedTimeCaption
 
     @Test("the caption names the saved odd time in the locale's format, nil on a quarter hour")

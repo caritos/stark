@@ -146,6 +146,7 @@ private struct QuarterHourPickerRepresentable: UIViewRepresentable {
         @objc func valueChanged(_ picker: UIDatePicker) {
             let value = QuarterHour.keepingUntouchedTime(picked: picker.date,
                                                          previous: selection.wrappedValue,
+                                                         minimumDate: picker.minimumDate,
                                                          calendar: picker.calendar ?? .current)
             if selection.wrappedValue != value { selection.wrappedValue = value }
         }
