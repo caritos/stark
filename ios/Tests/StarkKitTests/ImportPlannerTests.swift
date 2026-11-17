@@ -375,4 +375,68 @@ struct ImportPlannerTests {
         #expect(ids == Set(result.unrepresentable.map(\.localID)))
         #expect(ids == ["xe", "x", "undated", "cm"])
     }
+
+    // MARK: Short months are pinned so Apple skips them (controller ruling, Task 6 review)
+
+    private func reminderRule(_ result: ImportPlan, _ id: String) -> RecurrenceRule? {
+        result.steps.first { $0.localID == id }?.reminder?.recurrence
+    }
+
+    private func eventRule(_ result: ImportPlan, _ id: String) -> RecurrenceRule? {
+        result.steps.first { $0.localID == id }?.event?.recurrence
+    }
+
+    @Test func monthlyDay31ReminderShownOnThe31stGetsAnExplicitDay() {
+        let reminder = Reminder(id: "r31", title: "Pay rent", dueDate: date(2026, 12, 31, 9),
+                                recurrence: RecurrenceRule(frequency: .monthly))
+        let result = plan(reminders: [reminder])
+        #expect(reminderRule(result, "r31")?.byMonthDay == [31])
+        #expect(result.shortMonthRepeats == ["Pay rent"])
+    }
+
+    @Test func monthlyDay29And30RemindersGetAnExplicitDay() {
+        let r29 = Reminder(id: "r29", title: "Day 29", dueDate: date(2026, 11, 29, 9),
+                           recurrence: RecurrenceRule(frequency: .monthly))
+        let r30 = Reminder(id: "r30", title: "Day 30", dueDate: date(2026, 11, 30, 9),
+                           recurrence: RecurrenceRule(frequency: .monthly))
+        let result = plan(reminders: [r29, r30])
+        #expect(reminderRule(result, "r29")?.byMonthDay == [29])
+        #expect(reminderRule(result, "r30")?.byMonthDay == [30])
+    }
+
+    @Test func yearlyFeb29ReminderGetsMonthAndDay() {
+        let reminder = Reminder(id: "leap", title: "Leap day", dueDate: date(2028, 2, 29, 9),
+                                recurrence: RecurrenceRule(frequency: .yearly))
+        let rule = reminderRule(plan(reminders: [reminder]), "leap")
+        #expect(rule?.byMonth == [.february])
+        #expect(rule?.byMonthDay == [29])
+    }
+
+    @Test func repeatingEventsOnShortMonthDaysGetExplicitDays() {
+        let monthly = Event(id: "e31", title: "Pay day", start: date(2026, 10, 31, 9),
+                            recurrence: RecurrenceRule(frequency: .monthly))
+        let monthly30 = Event(id: "e30", title: "Review", start: date(2026, 11, 30, 9),
+                              recurrence: RecurrenceRule(frequency: .monthly))
+        let leap = Event(id: "f29", title: "Leap birthday", start: date(2024, 2, 29), isAllDay: true,
+                         recurrence: RecurrenceRule(frequency: .yearly))
+        let plain = Event(id: "e15", title: "Mid month", start: date(2026, 11, 15, 9),
+                          recurrence: RecurrenceRule(frequency: .monthly))
+        let result = plan(events: [monthly, monthly30, leap, plain])
+        #expect(eventRule(result, "e31")?.byMonthDay == [31])
+        #expect(eventRule(result, "e30")?.byMonthDay == [30])
+        #expect(eventRule(result, "f29")?.byMonth == [.february])
+        #expect(eventRule(result, "f29")?.byMonthDay == [29])
+        #expect(eventRule(result, "e15") == RecurrenceRule(frequency: .monthly))
+    }
+
+    @Test func lastDayOfMonthRuleIsUntouched() {
+        let lastDay = RecurrenceRule(frequency: .monthly, byPositionalDay: [
+            PositionalDay(position: .last, dayType: .anyDay)])
+        let reminder = Reminder(id: "last", title: "Close books", dueDate: date(2026, 11, 30, 9), recurrence: lastDay)
+        let event = Event(id: "lastE", title: "Month end", start: date(2026, 11, 30, 9), recurrence: lastDay)
+        let result = plan(events: [event], reminders: [reminder])
+        #expect(reminderRule(result, "last") == lastDay)
+        #expect(eventRule(result, "lastE") == lastDay)
+        #expect(result.shortMonthRepeats.isEmpty)
+    }
 }

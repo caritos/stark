@@ -74,7 +74,13 @@ struct StarkApp: App {
                 await overlay.reload(for: .search, display: nil, today: now)
                 return items
             },
-            calendar: .autoupdatingCurrent))
+            calendar: .autoupdatingCurrent,
+            // The import writes through the repository, not the router, so `onDidWrite` never
+            // fires for it: reload the same things after a run that created something.
+            afterRun: { [weak overlay, weak planCache] in
+                await overlay?.refreshAfterWrite()
+                await planCache?.refresh()
+            }))
         let secrets = KeychainSecretStore(service: "com.caritos.todo-txt.bridge", account: "pairing")
         self.secrets = secrets
         // Bridge items go to Apple (default calendar / list) and are ledgered in the sidecar.

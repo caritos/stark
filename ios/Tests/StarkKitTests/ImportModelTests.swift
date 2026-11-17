@@ -44,10 +44,14 @@ struct ImportModelTests {
     }
 
     private func model(_ env: Env, repository: (any ItemRepository)? = nil,
-                       destinations: FixedDestinations = FixedDestinations(calendarID: "C1", listID: "L1")) -> ImportModel {
+                       destinations: FixedDestinations = FixedDestinations(calendarID: "C1", listID: "L1"),
+                       afterRun: @escaping @MainActor (ImportModel) async -> Void = { _ in }) -> ImportModel {
         let today = self.today
-        return ImportModel(store: env.store, sidecar: env.sidecar, repository: repository ?? env.repository,
-                           destinations: destinations, now: { today }, calendar: Calendar(identifier: .gregorian))
+        var model: ImportModel!
+        model = ImportModel(store: env.store, sidecar: env.sidecar, repository: repository ?? env.repository,
+                            destinations: destinations, now: { today }, calendar: Calendar(identifier: .gregorian),
+                            afterRun: { await afterRun(model) })
+        return model
     }
 
     private func previewPlan(_ model: ImportModel) -> ImportPlan? {
@@ -263,5 +267,41 @@ struct ImportModelTests {
         await model.scan()
         model.cancel()
         if case .idle = model.state {} else { Issue.record("expected .idle, got \(model.state)") }
+    }
+
+    @Test("afterRun reloads Apple data once the run created something, after the result is shown")
+    func afterRunIsCalledAfterARunThatCreatedItems() async throws {
+        let env = try makeEnv()
+        defer { try? FileManager.default.removeItem(at: env.root) }
+        env.store.addEvent(Event(id: "e1", title: "Dentist", start: soon))
+        var calls: [(finished: Bool, hidden: Bool)] = []
+        let model = model(env, afterRun: { model in
+            var finished = false
+            if case .finished = model.state { finished = true }
+            calls.append((finished, env.store.events.isEmpty))
+        })
+        await model.scan()
+        await model.confirm()
+        #expect(calls.count == 1)
+        #expect(calls.first?.finished == true)
+        #expect(calls.first?.hidden == true)
+    }
+
+    @Test("afterRun is not called for a run that created nothing")
+    func afterRunIsSkippedWhenNothingWasCreated() async throws {
+        let env = try makeEnv()
+        defer { try? FileManager.default.removeItem(at: env.root) }
+        env.store.addEvent(Event(id: "e1", title: "Dentist", start: soon))
+        var calls = 0
+        let model = model(env, afterRun: { _ in calls += 1 })
+        await model.scan()
+        await env.repository.failNext()   // the only step fails
+        await model.confirm()
+        guard case .finished(let result) = model.state else {
+            Issue.record("expected .finished, got \(model.state)")
+            return
+        }
+        #expect(result.imported.isEmpty)
+        #expect(calls == 0)
     }
 }

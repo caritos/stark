@@ -58,13 +58,16 @@ public final class ImportModel {
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private let calendar: Calendar
     @ObservationIgnored private var runTask: Task<ImportResult, Never>?
+    @ObservationIgnored private let afterRun: @MainActor () async -> Void
 
     /// `appleItems` returns Apple items already loaded (Search's window), for the informational
-    /// "look already in Apple" count only.
+    /// "look already in Apple" count only. `afterRun` reloads the app's Apple data after a run
+    /// that created at least one item (called once the result and the hiding are in place).
     public init(store: PlannerStore, sidecar: ItemSidecar, repository: any ItemRepository,
                 destinations: any DefaultDestinations,
                 appleItems: @escaping @MainActor () async -> [AgendaItem] = { [] },
-                now: @escaping @Sendable () -> Date = { Date() }, calendar: Calendar = .autoupdatingCurrent) {
+                now: @escaping @Sendable () -> Date = { Date() }, calendar: Calendar = .autoupdatingCurrent,
+                afterRun: @escaping @MainActor () async -> Void = {}) {
         self.store = store
         self.sidecar = sidecar
         self.repository = repository
@@ -72,6 +75,7 @@ public final class ImportModel {
         self.appleItems = appleItems
         self.now = now
         self.calendar = calendar
+        self.afterRun = afterRun
     }
 
     /// Whether Settings shows the "Import Stark's own items" row.
@@ -183,6 +187,12 @@ public final class ImportModel {
         }
         store.notImportedIDs = Set(plan.unrepresentable.map(\.localID))
         state = .finished(result)
+        // The runner writes through the repository, not the router, so nothing else reloads the
+        // Apple overlay and plan cache (EKEventStoreChanged is not reliable after a write burst,
+        // spike f). Also after a partial, cancelled or sidecar-stopped run that created something.
+        if !result.imported.isEmpty || result.stoppedBecauseSidecar != nil {
+            await afterRun()
+        }
     }
 
     /// During a run: stops after the current item. Otherwise: back to `idle`.

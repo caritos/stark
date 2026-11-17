@@ -30,6 +30,7 @@ public enum ImportPlanner {
             if let end = new.end, end < new.start { new.end = nil }
             if let rule = event.recurrence, skipsShortMonths(rule, anchor: event.start, calendar: calendar) {
                 result.shortMonthRepeats.append(event.title)
+                new.recurrence = pinnedForApple(rule, anchor: event.start, calendar: calendar)
             }
             eventSteps.append(ImportStep(localID: event.id, kind: .event, event: new,
                                          exceptionDates: event.recurrence == nil ? [] : event.exceptionDates,
@@ -79,12 +80,14 @@ public enum ImportPlanner {
                 result.finishedSeries.append(reminder.title)
                 continue
             }
+            var appleRule = newRule
             if skipsShortMonths(rule, anchor: due, calendar: calendar) {
                 result.shortMonthRepeats.append(reminder.title)
+                appleRule = pinnedForApple(newRule, anchor: due, calendar: calendar)
             }
             var moved = reminder
             moved.dueDate = shown
-            moved.recurrence = newRule
+            moved.recurrence = appleRule
             moved.exceptionDates = []
             reminderSteps.append(ImportStep(localID: reminder.id, kind: .reminder,
                                             reminder: ItemRouter.newReminder(moved, url: nil), plans: blocks,
@@ -183,6 +186,25 @@ public enum ImportPlanner {
             }
         default:
             break
+        }
+        return result
+    }
+
+    /// `rule` with the anchor's day (and, for a yearly rule, month) written out, for a repeat that
+    /// `skipsShortMonths`. EventKit keeps an explicit day list as given and skips months without
+    /// that day (write spike d), while a rule with no day list comes back clamped to the month's
+    /// last day; pinning makes the preview's "Skips short months in Apple" true. The one place both
+    /// the event and the reminder path pin, so they cannot drift. Day lists and positional rules
+    /// already present are kept.
+    static func pinnedForApple(_ rule: RecurrenceRule, anchor: Date, calendar: Calendar) -> RecurrenceRule {
+        guard (rule.byPositionalDay ?? []).isEmpty else { return rule }
+        var result = rule
+        if (rule.byMonthDay ?? []).isEmpty {
+            result.byMonthDay = [calendar.component(.day, from: anchor)]
+        }
+        if rule.frequency == .yearly, (rule.byMonth ?? []).isEmpty,
+           let month = Month(rawValue: calendar.component(.month, from: anchor)) {
+            result.byMonth = [month]
         }
         return result
     }
