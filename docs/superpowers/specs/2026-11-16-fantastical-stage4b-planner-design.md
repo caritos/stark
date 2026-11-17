@@ -1,6 +1,6 @@
 # Fantastical redesign, stage 4b: planner restyle and split
 
-Date: 2026-11-16. Status: approved by the owner's standing "just go ahead" ("Just continue development"). Parent: stage 4 spec `2026-11-16-fantastical-stage4-day-week-design.md`.
+Date: 2026-11-16. Status: built (v2.0.31); approved by the owner's standing "just go ahead" ("Just continue development"). Parent: stage 4 spec `2026-11-16-fantastical-stage4-day-week-design.md`.
 
 ## Intent
 The timeboxing planner (tray, drag, resize, plan blocks, past-day view) keeps all behaviour but looks like the new Day view, and `PlannerView.swift` (1340 lines) is split so no file is a monolith.
