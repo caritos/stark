@@ -41,9 +41,10 @@ struct AddItemView: View {
 
     init(onOpenSettings: @escaping () -> Void = {}) {
         self.onOpenSettings = onOpenSettings
-        let now = Date()
-        _date = State(initialValue: now)
-        _endDate = State(initialValue: now.addingTimeInterval(EventSchedule.defaultDuration))
+        // A new item starts at the next quarter hour, the only minutes the pickers offer.
+        let start = QuarterHour.nextAfter(Date())
+        _date = State(initialValue: start)
+        _endDate = State(initialValue: start.addingTimeInterval(EventSchedule.defaultDuration))
     }
 
     var body: some View {
@@ -56,8 +57,8 @@ struct AddItemView: View {
                 TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
                 }
                 Section {
-                DatePicker(kind == .event ? "Starts" : "Due", selection: $date,
-                           displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
+                QuarterHourDatePicker(kind == .event ? "Starts" : "Due", selection: $date,
+                                      components: allDay ? .date : .dateAndTime)
                     .onChange(of: date) { oldValue, newValue in
                         // Moving the start moves the end with it, so the duration is kept.
                         endDate = EventSchedule.shiftedEnd(endDate, oldStart: oldValue, newStart: newValue)
@@ -65,8 +66,8 @@ struct AddItemView: View {
                         repeatEnd = repeatEnd.clamped(toStartOn: newValue)
                     }
                 if kind == .event {
-                    DatePicker("Ends", selection: $endDate, in: date...,
-                               displayedComponents: allDay ? [.date] : [.date, .hourAndMinute])
+                    QuarterHourDatePicker("Ends", selection: $endDate, minimumDate: date,
+                                          components: allDay ? .date : .dateAndTime)
                 }
                 Toggle("All day", isOn: $allDay)
                 }

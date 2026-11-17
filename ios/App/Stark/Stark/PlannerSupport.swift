@@ -94,13 +94,8 @@ struct PlanTimePicker: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: Spacing.md) {
-                DatePicker("Start", selection: $time, displayedComponents: .hourAndMinute)
-                    #if targetEnvironment(macCatalyst)
-                    .datePickerStyle(.compact)
-                    #else
-                    .datePickerStyle(.wheel)
-                    #endif
-                    .labelsHidden()
+                // Quarter hours only, as `PlanLayout.snap` rounds to; compact on Mac Catalyst.
+                QuarterHourDatePicker("Start", selection: $time, components: .time, style: .wheel)
                 Text("Rounded to the nearest 15 minutes.")
                     .font(Fonts.mono(11))
                     .foregroundStyle(Colors.textSecondary)

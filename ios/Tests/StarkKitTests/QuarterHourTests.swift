@@ -79,6 +79,52 @@ struct QuarterHourTests {
         #expect(!QuarterHour.isOnQuarter(at(2026, 11, 17, 9, 15, 0, nanosecond: 500_000_000), calendar: local))
     }
 
+    // MARK: floored / keepingUntouchedTime (what the picker shows, and a date-only change)
+
+    @Test("floored is the quarter hour at or before the date, seconds dropped")
+    func flooredIsTheQuarterAtOrBefore() {
+        #expect(QuarterHour.floored(at(2026, 11, 17, 10, 7, 42), calendar: local) == at(2026, 11, 17, 10, 0))
+        #expect(QuarterHour.floored(at(2026, 11, 17, 10, 13), calendar: local) == at(2026, 11, 17, 10, 0))
+        #expect(QuarterHour.floored(at(2026, 11, 17, 10, 59), calendar: local) == at(2026, 11, 17, 10, 45))
+        #expect(QuarterHour.floored(at(2026, 11, 17, 10, 30), calendar: local) == at(2026, 11, 17, 10, 30))
+    }
+
+    @Test("a pick that only changed the day keeps the previous odd time on the new day")
+    func dateOnlyChangeKeepsOddTime() {
+        // The picker showed 10:00 for 10:07; the owner picked the 18th; the picker reports 18th 10:00.
+        let previous = at(2026, 11, 17, 10, 7, 31)
+        let picked = at(2026, 11, 18, 10, 0)
+        #expect(QuarterHour.keepingUntouchedTime(picked: picked, previous: previous, calendar: local)
+                == at(2026, 11, 18, 10, 7, 31))
+    }
+
+    @Test("a pick that changed the time is taken as is")
+    func timeChangeIsTaken() {
+        let previous = at(2026, 11, 17, 10, 7)
+        #expect(QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 17, 10, 15), previous: previous,
+                                                 calendar: local) == at(2026, 11, 17, 10, 15))
+        #expect(QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 18, 11, 0), previous: previous,
+                                                 calendar: local) == at(2026, 11, 18, 11, 0))
+        #expect(QuarterHour.keepingUntouchedTime(picked: at(2026, 11, 17, 9, 45), previous: previous,
+                                                 calendar: local) == at(2026, 11, 17, 9, 45))
+    }
+
+    @Test("a previous value already on a quarter hour gives the pick unchanged")
+    func onQuarterPreviousGivesPick() {
+        let previous = at(2026, 11, 17, 10, 0)
+        let picked = at(2026, 11, 19, 10, 0)
+        #expect(QuarterHour.keepingUntouchedTime(picked: picked, previous: previous, calendar: local) == picked)
+    }
+
+    @Test("a date-only change across the fall-back day keeps the wall-clock time")
+    func dateOnlyChangeAcrossDST() {
+        let ny = newYork()
+        let previous = at(2026, 10, 31, 10, 7, calendar: ny)
+        let picked = at(2026, 11, 2, 10, 0, calendar: ny)
+        let kept = QuarterHour.keepingUntouchedTime(picked: picked, previous: previous, calendar: ny)
+        #expect(kept == at(2026, 11, 2, 10, 7, calendar: ny))
+    }
+
     @Test("seconds and nanoseconds are dropped from the result")
     func ignoresSecondsAndNanoseconds() {
         let date = at(2026, 11, 17, 10, 7, 42, nanosecond: 123_000_000)

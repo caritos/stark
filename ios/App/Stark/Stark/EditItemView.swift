@@ -99,8 +99,8 @@ struct EditItemView: View {
                             .accessibilityLabel("Add a due date")
                             .accessibilityHint("Sets the due date to today. You can change it afterwards.")
                     } else {
-                        DatePicker(dateLabel, selection: $form.date,
-                                   displayedComponents: form.allDay ? [.date] : [.date, .hourAndMinute])
+                        QuarterHourDatePicker(dateLabel, selection: $form.date,
+                                              components: form.allDay ? .date : .dateAndTime)
                             .onChange(of: form.date) { oldValue, newValue in
                                 // Moving the start moves the end with it, so the duration is kept.
                                 form.endDate = EventSchedule.shiftedEnd(form.endDate, oldStart: oldValue, newStart: newValue)
@@ -108,8 +108,8 @@ struct EditItemView: View {
                                 form.repeatEnd = form.repeatEnd.clamped(toStartOn: newValue)
                             }
                         if isEvent {
-                            DatePicker("Ends", selection: $form.endDate, in: form.date...,
-                                       displayedComponents: form.allDay ? [.date] : [.date, .hourAndMinute])
+                            QuarterHourDatePicker("Ends", selection: $form.endDate, minimumDate: form.date,
+                                                  components: form.allDay ? .date : .dateAndTime)
                         }
                         Toggle("All day", isOn: $form.allDay)
                     }
