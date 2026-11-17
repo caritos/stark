@@ -28,19 +28,16 @@ extension AgendaItem {
     }
 }
 
-/// What tapping an agenda or Search row opens. Stark's own items open the edit sheet (`edit`);
-/// Apple items in a writable calendar or list open the Apple editor (`editableApple`), which loads
-/// the stored item first; anything else is the read-only detail. `editable` stays the local-only
-/// way into the old edit path.
+/// What tapping an agenda or Search row opens. Apple items in a writable calendar or list open the
+/// Apple editor (`editableApple`), which loads the stored item first; anything else, including a
+/// row without an Apple source (Stark keeps no items of its own since phase 3), is the read-only
+/// detail.
 public enum AgendaItemDetail: Identifiable, Equatable {
-    case edit(AgendaItem)
     case editableApple(AgendaItem, AppleItemRef)
     case readOnly(AgendaItem)
 
     public init(_ item: AgendaItem) {
-        if item.appleSource == nil {
-            self = .edit(item)
-        } else if !item.isReadOnly, let ref = AppleItemRef.ref(for: item) {
+        if item.appleSource != nil, !item.isReadOnly, let ref = AppleItemRef.ref(for: item) {
             self = .editableApple(item, ref)
         } else {
             self = .readOnly(item)
@@ -49,14 +46,8 @@ public enum AgendaItemDetail: Identifiable, Equatable {
 
     public var id: String {
         switch self {
-        case .edit(let item), .readOnly(let item), .editableApple(let item, _): return item.id
+        case .readOnly(let item), .editableApple(let item, _): return item.id
         }
-    }
-
-    /// The item for Stark's own edit sheet, or nil for any Apple item.
-    public var editable: AgendaItem? {
-        guard case .edit(let item) = self else { return nil }
-        return item
     }
 }
 

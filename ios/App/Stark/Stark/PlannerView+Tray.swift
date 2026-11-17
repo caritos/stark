@@ -74,7 +74,7 @@ extension PlannerView {
     }
 
     private func trayPane(_ pane: TrayPane) -> some View {
-        let items = (model.map { pane.items(in: $0) } ?? []).marked(notImported: store.notImportedIDs)
+        let items = model.map { pane.items(in: $0) } ?? []
         return VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(liftingBlock ? "DROP HERE TO REMOVE FROM PLAN" : pane.hint(dayWord: dayWord))
                 .font(Fonts.mono(10, weight: .medium))
@@ -142,9 +142,6 @@ extension PlannerView {
                     .font(Fonts.mono(11))
                     .foregroundStyle(item.isOverdue ? Colors.accent : Colors.textSecondary)
                     .lineLimit(1)
-            }
-            if item.isNotImported {
-                NotImportedLabel(font: Fonts.mono(10))
             }
         }
         .padding(.leading, Spacing.sm + 3)

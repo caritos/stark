@@ -5,7 +5,7 @@
 //  Shown on the main screen, above the calendar, while Stark has no full access to Calendar and
 //  Reminders. It says what the access is for BEFORE asking: the system prompt appears only when
 //  the user taps "Allow Access" (never at launch). After a refusal it points to iOS Settings, the
-//  only place to undo it. Stark's own (local) items stay visible below it.
+//  only place to undo it. Stark keeps no items of its own, so nothing else can show without it.
 //
 
 import SwiftUI

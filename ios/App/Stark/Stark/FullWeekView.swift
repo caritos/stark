@@ -15,7 +15,6 @@ import StarkKit
 /// a column header returns to the DayTicker on that day (`onSelectDate`). Chevrons and horizontal
 /// swipes step one week.
 struct FullWeekView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(PlanCache.self) private var planCache
     /// Start of the week's Sunday.
@@ -102,7 +101,6 @@ struct FullWeekView: View {
         )
         .task(id: weekStart) {
             let range = Self.range(for: weekStart)
-            store.loadMonths(covering: range)
             await overlay.reload(for: .fullWeek, display: range, today: today)
         }
         .onDisappear {
@@ -149,8 +147,8 @@ struct FullWeekView: View {
     }
 
     private var layoutInputs: LayoutInputs {
-        LayoutInputs(weekStart: weekStart, today: today, events: store.events, reminders: store.reminders,
-                     plans: PlannerPlans.all(local: store.plans, apple: planCache.applePlans),
+        LayoutInputs(weekStart: weekStart, today: today, events: [], reminders: [],
+                     plans: planCache.applePlans,
                      apple: overlay.snapshot)
     }
 

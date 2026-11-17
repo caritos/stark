@@ -12,15 +12,15 @@ import StarkKit
 /// Under each day number sit two 1 pt lines (issue #110, replacing the old dot markers): purple
 /// (`Colors.eventDot`) for events, accent for tasks, each as wide as its own load (a third, two
 /// thirds or all of the number's width for 1 / 2-3 / 4+ items) and absent when there are none. The
-/// counts come from `gridDensity`, i.e. from the same `buildAgendaItems` the agenda uses, so the
-/// grid can't disagree with the list. The block keeps its height on an empty day, and sits below
+/// counts come from `gridDensity`, i.e. from the same Apple rows and plans the agenda uses
+/// (`agendaWithApple`), so the grid can't disagree with the list. The block keeps its height on an empty day, and sits below
 /// the number's square so the lines stay visible on today's filled cell.
 ///
 /// In `.week` mode (the collapsed state) the grid is one row: the Sunday-first week of
 /// `selectedDate`, drawn with the same cells. The title is the selected day's month and the
 /// chevrons step the selection by a week (through `onSelectDate`, so the agenda follows) instead
 /// of paging months. `visibleMonth` follows the selected day's month while in week mode and when
-/// returning to month, so the density snapshot and the store's loaded months always cover the
+/// returning to month, so the density snapshot and the Apple fetch always cover the
 /// week on screen (the week lies inside its month's 6-row grid). In `.month` mode a plain
 /// selection (a tap) never changes `visibleMonth` — but `scrollPagingDate` does (issue #101),
 /// since scrolling the agenda is deliberately allowed to page the month grid even though tapping
@@ -34,7 +34,6 @@ struct GridPagingRequest: Equatable {
 }
 
 struct MonthGridView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
     /// Apple reminders' plan blocks (sidecar), counted with Stark's own like the agenda does.
     @Environment(PlanCache.self) private var planCache
@@ -131,9 +130,9 @@ struct MonthGridView: View {
         .padding(.bottom, Spacing.sm)
         .background(Colors.background)
         .task { loadVisibleMonths() }
-        // Recompute when (and only when) the month, today, or the store's items change. Equal
-        // arrays share a buffer, so the comparison SwiftUI makes on every `body` is cheap until
-        // the store really republishes. The work runs off the main actor, and a stale result
+        // Recompute when (and only when) the month, today, the Apple snapshot or the plans change.
+        // Equal arrays share a buffer, so the comparison SwiftUI makes on every `body` is cheap
+        // until they really change. The work runs off the main actor, and a stale result
         // (the id changed while it ran) is dropped.
         .task(id: densityInputs) {
             let inputs = densityInputs
@@ -188,12 +187,11 @@ struct MonthGridView: View {
         loadVisibleMonths()
     }
 
-    /// The store must have loaded every month the visible grid touches (its neighbouring days
-    /// can be in the previous or next month's file). The Apple overlay fetches the same range
-    /// (its dots arrive with the density recompute, which is asynchronous anyway).
+    /// The Apple overlay fetches every day the visible grid touches (its neighbouring days can be
+    /// in the previous or next month); the dots arrive with the density recompute, which is
+    /// asynchronous anyway.
     private func loadVisibleMonths() {
         let range = MonthGrid.range(for: visibleMonth)
-        store.loadMonths(covering: range)
         Task { await overlay.reload(for: .monthGrid, display: range, today: today) }
     }
 
@@ -215,8 +213,8 @@ struct MonthGridView: View {
     }
 
     private var densityInputs: DensityInputs {
-        DensityInputs(month: visibleMonth, today: today, events: store.events, reminders: store.reminders,
-                      plans: PlannerPlans.all(local: store.plans, apple: planCache.applePlans),
+        DensityInputs(month: visibleMonth, today: today, events: [], reminders: [],
+                      plans: planCache.applePlans,
                       apple: overlay.snapshot)
     }
 

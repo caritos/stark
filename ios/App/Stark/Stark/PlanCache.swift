@@ -6,8 +6,8 @@ import StarkKit
 
 /// Every plan block of an Apple reminder (kept in Stark's sidecar, a few hundred small records at
 /// most), read in one go so the agenda, the planner, the month grid and the year view can read them
-/// synchronously. Stark's own plans still come from `PlannerStore.plans`; together each block
-/// appears once (`agendaWithApple`, `PlannerPlans`). Refreshed by `ItemRouter.onDidWrite` after
+/// synchronously; they are the only plan blocks Stark has (each passed once, `agendaWithApple`,
+/// `PlannerPlans`). Refreshed by `ItemRouter.onDidWrite` after
 /// every sidecar or Apple write, and when a screen that reads it appears.
 ///
 /// Task 9b: the cache used to hold only the agenda's display range; the planner (any day, its week

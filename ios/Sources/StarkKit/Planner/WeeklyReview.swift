@@ -22,15 +22,12 @@ public struct WeeklyReview: Equatable {
     /// Completed reminders due in the week (Apple ones: completed in the week), by occurrence.
     public let completed: [AgendaItem]
     /// Incomplete reminders whose (possibly missed) occurrence is in the week, by occurrence.
+    /// Events add nothing (phase 3, spec decision 3: the attended count was always 0 for Apple
+    /// events, whose marks live in the sidecar and show in the editor only).
     public let open: [AgendaItem]
-    /// Event occurrences in the week marked attended.
-    public let attendedEventCount: Int
 
     /// e.g. "14 done · 3 open".
     public var countsLabel: String { "\(completed.count) done · \(open.count) open" }
-
-    /// e.g. "Events attended: 2".
-    public var attendedLabel: String { "Events attended: \(attendedEventCount)" }
 
     /// The review as plain text, for pasting into a note or another tool (issue #111): ISO dates so
     /// it parses cleanly, the same counts as the screen, then the completed and still-open lists
@@ -46,7 +43,6 @@ public struct WeeklyReview: Equatable {
         return """
         Weekly Review: \(day(weekStart)) to \(day(range.upperBound))
         \(countsLabel)
-        \(attendedLabel)
 
         Completed
         \(lines(completed))
@@ -103,8 +99,7 @@ public struct WeeklyReview: Equatable {
     ///   completed copy per completion of a repeating reminder, so those count like one-offs;
     /// - an open dated Apple reminder is open when its current due date is in the week;
     /// - nothing is derived from a series having moved on (no invented completions), undated
-    ///   reminders are in no week, and Apple events add no attended count (outcomes live in the
-    ///   sidecar, which this engine does not read).
+    ///   reminders are in no week, and events add nothing (no attended count).
     public static func summary(
         events: [Event],
         reminders: [Reminder],
@@ -119,14 +114,9 @@ public struct WeeklyReview: Equatable {
 
         var completed: [AgendaItem] = []
         var open: [AgendaItem] = []
-        var attended = 0
         for item in items where week.contains(item.occurrence) {
-            switch item.kind {
-            case .event:
-                if item.outcome == .attended { attended += 1 }
-            case .reminder:
-                if item.isCompleted { completed.append(item) } else { open.append(item) }
-            }
+            guard case .reminder = item.kind else { continue }
+            if item.isCompleted { completed.append(item) } else { open.append(item) }
         }
         for a in apple.reminders {
             let (reminder, source) = appleReminderValue(a, calendar: calendar)
@@ -143,8 +133,7 @@ public struct WeeklyReview: Equatable {
             weekStart: start,
             range: week,
             completed: completed.sorted(by: byOccurrence),
-            open: open.sorted(by: byOccurrence),
-            attendedEventCount: attended
+            open: open.sorted(by: byOccurrence)
         )
     }
 }

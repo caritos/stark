@@ -13,7 +13,6 @@ import StarkKit
 /// detail sheet as an agenda row (`onOpenItem`); tapping the weekday returns to the DayTicker on
 /// this day (`onSelectDate`). Chevrons and horizontal swipes step one day.
 struct FullDayView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(PlanCache.self) private var planCache
     /// Start of the day shown.
@@ -83,7 +82,6 @@ struct FullDayView: View {
         )
         .task(id: day) {
             let range = Self.range(for: day)
-            store.loadMonths(covering: range)
             await overlay.reload(for: .fullDay, display: range, today: today)
         }
         .onDisappear {
@@ -129,8 +127,8 @@ struct FullDayView: View {
     }
 
     private var layoutInputs: LayoutInputs {
-        LayoutInputs(day: day, today: today, events: store.events, reminders: store.reminders,
-                     plans: PlannerPlans.all(local: store.plans, apple: planCache.applePlans),
+        LayoutInputs(day: day, today: today, events: [], reminders: [],
+                     plans: planCache.applePlans,
                      apple: overlay.snapshot)
     }
 

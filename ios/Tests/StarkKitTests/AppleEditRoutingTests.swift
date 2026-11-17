@@ -33,7 +33,6 @@ struct AppleEditRoutingTests {
         let item = appleEvent(writable: true)
         let detail = AgendaItemDetail(item)
         #expect(detail == .editableApple(item, AppleItemRef(kind: .event, identifier: "EV1")))
-        #expect(detail.editable == nil)
         #expect(detail.id == item.id)
         #expect(!item.isReadOnly)
     }

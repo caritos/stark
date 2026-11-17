@@ -120,10 +120,11 @@ public func applyPlans(_ items: [AgendaItem], plans: [PlanBlock], today: Date,
 /// `snapshot` for Apple reminders outside the window). Applying plans first would let an Apple
 /// reminder planned on its own day be listed twice (the planned copy plus the merged row).
 ///
-/// - `local`: `buildAgendaItems` over `range` (Stark's own rows, no plans applied yet).
-/// - `plans`: every plan block, local and Apple (`ItemRouter.plans(on:)` output, reminderID =
-///   model id), each block once.
-/// - `reminders`: Stark's reminders, for synthesizing a planned one-off outside the window.
+/// - `local`: `buildAgendaItems` over `range`, no plans applied yet (the app passes `[]` since
+///   phase 3: Stark keeps no items of its own; engine tests still use it).
+/// - `plans`: every plan block (the app's are the sidecar's, reminderID = model id), each once.
+/// - `reminders`: local reminders, for synthesizing a planned one-off outside the window (none in
+///   the app since phase 3).
 /// - With an empty snapshot the result is exactly `applyPlans(local, ...)`.
 ///
 /// AgendaView and the density functions call this instead of composing the two themselves.

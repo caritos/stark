@@ -3,15 +3,13 @@ import SwiftUI
 import StarkKit
 
 /// A Keyboard toggle (iPhone only), the Weekly Review (moved here from the floating buttons,
-/// issue #111) plus About. Storage is just the local Documents directory;
-/// there is no iCloud toggle or file picker, unlike the deprecated Expo app's Settings screen.
+/// issue #111) plus About. Items live in Apple Calendar and Reminders (the Apple section);
+/// there is no storage setting, iCloud toggle or file picker.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var showFAQ = false
     @State private var showReview = false
-    @State private var showImport = false
-    @Environment(ImportModel.self) private var importModel
     @AppStorage(SigilKeyboardSetting.key) private var sigilKeyboardBar = SigilKeyboardSetting.defaultValue
 
     // Read from the bundle, not hardcoded, so these can never drift from the actual build
@@ -51,33 +49,6 @@ struct SettingsView: View {
                     Text("Apple")
                 }
                 .listRowBackground(Colors.card)
-
-                // Until the import has finished, and while items Apple can't hold remain
-                // (`ImportModel.showsSettingsRow`). A Button plus `navigationDestination` rather
-                // than a NavigationLink: the row may vanish while the import screen is open, which
-                // would pop a NavigationLink's destination.
-                if importModel.showsSettingsRow {
-                    Section {
-                        Button {
-                            showImport = true
-                        } label: {
-                            HStack {
-                                Text("Import Stark's own items").foregroundStyle(Colors.text)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(Colors.textSecondary)
-                            }
-                        }
-                    } header: {
-                        Text("Stark's own items")
-                    } footer: {
-                        Text("Moves the items Stark kept in its own files into Apple Calendar and Reminders.")
-                            .font(.footnote)
-                            .foregroundStyle(Colors.textSecondary)
-                    }
-                    .listRowBackground(Colors.card)
-                }
 
                 Section {
                     Button("Weekly Review") { showReview = true }
@@ -131,7 +102,6 @@ struct SettingsView: View {
             .toolbar {
                 SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
             }
-            .navigationDestination(isPresented: $showImport) { ImportStarkItemsView() }
             .sheet(isPresented: $showFAQ) { FAQView() }
             .sheet(isPresented: $showReview) { WeeklyReviewView() }
         }

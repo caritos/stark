@@ -89,26 +89,26 @@ struct PlannerAppleWriteTests {
 
     // MARK: The planner's plan inputs (each block once)
 
-    @Test("the model gets local plans and Apple plans once each; a draft replaces the viewed day's")
+    @Test("the planner's plans are the sidecar's only, each once; a draft replaces the viewed day's")
     func plannerPlanInputs() {
         let day = at(11, 4)
-        let localToday = PlanBlock(id: "L1", reminderID: "local", occurrence: day, start: at(11, 4, 9), minutes: 30)
-        let localOther = PlanBlock(id: "L2", reminderID: "local2", occurrence: day, start: at(11, 5, 9), minutes: 30)
         let appleToday = PlanBlock(id: "A1", reminderID: "apple-x", occurrence: day, start: at(11, 4, 11), minutes: 30)
         let appleOther = PlanBlock(id: "A2", reminderID: "apple-y", occurrence: day, start: at(11, 6, 11), minutes: 30)
-        let local = [localToday, localOther], apple = [appleToday, appleOther]
+        let apple = [appleToday, appleOther]
 
-        let saved = PlannerPlans.forModel(day: day, local: local, apple: apple, draftBlocks: nil, calendar: cal)
-        #expect(saved.plans == local)
+        // Saved: no draft blocks, the sidecar's blocks once.
+        let saved = PlannerPlans.forModel(day: day, apple: apple, draftBlocks: nil, calendar: cal)
+        #expect(saved.plans.isEmpty)
         #expect(saved.sidecarPlans == apple)
 
+        // A draft replaces every saved block starting on the viewed day.
         let edited = PlanBlock(id: "N1", reminderID: "apple-z", occurrence: day, start: at(11, 4, 14), minutes: 30)
-        let drafted = PlannerPlans.forModel(day: day, local: local, apple: apple, draftBlocks: [edited], calendar: cal)
-        #expect(drafted.plans == [localOther, edited])
+        let drafted = PlannerPlans.forModel(day: day, apple: apple, draftBlocks: [edited], calendar: cal)
+        #expect(drafted.plans == [edited])
         #expect(drafted.sidecarPlans == [appleOther])
 
-        #expect(PlannerPlans.saved(on: day, local: local, apple: apple, calendar: cal) == [localToday, appleToday])
-        #expect(PlannerPlans.all(local: local, apple: apple) == local + apple)
+        // The draft's saved blocks are the viewed day's sidecar blocks, nothing else.
+        #expect(PlannerPlans.saved(on: day, apple: apple, calendar: cal) == [appleToday])
     }
 
     // MARK: Densities count Apple plans

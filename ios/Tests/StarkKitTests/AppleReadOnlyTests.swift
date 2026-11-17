@@ -33,13 +33,14 @@ struct AppleReadOnlyTests {
         let item = AgendaItem(kind: .event(Event(id: "apple-EV1", title: "Standup", start: when)), occurrence: when,
                               displayDate: when, isOverdue: false, appleSource: locked)
         #expect(AgendaItemDetail(item) == .readOnly(item))
-        #expect(AgendaItemDetail(item).editable == nil)
     }
 
-    @Test func starkItemRoutesToEditSheet() {
+    /// Phase 3: Stark keeps no items of its own, so a row without an Apple source (which no
+    /// screen produces any more) has nothing to edit and opens the read-only detail.
+    @Test("a row without appleSource opens read-only")
+    func rowWithoutAppleSourceOpensReadOnly() {
         let item = starkEvent()
-        #expect(AgendaItemDetail(item) == .edit(item))
-        #expect(AgendaItemDetail(item).editable == item)
+        #expect(AgendaItemDetail(item) == .readOnly(item))
     }
 
     @Test func detailIdIsTheItemId() {

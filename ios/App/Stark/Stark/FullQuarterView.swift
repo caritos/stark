@@ -19,7 +19,6 @@ import StarkKit
 /// scrolled there. Chevrons and horizontal swipes page ONE month (the next 13 weeks), like
 /// Fantastical.
 struct FullQuarterView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
     /// Apple reminders' plan blocks (sidecar), applied like the agenda does.
     @Environment(PlanCache.self) private var planCache
@@ -85,11 +84,9 @@ struct FullQuarterView: View {
                     changeMonth(by: dx < 0 ? 1 : -1)
                 }
         )
-        // Every month the visible grid touches must be in the store, and the Apple overlay must
-        // fetch the grid's range, or its days would silently show empty.
+        // The Apple overlay must fetch the grid's range, or its days would silently show empty.
         .task(id: visibleMonth) {
             let range = QuarterGrid.range(for: visibleMonth)
-            store.loadMonths(covering: range)
             await overlay.reload(for: .fullQuarter, display: range, today: today)
         }
         // Stop widening the overlay's fetch to this grid once Quarter is gone.
@@ -140,8 +137,8 @@ struct FullQuarterView: View {
 
     private var layoutInputs: LayoutInputs {
         LayoutInputs(month: visibleMonth, today: today,
-                     events: store.events, reminders: store.reminders,
-                     plans: PlannerPlans.all(local: store.plans, apple: planCache.applePlans),
+                     events: [], reminders: [],
+                     plans: planCache.applePlans,
                      apple: overlay.snapshot)
     }
 

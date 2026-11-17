@@ -7,7 +7,6 @@ import StarkKit
 /// preselected). Without access or a writable destination Save is off and a message points to
 /// Settings. A failed save shows the router's message and keeps the sheet open.
 struct AddItemView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.itemRouter) private var router
     @Environment(DefaultDestinationModel.self) private var destinations
@@ -125,11 +124,6 @@ struct AddItemView: View {
             .onChange(of: recurrence) { _, newValue in
                 // Repeat = Never resets the end.
                 if newValue == nil { repeatEnd = .never }
-            }
-            .task {
-                // Full-history corpus for tag suggestions (`+`/`@`/`%`/`~`); non-blocking --
-                // suggestions simply improve as more months finish loading, same as Search.
-                await store.loadAllMonths()
             }
             .sigilKeyboardBar(isVisible: focusedField == .title || focusedField == .notes,
                               onTap: insertSigil)

@@ -149,15 +149,13 @@ struct WeeklyReviewTests {
         #expect(s.open.filter { $0.occurrence < dt("2026-09-27") && $0.occurrence >= dt("2026-09-20", hour: 0) }.count == s.open.count)
     }
 
-    @Test("events attended counts attended occurrences in the week only")
-    func attended() {
+    @Test("events add nothing to the review: no attended count (phase 3, spec decision 3)")
+    func eventsAddNothing() {
         let attended = Event(id: "e1", title: "Gym", start: dt("2026-09-22", hour: 18), outcomes: [EventOutcomeRecord(date: dt("2026-09-22", hour: 18), outcome: .attended)])
-        let skipped = Event(id: "e2", title: "Skipped", start: dt("2026-09-23", hour: 18), outcomes: [EventOutcomeRecord(date: dt("2026-09-23", hour: 18), outcome: .skipped)])
         let plain = Event(id: "e3", title: "Plain", start: dt("2026-09-24", hour: 18))
-        let other = Event(id: "e4", title: "Other week", start: dt("2026-10-01", hour: 18), outcomes: [EventOutcomeRecord(date: dt("2026-10-01", hour: 18), outcome: .attended)])
-        let s = summary(events: [attended, skipped, plain, other], week: "2026-09-20", now: "2026-10-05")
-        #expect(s.attendedEventCount == 1)
+        let s = summary(events: [attended, plain], week: "2026-09-20", now: "2026-10-05")
         #expect(s.completed.isEmpty && s.open.isEmpty)
+        #expect(!s.shareText().contains("attended"))
     }
 
     @Test("a week straddling a month boundary includes both months")
@@ -189,7 +187,6 @@ struct WeeklyReviewTests {
         let open = Reminder(id: "o", title: "O", dueDate: dt("2026-09-22"))
         let s = summary(reminders: [done, open], week: "2026-09-20", now: "2026-09-27")
         #expect(s.countsLabel == "1 done · 1 open")
-        #expect(s.attendedLabel == "Events attended: 0")
     }
 
     // MARK: - Shareable text (issue #111)
@@ -202,7 +199,6 @@ struct WeeklyReviewTests {
         #expect(s.shareText() == """
         Weekly Review: 2026-09-20 to 2026-09-26
         1 done · 1 open
-        Events attended: 0
 
         Completed
         - 2026-09-21 Pay rent

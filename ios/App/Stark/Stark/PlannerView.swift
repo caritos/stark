@@ -24,13 +24,13 @@ import StarkKit
 ///
 /// Every change goes into a `PlanDraft` (StarkKit), which owns the rules (15 minute snapping,
 /// no overlap between blocks, nothing crossing midnight); nothing is written until the check
-/// button calls `ItemRouter.replacePlans(on:with:)` (Apple reminders' blocks to Stark's sidecar,
-/// Stark's own to the local store). The view only converts positions to times.
+/// button calls `ItemRouter.replacePlans(on:with:)` (Apple reminders' blocks to Stark's sidecar).
+/// The view only converts positions to times.
 ///
-/// Apple items (phase 1, spec Decision 2): the overlay's snapshot supplies Apple events and
-/// reminders (`DayPlanModel.make(apple:)`), `PlanCache` the Apple blocks (read synchronously,
-/// passed once through `PlannerPlans`), and while the planner is open it registers the viewed
-/// day's range with the shared Apple fetch window (`.planner`). Done on a block completes
+/// Data (phase 3: Apple only): the overlay's snapshot supplies the events and reminders
+/// (`DayPlanModel.make(apple:)`), `PlanCache` the sidecar's blocks (read synchronously, passed
+/// once through `PlannerPlans`), and while the planner is open it registers the viewed day's
+/// range with the shared Apple fetch window (`.planner`). Done on a block completes
 /// through the router with the block's occurrence.
 ///
 /// Gestures: a tray chip is dragged with system drag and drop (`.draggable` onto the
@@ -54,7 +54,6 @@ struct PlannerView: View {
         _day = State(initialValue: Calendar(identifier: .gregorian).startOfDay(for: day))
     }
 
-    @EnvironmentObject var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.itemRouter) private var router
     @Environment(AppleOverlayModel.self) var overlay
@@ -62,7 +61,7 @@ struct PlannerView: View {
     @Environment(ErrorCenter.self) var errors
 
     @State var draft: PlanDraft?
-    /// The model is rebuilt only when the draft or the store changes, never per drag frame.
+    /// The model is rebuilt only when the draft or the Apple data changes, never per drag frame.
     @State var model: DayPlanModel?
     @State private var confirmDiscard = false
     /// How many days the discard dialog is about to throw away (set when ✕ opens it).
@@ -206,8 +205,6 @@ struct PlannerView: View {
         }
         .onChange(of: today) { _, _ in todayChanged() }
         .onChange(of: draft?.blocks) { _, _ in rebuildModel() }
-        .onChange(of: store.reminders) { _, _ in rebuildModel() }
-        .onChange(of: store.events) { _, _ in rebuildModel() }
         .onChange(of: overlay.snapshot) { _, _ in appleDataChanged() }
         .onChange(of: planCache.applePlans) { _, _ in appleDataChanged() }
         .onChange(of: liftGestureActive) { _, active in
@@ -224,12 +221,12 @@ struct PlannerView: View {
     // MARK: Model
 
     /// `blocks == nil` uses the saved plans; otherwise the draft's blocks replace this day's.
-    /// Stark's own blocks come from the store, Apple reminders' from `PlanCache`, each once.
+    /// Every block is the sidecar's (`PlanCache`), passed once.
     private func makeModel(blocks: [PlanBlock]?) -> DayPlanModel {
-        let inputs = PlannerPlans.forModel(day: day, local: store.plans, apple: planCache.applePlans,
+        let inputs = PlannerPlans.forModel(day: day, apple: planCache.applePlans,
                                            draftBlocks: blocks, calendar: Self.calendar)
-        let saved = PlannerPlans.all(local: store.plans, apple: planCache.applePlans)
-        return DayPlanModel.make(day: day, events: store.events, reminders: store.reminders,
+        let saved = planCache.applePlans
+        return DayPlanModel.make(day: day, events: [], reminders: [],
                                  plans: inputs.plans, today: today,
                                  plannedElsewhere: session.plannedElsewhere(of: day, saved: saved, today: today),
                                  apple: overlay.snapshot, sidecarPlans: inputs.sidecarPlans)
@@ -244,11 +241,11 @@ struct PlannerView: View {
         model = new
     }
 
-    /// A fresh draft from the saved plans (both stores) for the viewed, editable day.
+    /// A fresh draft from the sidecar's saved plans for the viewed, editable day.
     private func freshDraft() {
         let saved = makeModel(blocks: nil)
-        draft = PlanDraft(model: saved, saved: PlannerPlans.saved(on: day, local: store.plans(on: day),
-                                                                   apple: planCache.applePlans, calendar: Self.calendar))
+        draft = PlanDraft(model: saved, saved: PlannerPlans.saved(on: day, apple: planCache.applePlans,
+                                                                   calendar: Self.calendar))
         setModel(saved)
     }
 
@@ -279,11 +276,10 @@ struct PlannerView: View {
     /// blocks; `PlanCacheState.allowsPlanEdits`).
     private var isLocked: Bool { isSaving || !planCache.state.allowsPlanEdits }
 
-    /// Loads the months `day` needs (its week widened by the overdue lookback), then builds the
-    /// draft: the one kept from an earlier visit in this session, or a fresh one from the saved
-    /// plans. A past day has no draft or model; it draws from `DayHistory`.
+    /// Builds the draft: the one kept from an earlier visit in this session, or a fresh one from
+    /// the saved plans. A past day has no draft or model; it draws from `DayHistory`. (The Apple
+    /// fetch for the day is `.task(id: day)`'s.)
     private func loadDay() {
-        store.loadMonths(covering: PlannerDays.loadRange(for: day, calendar: Self.calendar))
         guard isEditable else {
             draft = nil
             model = nil
@@ -308,8 +304,6 @@ struct PlannerView: View {
         draft = nil
         model = nil
         let next = PlannerDays.step(day, by: days, calendar: Self.calendar)
-        // Load first, so a day in an unloaded month never draws empty for a frame.
-        store.loadMonths(covering: PlannerDays.loadRange(for: next, calendar: Self.calendar))
         day = next
     }
 
@@ -380,10 +374,10 @@ struct PlannerView: View {
 
     /// A past day: the `DayHistory` numbers above the read-only timeline. No tray, no gestures.
     private var pastDay: some View {
-        let history = DayHistory.make(day: day, events: store.events, reminders: store.reminders,
-                                      plans: store.plans, today: today,
+        let history = DayHistory.make(day: day, events: [], reminders: [],
+                                      plans: [], today: today,
                                       apple: overlay.snapshot, sidecarPlans: planCache.applePlans)
-        let week = DayHistory.weekStats(containing: day, reminders: store.reminders, plans: store.plans, today: today,
+        let week = DayHistory.weekStats(containing: day, reminders: [], plans: [], today: today,
                                         apple: overlay.snapshot, sidecarPlans: planCache.applePlans)
         return VStack(spacing: 0) {
             PastDayHeader(history: history, weekStats: week)
@@ -430,9 +424,8 @@ struct PlannerView: View {
         return formatter
     }()
 
-    /// A block's task title: Stark's own reminder, else the Apple reminder (`apple-<identifier>`).
+    /// A block's task title: the Apple reminder (`apple-<identifier>`) in the snapshot, else "Task".
     func title(ofReminder id: String) -> String {
-        if let title = store.reminders.first(where: { $0.id == id })?.title { return title }
         if case .apple(let ref) = ItemOrigin(id: id, kind: .reminder),
            let title = overlay.snapshot.reminders.first(where: { $0.id == ref.identifier })?.title {
             return title
@@ -462,7 +455,7 @@ struct PlannerView: View {
     }
 
     /// ✓: writes every changed, still-editable day (never a past day) through the router (Apple
-    /// reminders' blocks to the sidecar, Stark's own to the store). If every write succeeds the
+    /// reminders' blocks to the sidecar). If every write succeeds the
     /// planner closes; otherwise it stays open with all drafts kept and a banner naming the
     /// failed days (and the last reason), and a retry rewrites the same blocks (a replace).
     /// While it writes, the timeline and tray take no touches; should an edit still land in that

@@ -10,7 +10,6 @@ import StarkKit
 
 @main
 struct StarkApp: App {
-    @StateObject private var store: PlannerStore
     @StateObject private var pending: PendingCompletions
     /// The Apple Calendar / Reminders overlay, always on. Access is only ever requested from the
     /// main screen's `AccessRequiredView`, after it explained why, never at launch.
@@ -23,9 +22,6 @@ struct StarkApp: App {
     @State private var notices = NoticeCenter()
     /// The main screen's error banner (Apple write, plan-read and pending-commit failures).
     @State private var errors: ErrorCenter
-    /// Settings > "Import Stark's own items" (phase 2): its state, the launch hiding of imported
-    /// items and the "not imported" mark (`ImportModel.refreshStatus`, run after the store starts).
-    @State private var importModel: ImportModel
     /// The one EventKit repository, sidecar and router (Apple write path). Every view write goes
     /// through the router.
     private let repository: AppleItemRepository
@@ -33,8 +29,6 @@ struct StarkApp: App {
     private let router: ItemRouter
 
     init() {
-        let store = Self.makeStore()
-        _store = StateObject(wrappedValue: store)
         let errors = ErrorCenter()
         _errors = State(initialValue: errors)
         // One EKEventStore for the whole app: the provider creates it lazily and the repository
@@ -63,26 +57,6 @@ struct StarkApp: App {
             await planCache?.refresh()
         }
         self.router = router
-        _importModel = State(initialValue: ImportModel(
-            store: store, sidecar: sidecar, repository: repository, destinations: destinations,
-            appleItems: { [weak overlay] in
-                // Search's window of Apple items, for the informational "look already in Apple"
-                // count; released again right after, as Search does on close.
-                guard let overlay else { return [] }
-                let now = Date()
-                let range = SearchWindow.range(around: now)
-                await overlay.reload(for: .search, display: range, today: now)
-                let items = mergeAppleItems([], snapshot: overlay.snapshot, in: range, today: now)
-                await overlay.reload(for: .search, display: nil, today: now)
-                return items
-            },
-            calendar: .autoupdatingCurrent,
-            // The import writes through the repository, not the router, so `onDidWrite` never
-            // fires for it: reload the same things after a run that created something.
-            afterRun: { [weak overlay, weak planCache] in
-                await overlay?.refreshAfterWrite()
-                await planCache?.refresh()
-            }))
         // Through the router to EventKit with the OCCURRENCE's own date (the repository ignores a
         // repeating reminder already past that day, so a double tap never completes the next
         // one); a non-Apple id is refused (`.notApple`). The row stays pending until the write and
@@ -99,14 +73,12 @@ struct StarkApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(store)
                 .environmentObject(pending)
                 .environment(overlay)
                 .environment(destinations)
                 .environment(planCache)
                 .environment(notices)
                 .environment(errors)
-                .environment(importModel)
                 .environment(\.itemRouter, router)
                 #if targetEnvironment(macCatalyst)
                 .frame(minWidth: 480, minHeight: 520)
@@ -125,16 +97,6 @@ struct StarkApp: App {
             .appendingPathComponent("Stark", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory.appendingPathComponent("sidecar.json")
-    }
-
-    private static func makeStore() -> PlannerStore {
-        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let file = PlannerFile(
-            directory: documents,
-            pendingDirectory: FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("PendingWrites")
-        )
-        return PlannerStore(file: file)
     }
 }
 

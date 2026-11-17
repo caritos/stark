@@ -220,9 +220,9 @@ public struct DayPlanModel {
                             calendar: calendar)
     }
 
-    /// `local` then `sidecar`, each block id once (the first wins). A caller may pass
-    /// `ItemRouter.plans(on:)`, which already holds local AND Apple blocks, as both lists.
-    /// Without duplicates the result is exactly `local + sidecar`.
+    /// `local` then `sidecar`, each block id once (the first wins), so a block passed in both lists
+    /// counts once. The app passes the draft's blocks as `local` and the sidecar's other blocks
+    /// as `sidecar` (`PlannerPlans.forModel`). Without duplicates the result is `local + sidecar`.
     static func combinedPlans(_ local: [PlanBlock], _ sidecar: [PlanBlock]) -> [PlanBlock] {
         var seen = Set<String>()
         return (local + sidecar).filter { seen.insert($0.id).inserted }

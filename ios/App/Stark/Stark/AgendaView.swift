@@ -9,7 +9,8 @@ struct ScrollRequest: Equatable {
     let token = UUID()
 }
 
-/// Day-grouped agenda. Items come from `buildAgendaItems` and are grouped by `groupAgendaByDay`,
+/// Day-grouped agenda. Items are the Apple snapshot's rows with the sidecar's plans
+/// (`agendaWithApple`), grouped by `groupAgendaByDay`,
 /// which gives **every calendar day** of the display window a section (header) whether or not it
 /// has items, so the month grid can scroll to any tapped day. An empty day shows just its header;
 /// an empty today also keeps a "No Events" row.
@@ -20,7 +21,6 @@ struct ScrollRequest: Equatable {
 /// today, today's section is not in the range and overdue-pinned reminders (whose `displayDate`
 /// is today) are simply not shown until the window returns to today. That is expected.
 struct AgendaView: View {
-    @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(PlanCache.self) private var planCache
@@ -309,21 +309,13 @@ struct AgendaView: View {
 
     private func makeSections(now: Date) -> [AgendaDay] {
         let range = AgendaWindow.range(around: anchor)
-        let items = buildAgendaItems(
-            events: store.events,
-            reminders: store.reminders,
-            in: range,
-            // The real today, not the anchor: overdue logic must not move with the window.
-            today: now
-        )
-        // Apple rows are merged BEFORE plans are applied (`agendaWithApple`). Plans: Stark's own
-        // (the store) plus Apple reminders' (sidecar, `PlanCache`), each block once. With an empty
-        // snapshot and no Apple plans this is exactly the old `applyPlans(items, store.plans, ...)`.
-        let merged = agendaWithApple(local: items, snapshot: overlay.snapshot,
-                                     plans: store.plans + planCache.applePlans, range: range, today: now,
-                                     reminders: store.reminders, calendar: Self.calendar)
-        // Last in the pipeline, so planned copies and merged rows carry the mark too.
-        return groupAgendaByDay(merged.marked(notImported: store.notImportedIDs), in: range, calendar: Self.calendar)
+        // Apple rows only (Stark keeps no items of its own), merged BEFORE the sidecar's plans
+        // are applied (`agendaWithApple`). `now` is the real today, not the anchor: overdue logic
+        // must not move with the window.
+        let merged = agendaWithApple(local: [], snapshot: overlay.snapshot,
+                                     plans: planCache.applePlans, range: range, today: now,
+                                     calendar: Self.calendar)
+        return groupAgendaByDay(merged, in: range, calendar: Self.calendar)
     }
 
     private func makeRows(_ sections: [AgendaDay], todayStart: Date) -> [ListRow] {

@@ -14,13 +14,11 @@ import StarkKit
 /// the grid and the agenda; the agenda stays in the hierarchy underneath, hidden, so it keeps its
 /// scroll position and pending completions and can scroll to a day picked in the year.
 struct ContentView: View {
-    @EnvironmentObject private var store: PlannerStore
     @EnvironmentObject private var pending: PendingCompletions
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(DefaultDestinationModel.self) private var destinations
     @Environment(NoticeCenter.self) private var notices
     @Environment(ErrorCenter.self) private var errors
-    @Environment(ImportModel.self) private var importModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var showSearch = false
@@ -113,8 +111,7 @@ struct ContentView: View {
                 }
             }
             // Without full access Stark cannot show or keep Apple items: say why and ask (or point
-            // to iOS Settings) instead of showing an empty calendar. Stark's own local items stay
-            // visible below.
+            // to iOS Settings). Nothing else can show without it (Stark keeps no items of its own).
             if overlay.access != .granted {
                 AccessRequiredView()
             } else if let problem = destinations.error {
@@ -228,17 +225,11 @@ struct ContentView: View {
         .sheet(isPresented: $showSearch) { SearchView() }
         .sheet(isPresented: $showCalendars) { CalendarsSheet() }
         .sheet(isPresented: $showSettings) {
-            SettingsView().interactiveDismissDisabled(importModel.isRunning)
+            SettingsView()
         }
         .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item, today: today) }
         .fullScreenCover(item: $planRequest) { request in PlannerView(day: request.day, today: today) }
         .task {
-            // Load the wider window (includes the overdue lookback), not the display window.
-            let range = AgendaWindow.loadRange(around: Date())
-            store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
-            // Hide items already imported into Apple and mark the ones that can't be, before the
-            // first Apple fetch (so an imported item never shows twice for long).
-            await importModel.refreshStatus()
             // Empty (and no EventKit call) until access was granted from `AccessRequiredView`.
             await overlay.reload(for: .agenda, display: AgendaWindow.range(around: agendaAnchor), today: today)
             await destinations.refresh()
@@ -249,7 +240,6 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                store.retryPendingWrites()
                 Task { await overlay.refresh(today: today) }
                 followCalendarDay()
             } else {
@@ -280,8 +270,8 @@ struct ContentView: View {
     /// The calendar may have moved on (app foregrounded, midnight passed, clock or timezone
     /// changed). On a new day, `today` always advances; the window only follows if it was still
     /// centred on the old today (`AgendaWindow.refreshedAnchor` decides) — a window the user
-    /// deliberately re-centred elsewhere is left alone. Following loads the months the new window
-    /// needs *before* switching to it, then selects and scrolls to the new today.
+    /// deliberately re-centred elsewhere is left alone. Following waits for the Apple fetch of the
+    /// new window (`moveAgendaWindow`), then selects and scrolls to the new today.
     private func followCalendarDay() {
         let now = Date()
         guard !Calendar(identifier: .gregorian).isDate(now, inSameDayAs: today) else { return }
@@ -289,7 +279,6 @@ struct ContentView: View {
         let wasFollowing = newAnchor != agendaAnchor
         today = now
         guard wasFollowing else { return }
-        store.loadMonths(covering: AgendaWindow.loadRange(around: newAnchor))
         moveAgendaWindow(to: newAnchor) {
             agendaAnchor = newAnchor
             selectedDate = newAnchor
@@ -298,8 +287,7 @@ struct ContentView: View {
     }
 
     /// Re-centres the agenda window on `anchor` once the Apple overlay has fetched the new display
-    /// range (the store's months must already be loaded), so the window never shows a range
-    /// before its Apple items are in. `move` sets the anchor and the scroll request together.
+    /// range, so the window never shows a range before its Apple items are in. `move` sets the anchor and the scroll request together.
     /// With the overlay off or not granted the snapshot cannot change, so `move` runs at once,
     /// exactly as before the overlay; the new range is still recorded for a later reload.
     private func moveAgendaWindow(to anchor: Date, move: @escaping () -> Void) {
@@ -331,8 +319,8 @@ struct ContentView: View {
 
     /// A day was tapped in the month grid: scroll the agenda to that day's header. A day outside
     /// the agenda's current display window has no section yet, so first re-centre the window on
-    /// it, loading the months the new window covers *before* switching, or items in months not
-    /// yet read would silently vanish. A day already inside the window never re-centres.
+    /// it, after the Apple fetch of the new window (`moveAgendaWindow`). A day already inside the
+    /// window never re-centres.
     ///
     /// The re-centre and the scroll request are set in the same transaction, so `AgendaView`
     /// sees the new window and the request together and its (deferred) scroll targets a header
@@ -348,7 +336,6 @@ struct ContentView: View {
         let lastDay = calendar.startOfDay(for: window.upperBound)
         selectedDate = date
         if tapped < firstDay || tapped > lastDay {
-            store.loadMonths(covering: AgendaWindow.range(around: date))
             moveAgendaWindow(to: date) {
                 agendaAnchor = date
                 scrollRequest = ScrollRequest(date: date)

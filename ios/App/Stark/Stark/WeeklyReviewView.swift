@@ -3,14 +3,12 @@ import SwiftUI
 import StarkKit
 
 /// One Sunday-Saturday week: what was done and what is still open. All the bucketing lives in
-/// `WeeklyReview` (StarkKit); this view only loads the months a week needs, pages between weeks
-/// and lays the result out. Opens on last week on a Monday, the current week otherwise.
+/// `WeeklyReview` (StarkKit); this view only pages between weeks and lays the result out. Opens on last week on a Monday, the current week otherwise.
 ///
 /// Apple reminders come from the overlay's snapshot. While the review is open it registers the
 /// reviewed week with the shared Apple fetch window (`.weeklyReview`; the overlay adds the reminder
 /// lookback), so completions exist for weeks older than the agenda's window; released on close.
 struct WeeklyReviewView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(\.dismiss) private var dismiss
     @State private var weekStart: Date
@@ -23,7 +21,7 @@ struct WeeklyReviewView: View {
     }
 
     private var review: WeeklyReview {
-        WeeklyReview.summary(events: store.events, reminders: store.reminders, weekStarting: weekStart, today: today,
+        WeeklyReview.summary(events: [], reminders: [], weekStarting: weekStart, today: today,
                              apple: overlay.snapshot)
     }
 
@@ -60,19 +58,13 @@ struct WeeklyReviewView: View {
             .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item) }
         }
         .tint(Colors.accent)
-        // Load before showing: items in month files that aren't in memory silently vanish.
         .task(id: weekStart) {
-            loadWeek()
             await overlay.reload(for: .weeklyReview, display: WeeklyReview.range(forWeekStarting: weekStart),
                                  today: today)
         }
         .onDisappear {
             Task { await overlay.reload(for: .weeklyReview, display: nil, today: Date()) }
         }
-    }
-
-    private func loadWeek() {
-        store.loadMonths(covering: WeeklyReview.loadRange(forWeekStarting: weekStart, today: today))
     }
 
     private func header(_ review: WeeklyReview) -> some View {
@@ -93,9 +85,6 @@ struct WeeklyReviewView: View {
             Text(review.countsLabel)
                 .font(Fonts.mono(13))
                 .foregroundStyle(Colors.accent)
-            Text(review.attendedLabel)
-                .font(Fonts.mono(12))
-                .foregroundStyle(Colors.textSecondary)
         }
         .accessibilityElement(children: .contain)
     }

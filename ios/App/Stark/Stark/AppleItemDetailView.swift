@@ -2,9 +2,9 @@
 import SwiftUI
 import StarkKit
 
-/// What a tapped agenda / Search / Weekly Review row opens: Stark's edit sheet, the Apple editor
-/// (a row in a writable calendar or list), or the read-only Apple detail. The routing is
-/// `AgendaItemDetail` (StarkKit), so a read-only item can never be handed to `EditItemView`.
+/// What a tapped agenda / Search / Weekly Review row opens: the Apple editor (a row in a writable
+/// calendar or list) or the read-only Apple detail. The routing is `AgendaItemDetail` (StarkKit),
+/// so a read-only item can never be handed to `EditItemView`.
 struct AgendaItemDetailSheet: View {
     let item: AgendaItem
     /// The real today, for an overdue reminder's "N days overdue" suffix; nil shows none.
@@ -12,7 +12,6 @@ struct AgendaItemDetailSheet: View {
 
     var body: some View {
         switch AgendaItemDetail(item) {
-        case .edit(let editable): EditItemView(item: editable)
         case .editableApple(let row, let ref): AppleItemEditor(row: row, ref: ref, today: today)
         case .readOnly(let readOnly): AppleItemDetailView(item: readOnly, today: today)
         }
@@ -106,7 +105,7 @@ struct AppleItemEditor: View {
 
 /// Read-only detail for an Apple Calendar / Reminders overlay item: title, date and time,
 /// location, URL, notes and the calendar it comes from. It has no edit, complete, skip, plan or
-/// convert controls and never touches `PlannerStore`; the only action opens the item in Apple's
+/// convert controls and never writes; the only action opens the item in Apple's
 /// own app (`appleOpenURL`).
 struct AppleItemDetailView: View {
     @Environment(\.dismiss) private var dismiss

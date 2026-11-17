@@ -17,7 +17,6 @@ import StarkKit
 /// A cell is one button: tapping it (or its "N more…") selects that day; `ContentView` then
 /// returns to the DayTicker scrolled there. Horizontal swipes page months like the chevrons.
 struct FullMonthView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
     /// Apple reminders' plan blocks (sidecar), applied like the agenda does.
     @Environment(PlanCache.self) private var planCache
@@ -72,11 +71,9 @@ struct FullMonthView: View {
                     changeMonth(by: dx < 0 ? 1 : -1)
                 }
         )
-        // Every month the visible grid touches must be in the store, and the Apple overlay must
-        // fetch the grid's range, or its days would silently show empty.
+        // The Apple overlay must fetch the grid's range, or its days would silently show empty.
         .task(id: visibleMonth) {
             let range = MonthGrid.range(for: visibleMonth)
-            store.loadMonths(covering: range)
             await overlay.reload(for: .fullMonth, display: range, today: today)
         }
         // Stop widening the overlay's fetch to this grid once Month is gone.
@@ -131,8 +128,8 @@ struct FullMonthView: View {
 
     private var layoutInputs: LayoutInputs {
         LayoutInputs(month: visibleMonth, today: today, capacity: rowCapacity,
-                     events: store.events, reminders: store.reminders,
-                     plans: PlannerPlans.all(local: store.plans, apple: planCache.applePlans),
+                     events: [], reminders: [],
+                     plans: planCache.applePlans,
                      apple: overlay.snapshot)
     }
 

@@ -2,40 +2,37 @@
 import SwiftUI
 import StarkKit
 
-/// Edit + detail sheet for one agenda row. Editable fields (title, date, all-day, end for timed
-/// events, repeat, repeat end, notes, location and URL for events, priority for reminders) are
-/// committed only by Save; the action buttons act immediately and dismiss. Reminders show Done /
-/// Undo / Delete (no Skip: Apple Reminders can't skip one occurrence); events show Done / Skip /
-/// Undo / Remove This Occurrence / Open Link (for an http/https URL, does not dismiss) / Delete.
+/// Edit sheet for one writable Apple item, opened by `AppleItemEditor` once the stored item
+/// (`details`) is loaded. Editable fields (title, date, all-day, end for timed events, repeat,
+/// repeat end, notes, location and URL for events, priority for reminders) are committed only by
+/// Save; the action buttons act immediately and dismiss. Reminders show Done / Delete (no Skip:
+/// Apple Reminders can't skip one occurrence); events show Remove This Occurrence (a series) /
+/// Open Link (for an http/https URL, does not dismiss) / Delete.
 ///
 /// The Event / Reminder switch above the form converts the item (issue #116): the form switches
 /// to the other kind's fields at once, but nothing is stored until Save, which replaces the item
 /// (`ItemRouter.convertEvent` / `convertReminder`). While converting, the per-occurrence actions
-/// and History (which belong to the old kind) are hidden.
+/// (which belong to the old kind) are hidden.
 ///
-/// Every write goes through `ItemRouter`, which writes only Apple items (any other id is refused
-/// with `.notApple`, so the remaining `!isApple` branches only reach that refusal). Apple items (`details` set, loaded by `AppleItemEditor`) are diffed against the stored item's
-/// form baseline, so only the fields the owner changed are written (spec call 5). Apple items
-/// show no History, no reminder Skip (Apple Reminders can't skip one occurrence), and a repeat
+/// Every write goes through `ItemRouter` (Apple only). The form is diffed against the stored
+/// item's form baseline, so only the fields the owner changed are written (spec call 5); a repeat
 /// Stark can't represent is shown read-only. A failed write shows its message in the sheet's
 /// banner and the sheet stays open.
 struct EditItemView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.itemRouter) private var router
     @Environment(AppleOverlayModel.self) private var overlay
     let item: AgendaItem
-    /// The stored Apple item this sheet edits (`ItemRouter.details`), nil for Stark's own items.
-    /// Its form baseline is the `original` every Apple update diffs against (spec call 5).
-    let details: ItemDetails?
+    /// The stored Apple item this sheet edits (`ItemRouter.details`). Its form baseline is the
+    /// `original` every update diffs against (spec call 5).
+    let details: ItemDetails
 
     /// The editable fields; the logic that turns them back into an item is StarkKit's.
     @State private var form: ItemEditForm
     @State private var showDeleteConfirm = false
     /// The kind the form describes; differs from the item's own kind while converting.
     @State private var kind: ItemKind
-    @State private var showMarksConfirm = false
     /// A router failure, shown in the sheet's banner; the sheet stays open.
     @State private var errorMessage: String?
     /// A notice shown in the sheet (the main screen's strip would be hidden under it).
@@ -51,10 +48,7 @@ struct EditItemView: View {
     private enum Field { case title, location, url, notes }
     @FocusState private var focusedField: Field?
 
-    /// One stable "today" for the history stats, captured when the sheet is created.
-    private let sheetToday = Date()
-
-    init(item: AgendaItem, details: ItemDetails? = nil) {
+    init(item: AgendaItem, details: ItemDetails) {
         self.item = item
         self.details = details
         _form = State(initialValue: ItemEditForm(item: item))
@@ -64,19 +58,6 @@ struct EditItemView: View {
     var body: some View {
         NavigationStack {
             List {
-                if isNotImported {
-                    Section {
-                        VStack(alignment: .leading, spacing: Spacing.xs) {
-                            NotImportedLabel(font: .subheadline)
-                            Text("Apple can't hold this item's repeat, so it stays in Stark's own files. Settings > Import Stark's own items lists why.")
-                                .font(.footnote)
-                                .foregroundStyle(Colors.textSecondary)
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
-                    .listRowBackground(Colors.card)
-                }
-
                 Section {
                     TextField("Title", text: $form.title)
                         .focused($focusedField, equals: .title)
@@ -185,10 +166,9 @@ struct EditItemView: View {
                             Text("Changes apply to every occurrence.")
                         }
                         if movesDetailsToNotes {
-                            Text(isApple ? "The location will be added to the notes."
-                                         : "Location and URL will be added to the notes.")
+                            Text("The location will be added to the notes.")
                         }
-                        if details?.hasUnrepresentableRepeat == true {
+                        if details.hasUnrepresentableRepeat {
                             Text(ItemDetails.unconvertibleReason)
                         }
                         if let source = item.appleSource {
@@ -199,17 +179,6 @@ struct EditItemView: View {
                     .foregroundStyle(Colors.textSecondary)
                 }
                 .listRowBackground(Colors.card)
-
-                if !isConverting, let history, !history.entries.isEmpty {
-                    Section("History") {
-                        ForEach(Array(history.summaryLines().enumerated()), id: \.offset) { _, line in
-                            Text(line)
-                                .font(Fonts.mono(13))
-                                .foregroundStyle(Colors.textSecondary)
-                        }
-                    }
-                    .listRowBackground(Colors.card)
-                }
 
                 Section {
                     if !isConverting, let actions = eventActions {
@@ -247,12 +216,7 @@ struct EditItemView: View {
             .onChange(of: kind) { _, newKind in
                 // An undated Apple reminder converted to an event needs a real start: today,
                 // all day (never the sentinel date).
-                if newKind == .event && isApple && form.showsNoDate { form.addDueDate(on: Date()) }
-            }
-            .task {
-                // Full-history corpus for tag suggestions (`+`/`@`/`%`/`~`); non-blocking --
-                // suggestions simply improve as more months finish loading, same as Search.
-                await store.loadAllMonths()
+                if newKind == .event && form.showsNoDate { form.addDueDate(on: Date()) }
             }
             .sigilKeyboardBar(isVisible: focusedField != nil && focusedField != .url,
                               onTap: insertSigil)
@@ -266,18 +230,12 @@ struct EditItemView: View {
                         SheetErrorBanner(text: noticeMessage, isNotice: true) { self.noticeMessage = nil }
                     }
                     if canConvert {
-                        KindSwitch(kind: kindSelection)
+                        KindSwitch(kind: $kind)
                             .padding(.horizontal, Spacing.md)
                             .padding(.vertical, Spacing.sm)
                             .background(Colors.background)
                     }
                 }
-            }
-            .alert("Convert to Reminder?", isPresented: $showMarksConfirm) {
-                Button("Convert", role: .destructive) { kind = .reminder }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text(marksMessage)
             }
             .alert("Change the repeat?", isPresented: $showRuleChangeConfirm) {
                 Button("Change", role: .destructive) { save(confirmRuleChange: true) }
@@ -317,38 +275,14 @@ struct EditItemView: View {
 
     // MARK: Derived state
 
-    private var isApple: Bool { details != nil }
+    /// A reminder with no due date that the owner has not given one: "No date" instead of the
+    /// sentinel date.
+    private var showsNoDate: Bool { !isEvent && form.showsNoDate }
 
-    /// An Apple reminder with no due date that the owner has not given one: "No date" instead of
-    /// the sentinel date. Stark's own undated reminders keep the old picker (local unchanged).
-    private var showsNoDate: Bool { isApple && !isEvent && form.showsNoDate }
-
-    private var hasUnrepresentableRepeat: Bool { details?.hasUnrepresentableRepeat == true }
-
-    /// Completion / attendance history for this item (recomputed from the store each render).
-    /// None for Apple items: Apple keeps their completions, Stark does not (spec decision 1).
-    private var history: CompletionHistory? {
-        guard !isApple else { return nil }
-        switch item.kind {
-        case .reminder(let reminder):
-            return CompletionHistory.forReminder(reminder, among: store.reminders, today: sheetToday)
-        case .event(let event):
-            return CompletionHistory.forEvent(event, today: sheetToday)
-        }
-    }
+    private var hasUnrepresentableRepeat: Bool { details.hasUnrepresentableRepeat }
 
     /// The form's kind (the converted one while converting), which decides the fields shown.
     private var isEvent: Bool { kind == .event }
-
-    /// Stark's own item that the import could not move to Apple (rows from Weekly Review are not
-    /// marked, so the store's set is checked too).
-    private var isNotImported: Bool {
-        if item.isNotImported { return true }
-        switch item.kind {
-        case .event(let event): return store.notImportedIDs.contains(event.id)
-        case .reminder(let reminder): return store.notImportedIDs.contains(reminder.id)
-        }
-    }
 
     /// The item's own kind, before any conversion.
     private var originalKind: ItemKind {
@@ -358,50 +292,15 @@ struct EditItemView: View {
 
     private var isConverting: Bool { kind != originalKind }
 
-    /// An event, or an open reminder: a completed one (or a series' completed copy) is history.
-    /// An Apple item also not when its repeat can't be represented (`ItemDetails.canConvert`).
-    private var canConvert: Bool {
-        if let details { return details.canConvert }
-        switch item.kind {
-        case .event: return true
-        case .reminder(let reminder): return ItemConversion.isConvertible(reminder)
-        }
-    }
+    /// An event, or an open reminder, unless its repeat can't be represented
+    /// (`ItemDetails.canConvert`).
+    private var canConvert: Bool { details.canConvert }
 
-    /// Attended/skipped marks an event would lose by becoming a reminder. An Apple event's marks
-    /// live in the sidecar and move to the new reminder with it, so none are lost.
-    private var droppedMarks: Int {
-        guard !isApple else { return 0 }
-        if case .event(let event) = item.kind { return ItemConversion.droppedMarks(converting: event) }
-        return 0
-    }
-
-    private var marksMessage: String {
-        let marks = droppedMarks == 1 ? "1 attended/skipped mark" : "\(droppedMarks) attended/skipped marks"
-        return "This event has \(marks). A reminder can't keep them, so they will be removed when you save."
-    }
-
-    /// Event -> reminder with a location or URL typed: those move into the notes on save. An
-    /// Apple reminder keeps the URL as its own URL, so only the location moves.
+    /// Event -> reminder with a location typed: it moves into the notes on save. The reminder
+    /// keeps the URL as its own URL, so only the location moves. (An event's attended/skipped
+    /// marks live in the sidecar and move with it, so none are lost.)
     private var movesDetailsToNotes: Bool {
-        isConverting && originalKind == .event
-            && (FormFields.trimmedOrNil(form.location) != nil
-                || (!isApple && FormFields.trimmedOrNil(form.url) != nil))
-    }
-
-    /// The switch's binding: choosing Reminder for an event with marks asks first (on the tap,
-    /// so the user learns before editing anything else); cancelling leaves it an event.
-    private var kindSelection: Binding<ItemKind> {
-        Binding(
-            get: { kind },
-            set: { newKind in
-                if newKind == .reminder && kind == .event && originalKind == .event && droppedMarks > 0 {
-                    showMarksConfirm = true
-                } else {
-                    kind = newKind
-                }
-            }
-        )
+        isConverting && originalKind == .event && FormFields.trimmedOrNil(form.location) != nil
     }
 
     private var dateLabel: String { isEvent ? "Starts" : "Due" }
@@ -468,8 +367,8 @@ struct EditItemView: View {
     }
 
     private func save(confirmRuleChange: Bool = false, confirmAttendees: Bool = false) {
-        // Apple items diff against what an untouched form would write (spec call 5).
-        let original = details?.formBaseline()
+        // Diffed against what an untouched form would write (spec call 5).
+        let original = details.formBaseline()
         let form = form
         switch (item.kind, kind) {
         case (.event(let event), .event):
@@ -478,37 +377,28 @@ struct EditItemView: View {
         case (.reminder(let reminder), .reminder):
             // The sheet has no reminder URL field: pass the stored one so it is kept.
             let edited = form.edited(reminder)
-            perform { try await $0.update(reminder: edited, url: details?.reminderURL, original: original) }
+            perform { try await $0.update(reminder: edited, url: details.reminderURL, original: original) }
         case (.event(let event), .reminder):
-            if details?.convertAsksFirst == true && !confirmAttendees {
+            if details.convertAsksFirst && !confirmAttendees {
                 showAttendeesConvertConfirm = true
                 return
             }
-            // Apply the form to the event, then convert (location/URL go into the notes, the end
-            // and marks are dropped), then the reminder-only field. An Apple reminder keeps the
-            // URL as its own URL instead.
-            if isApple {
-                let pair = ItemConversion.appleReminder(from: form.edited(event))
-                var converted = pair.reminder
-                converted.priority = form.priority.icalValue
-                let url = pair.url
-                perform { try await $0.convertEvent(id: event.id, to: converted, url: url) }
-            } else {
-                var converted = ItemConversion.reminder(from: form.edited(event))
-                converted.priority = form.priority.icalValue
-                perform { try await $0.convertEvent(id: event.id, to: converted) }
-            }
+            // Apply the form to the event, then convert (the location goes into the notes, the
+            // end is dropped, the URL stays the reminder's own URL), then the reminder-only field.
+            let pair = ItemConversion.appleReminder(from: form.edited(event))
+            var converted = pair.reminder
+            converted.priority = form.priority.icalValue
+            let url = pair.url
+            perform { try await $0.convertEvent(id: event.id, to: converted, url: url) }
         case (.reminder(let reminder), .event):
             // Priority is dropped; the form's Starts/Ends/All day and Location/URL apply (an
             // undated reminder lands all-day).
             var converted = ItemConversion.event(fromEdited: form.edited(reminder), originalDueDate: reminder.dueDate,
                                                  start: form.date, end: form.endDate, allDay: form.allDay)
             converted.location = FormFields.trimmedOrNil(form.location)
-            // The sheet has no reminder URL field: an Apple reminder's stored URL carries over
-            // unless one was typed for the event.
-            converted.url = isApple
-                ? ItemConversion.eventURL(typed: form.url, storedReminderURL: details?.reminderURL)
-                : FormFields.trimmedOrNil(form.url)
+            // The sheet has no reminder URL field: the reminder's stored URL carries over unless
+            // one was typed for the event.
+            converted.url = ItemConversion.eventURL(typed: form.url, storedReminderURL: details.reminderURL)
             perform { try await $0.convertReminder(id: reminder.id, to: converted) }
         }
     }

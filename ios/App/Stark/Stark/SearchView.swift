@@ -1,28 +1,23 @@
 // ios/App/Stark/Stark/SearchView.swift
 import SwiftUI
-import Combine
 import StarkKit
 
-/// Full-history text search over titles, notes, and locations. Unlike the agenda, which only
-/// ever shows what's currently loaded (today's display window, plus whatever's been scrolled
-/// or tapped into), this screen loads every month file that exists on disk the first time it
-/// appears (`PlannerStore.loadAllMonths()`), so a search can find any of Stark's own items ever saved. Apple items
-/// are covered only within the window below, an Apple event series as one row. While it is
-/// open it also registers a two-years-either-side range with the Apple overlay's fetch window
-/// (`SearchWindow`, decision 10). A tapped result opens through `AgendaItemDetailSheet`, so an
+/// Text search over titles, notes, and locations of Apple items: every open reminder, and events
+/// and completed reminders within the window below, an Apple event series as one row. While it
+/// is open it registers a two-years-either-side range with the Apple overlay's fetch window
+/// (`SearchWindow`, decision 10; phase 3 decision 4 keeps this scope). A tapped result opens through `AgendaItemDetailSheet`, so an
 /// Apple item in a writable calendar or list opens its editor.
 ///
 /// One unconditional match across every relevant field, no filter/field picker -- considered
 /// during design (a Fantastical-style Title/Notes/Location/All row) and dropped for
 /// simplicity.
 struct SearchView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var isLoadingHistory = true
     @State private var selectedItem: AgendaItem?
-    /// The results, recomputed only when the query, the Apple snapshot or the store's items change
+    /// The results, recomputed only when the query or the Apple snapshot changes
     /// (not on every body pass: with a four-year Apple window that is thousands of items).
     @State private var results: [AgendaItem] = []
     @FocusState private var searchFocused: Bool
@@ -85,10 +80,9 @@ struct SearchView: View {
                 // Apple events two years either side of today while Search is open (decision 10);
                 // the shared fetch window keeps the agenda's own range too.
                 let now = Date()
-                async let apple: Void = overlay.reload(for: .search, display: SearchWindow.range(around: now), today: now)
-                await store.loadAllMonths()
-                await apple
+                await overlay.reload(for: .search, display: SearchWindow.range(around: now), today: now)
                 isLoadingHistory = false
+                refreshResults()
             }
             // Released on close so the overlay goes back to the agenda's window.
             .onDisappear {
@@ -97,17 +91,11 @@ struct SearchView: View {
             .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item) }
             .onChange(of: query) { refreshResults() }
             .onChange(of: overlay.snapshot) { refreshResults() }
-            // `$events`/`$reminders` publish before the store changes, so use the published values.
-            .onReceive(store.$events.combineLatest(store.$reminders)) { events, reminders in
-                refreshResults(events: events, reminders: reminders)
-            }
         }
         .tint(Colors.accent)
     }
 
-    private func refreshResults(events: [Event]? = nil, reminders: [Reminder]? = nil) {
-        results = SearchResults.find(events: events ?? store.events, reminders: reminders ?? store.reminders,
-                                     apple: overlay.snapshot, query: query)
-            .marked(notImported: store.notImportedIDs)
+    private func refreshResults() {
+        results = SearchResults.find(events: [], reminders: [], apple: overlay.snapshot, query: query)
     }
 }

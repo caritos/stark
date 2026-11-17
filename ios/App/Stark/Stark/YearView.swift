@@ -12,11 +12,10 @@ import StarkKit
 /// cell (`cellIndex`), shows a magnified preview while pressed and selects the date on release;
 /// `ContentView` then returns to month mode and scrolls the agenda.
 ///
-/// The counts come from `yearDensity` (the same `buildAgendaItems` as the month grid) computed
-/// off the main actor, never in `body`, and all twelve months of the shown year are loaded into
-/// the store, or their days would silently show as empty.
+/// The counts come from `yearDensity` (the same Apple rows and plans as the month grid) computed
+/// off the main actor, never in `body`, and the Apple overlay fetches all twelve months of the
+/// shown year, or their days would silently show as empty.
 struct YearView: View {
-    @EnvironmentObject private var store: PlannerStore
     @Environment(AppleOverlayModel.self) private var overlay
     /// Apple reminders' plan blocks (sidecar), counted with Stark's own like the agenda does.
     @Environment(PlanCache.self) private var planCache
@@ -81,11 +80,10 @@ struct YearView: View {
             #endif
         }
         .background(Colors.background)
-        // Every month of the year the screen shows must be in the store. Runs on appear and
-        // again whenever the year changes.
+        // The Apple overlay must fetch every month of the year the screen shows. Runs on appear
+        // and again whenever the year changes.
         .task(id: year) {
             let range = YearGrid.range(year: year)
-            store.loadMonths(covering: range)
             await overlay.reload(for: .year, display: range, today: today)
         }
         // Stop widening the overlay's fetch to this year once the year view is gone.
@@ -93,7 +91,7 @@ struct YearView: View {
             let today = today
             Task { await overlay.reload(for: .year, display: nil, today: today) }
         }
-        // Recompute when (and only when) the year, today, or the store's items change; off the
+        // Recompute when (and only when) the year, today, the Apple snapshot or the plans change; off the
         // main actor, and a stale result (the id changed while it ran) is dropped.
         .task(id: densityInputs) {
             // Debounce: the detached computation below cannot be cancelled, so tapping ‹/› quickly
@@ -134,8 +132,8 @@ struct YearView: View {
     }
 
     private var densityInputs: DensityInputs {
-        DensityInputs(year: year, today: today, events: store.events, reminders: store.reminders,
-                      plans: PlannerPlans.all(local: store.plans, apple: planCache.applePlans),
+        DensityInputs(year: year, today: today, events: [], reminders: [],
+                      plans: planCache.applePlans,
                       apple: overlay.snapshot)
     }
 

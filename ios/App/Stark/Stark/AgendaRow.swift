@@ -89,10 +89,6 @@ struct AgendaRowView: View {
                     .strikethrough(hasOutcome)
                     .lineLimit(2)
                 outcomeGlyph(color: .white)
-                if item.isNotImported {
-                    Text("· Not imported")
-                        .font(.caption)
-                }
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 10)
@@ -168,9 +164,6 @@ struct AgendaRowView: View {
                 // only where it says "read only".
                 if let source = item.appleSource, item.isReadOnly {
                     AppleSourceLabel(source: source)
-                }
-                if item.isNotImported {
-                    NotImportedLabel()
                 }
             }
             Spacer(minLength: 0)
@@ -248,7 +241,6 @@ struct AgendaRowView: View {
         if showsPriorityMarks { parts.append("\(priorityWord) priority") }
         if let location { parts.append(location) }
         if let source = item.appleSource { parts.append("from \(source.calendarTitle), read only") }
-        if item.isNotImported { parts.append("not imported into Apple") }
         if looksDone { parts.append("completed") }
         if item.outcome == .attended {
             parts.append("attended")
@@ -373,23 +365,6 @@ struct AgendaRowTargets: View {
 /// The source line of a read-only Apple row (and of its detail sheet): a 6 pt square in the
 /// calendar's own colour (`AppleSource.colorRGB`; that colour is data, the only non-token colour
 /// in the app, falling back to the secondary text colour) and the calendar title.
-/// The "not imported" mark on a row of Stark's own item that Apple cannot hold (its repeat), so
-/// it stays in Stark's files (Settings > Import Stark's own items lists why).
-struct NotImportedLabel: View {
-    var font: Font = .caption
-
-    var body: some View {
-        HStack(spacing: Spacing.xs) {
-            Image(systemName: "exclamationmark.arrow.triangle.2.circlepath")
-                .accessibilityHidden(true)
-            Text("Not imported")
-        }
-        .font(font)
-        .foregroundStyle(Colors.textSecondary)
-        .lineLimit(1)
-    }
-}
-
 struct AppleSourceLabel: View {
     let source: AppleSource
     var font: Font = .footnote
