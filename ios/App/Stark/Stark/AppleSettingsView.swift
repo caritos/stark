@@ -38,20 +38,8 @@ struct AppleSettingsView: View {
 
             if overlay.access == .granted {
                 Section {
-                    Picker("Default calendar", selection: calendarBinding) {
-                        ForEach(destinations.calendarChoices) { calendar in
-                            DestinationChoiceLabel(info: calendar).tag(calendar.id)
-                        }
-                    }
-                    .pickerStyle(.navigationLink)
-                    .foregroundStyle(Colors.text)
-                    Picker("Default list", selection: listBinding) {
-                        ForEach(destinations.listChoices) { list in
-                            DestinationChoiceLabel(info: list).tag(list.id)
-                        }
-                    }
-                    .pickerStyle(.navigationLink)
-                    .foregroundStyle(Colors.text)
+                    DestinationPickerRow(title: "Default calendar", choices: destinations.calendarChoices, selection: calendarBinding)
+                    DestinationPickerRow(title: "Default list", choices: destinations.listChoices, selection: listBinding)
                     ForEach(localOnlyWarnings, id: \.self) { warning in
                         Text(warning)
                             .font(.footnote)
@@ -140,22 +128,83 @@ struct AppleSettingsView: View {
     }
 }
 
-/// A picker row: the title, then the account under it (`DestinationLabel.subtitle`), so two
-/// calendars with one title are told apart. A long title truncates; the account stays visible.
-private struct DestinationChoiceLabel: View {
-    let info: AppleCalendarInfo
+/// A settings row ("Default calendar") whose trailing value is the chosen title with the account
+/// under it (`DestinationLabel.subtitle`), both right-aligned against the chevron. A long title
+/// truncates; the account stays visible. Pushes `DestinationChoiceList`. (A `Picker` could not
+/// do this: it reuses one option label for the row value and the pushed list rows.)
+private struct DestinationPickerRow: View {
+    let title: String
+    let choices: [AppleCalendarInfo]
+    @Binding var selection: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(info.title)
-                .foregroundStyle(Colors.text)
-                .lineLimit(1)
-            Text(DestinationLabel.subtitle(info))
-                .font(.footnote)
-                .foregroundStyle(Colors.textSecondary)
-                .lineLimit(1)
+        let current = choices.first { $0.id == selection }
+        NavigationLink {
+            DestinationChoiceList(title: title, choices: choices, selection: $selection)
+        } label: {
+            HStack(spacing: Spacing.sm) {
+                Text(title)
+                    .foregroundStyle(Colors.text)
+                Spacer(minLength: Spacing.sm)
+                if let current {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(current.title)
+                            .foregroundStyle(Colors.text)
+                            .lineLimit(1)
+                        Text(DestinationLabel.subtitle(current))
+                            .font(.footnote)
+                            .foregroundStyle(Colors.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(current.map { "\(title), \($0.title), \(DestinationLabel.subtitle($0))" } ?? title)
         }
-        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The pushed selection list: a left-aligned two-line row per choice, a checkmark on the chosen one.
+private struct DestinationChoiceList: View {
+    let title: String
+    let choices: [AppleCalendarInfo]
+    @Binding var selection: String
+
+    var body: some View {
+        List {
+            ForEach(choices) { info in
+                Button {
+                    selection = info.id
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(info.title)
+                                .foregroundStyle(Colors.text)
+                                .lineLimit(1)
+                            Text(DestinationLabel.subtitle(info))
+                                .font(.footnote)
+                                .foregroundStyle(Colors.textSecondary)
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                        if info.id == selection {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(Colors.accent)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(info.id == selection ? .isSelected : [])
+                .listRowBackground(Colors.card)
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Colors.background)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
