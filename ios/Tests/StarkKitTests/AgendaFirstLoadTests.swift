@@ -25,8 +25,11 @@ struct AgendaFirstLoadTests {
         #expect(!state.isWaiting(access: .granted))
     }
 
-    @Test func aFailedFetchAlsoEndsTheWait() {
-        // A failed first fetch must not spin forever: it ends the wait like a landed one.
+    @Test func finishingTwiceStaysFinished() {
+        // A second fetchFinished() (a later fetch, landed or failed) keeps the wait over.
+        // This Kit type does not know whether a fetch failed: the failed-fetch path calls
+        // fetchFinished() from AppleOverlayModel's reload (app target), and was checked on the
+        // simulator, not here.
         var state = AgendaFirstLoad()
         state.fetchFinished()
         state.fetchFinished()

@@ -86,6 +86,18 @@ struct ItemSidecarTests {
         await #expect(throws: ItemSidecarError.self) { try await s.load() }
     }
 
+    @Test("a file written by a newer app (version 3) is refused by load and update and left unchanged")
+    func newerVersionRefusedAndUntouched() async throws {
+        let url = tempFile()
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let bytes = Data(#"{"version":3,"plans":[],"outcomes":[],"externalIDs":{}}"#.utf8)
+        try bytes.write(to: url)
+        let s = sidecar(url)
+        await #expect(throws: ItemSidecarError.unsupportedVersion(3)) { _ = try await s.load() }
+        await #expect(throws: ItemSidecarError.unsupportedVersion(3)) { try await s.update { $0.externalIDs["x"] = "y" } }
+        #expect(try Data(contentsOf: url) == bytes)
+    }
+
     @Test("plans for a day replace only that day")
     func plansReplaceOnlyThatDay() async throws {
         let s = sidecar(tempFile())
