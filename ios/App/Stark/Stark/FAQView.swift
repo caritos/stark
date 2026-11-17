@@ -33,9 +33,11 @@ struct FAQView: View {
         Entry(
             question: "What about the items I made in Stark before?",
             answer: """
-            They stay in Stark's own files on this device, and Stark still shows them and lets you \
-            change them. Nothing was moved or deleted; a later update will offer to move them into \
-            Apple Calendar and Reminders. Until then an item that exists in both places appears twice.
+            Settings > Import Stark's own items copies them into Apple Calendar and Reminders once, \
+            after showing what it will import and where. Stark then shows only the Apple copy. \
+            Stark's own files stay on this device as a backup; to undo, delete the items in Apple's \
+            apps. An item whose repeat Apple can't hold stays in Stark's files, marked "Not \
+            imported", and a repeating reminder starts in Apple at the occurrence Stark shows today.
             """
         ),
         Entry(

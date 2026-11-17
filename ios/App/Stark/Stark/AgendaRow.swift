@@ -379,11 +379,14 @@ struct NotImportedLabel: View {
     var font: Font = .caption
 
     var body: some View {
-        Label("Not imported", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
-            .font(font)
-            .foregroundStyle(Colors.textSecondary)
-            .labelStyle(.titleAndIcon)
-            .lineLimit(1)
+        HStack(spacing: Spacing.xs) {
+            Image(systemName: "exclamationmark.arrow.triangle.2.circlepath")
+                .accessibilityHidden(true)
+            Text("Not imported")
+        }
+        .font(font)
+        .foregroundStyle(Colors.textSecondary)
+        .lineLimit(1)
     }
 }
 
