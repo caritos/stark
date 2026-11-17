@@ -105,6 +105,24 @@ public enum ImportPlanner {
         return result
     }
 
+    /// The local ids `plan` would list as unrepresentable, without the per-series agenda work (so
+    /// it is cheap enough for launch). Only repeating items can be unrepresentable and they all
+    /// live in `recurring.ics`, which is always loaded, so the store's loaded items suffice.
+    public static func unrepresentableIDs(events: [Event], reminders: [Reminder], alreadyImported: Set<String>) -> Set<String> {
+        var ids: Set<String> = []
+        for event in events where !alreadyImported.contains(event.id) {
+            if let rule = event.recurrence, unrepresentableReason(rule) != nil { ids.insert(event.id) }
+        }
+        for reminder in reminders where !alreadyImported.contains(reminder.id) {
+            if reminder.isCompleted && reminder.seriesID != nil { continue }
+            guard let rule = reminder.recurrence else { continue }
+            if unrepresentableReason(rule) != nil || reminder.dueDate == nil || reminder.isCompleted {
+                ids.insert(reminder.id)
+            }
+        }
+        return ids
+    }
+
     // MARK: Rules
 
     /// Why Apple cannot hold `rule`, or nil when it can.

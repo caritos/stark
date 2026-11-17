@@ -352,4 +352,27 @@ struct ImportPlannerTests {
         let second = plan(events: events.reversed(), reminders: reminders.reversed())
         #expect(second.steps.map(\.localID) == first.steps.map(\.localID))
     }
+
+    @Test func unrepresentableIDsMatchesThePlan() {
+        let odd = RecurrenceRule(frequency: .weekly, count: 10, until: day(60))
+        let master = Reminder(id: "wk", title: "Weekly", dueDate: day(-2), recurrence: RecurrenceRule(frequency: .weekly))
+        let events = [
+            Event(id: "xe", title: "Odd event", start: day(3, 9), recurrence: odd),
+            Event(id: "ok", title: "Plain", start: day(3, 9)),
+            Event(id: "done", title: "Imported odd", start: day(3, 9), recurrence: odd),
+        ]
+        let reminders = [
+            Reminder(id: "x", title: "Odd one", dueDate: day(3), recurrence: odd),
+            Reminder(id: "undated", title: "No due", recurrence: RecurrenceRule(frequency: .daily)),
+            Reminder(id: "cm", title: "Completed master", dueDate: day(1), isCompleted: true,
+                     recurrence: RecurrenceRule(frequency: .daily)),
+            master,
+            completedCopy(of: master, on: day(-9)),
+            Reminder(id: "one", title: "One-off", dueDate: day(2)),
+        ]
+        let result = plan(events: events, reminders: reminders, alreadyImported: ["done"])
+        let ids = ImportPlanner.unrepresentableIDs(events: events, reminders: reminders, alreadyImported: ["done"])
+        #expect(ids == Set(result.unrepresentable.map(\.localID)))
+        #expect(ids == ["xe", "x", "undated", "cm"])
+    }
 }

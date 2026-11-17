@@ -26,6 +26,9 @@ public final class PlannerStore: ObservableObject {
     /// Local ids the last import plan could not represent in Apple; their rows carry the
     /// "not imported" mark (`AgendaItem.isNotImported`), passed to `buildAgendaItems(notImported:)`.
     @Published public var notImportedIDs: Set<String> = []
+    /// True once `recurring.ics` was read (or found missing) this session. False after a read
+    /// failure, so the import scan never plans from a store missing every repeating item.
+    public private(set) var recurringLoaded = false
 
     private let file: PlannerFile
     private var loadedMonths: Set<YearMonth> = []
@@ -50,16 +53,7 @@ public final class PlannerStore: ObservableObject {
         // reading, so a recovered file's real content is what gets loaded.
         file.retryPendingWrites()
 
-        do {
-            let recurring = try file.loadRecurring()
-            recurringEvents = recurring.events
-            recurringReminders = recurring.reminders
-            warnings.append(contentsOf: recurring.warnings.map { "recurring.ics: \($0)" })
-        } catch {
-            // A genuine read failure must never be treated as "no recurring items" —
-            // leave whatever recurring state already existed untouched and surface the error.
-            self.error = "Couldn't read recurring items: \(error.localizedDescription)"
-        }
+        loadRecurring()
 
         // Two dates rather than a ClosedRange: `start` has always tolerated an inverted window
         // (loads nothing) and a `lower...upper` with upper < lower would trap.
@@ -100,9 +94,28 @@ public final class PlannerStore: ObservableObject {
     /// read. Safe to call more than once per session: after the first call every month is
     /// already in `loadedMonths`, so later calls are a fast no-op loop.
     public func loadAllMonths() async {
+        // A recurring.ics that failed to read at launch is retried too ("every file").
+        if !recurringLoaded {
+            loadRecurring()
+            rebuild()
+        }
         for month in file.availableMonths() where !loadedMonths.contains(month) {
             loadMonth(month)
             await Task.yield()
+        }
+    }
+
+    private func loadRecurring() {
+        do {
+            let recurring = try file.loadRecurring()
+            recurringEvents = recurring.events
+            recurringReminders = recurring.reminders
+            warnings.append(contentsOf: recurring.warnings.map { "recurring.ics: \($0)" })
+            recurringLoaded = true
+        } catch {
+            // A genuine read failure must never be treated as "no recurring items" —
+            // leave whatever recurring state already existed untouched and surface the error.
+            self.error = "Couldn't read recurring items: \(error.localizedDescription)"
         }
     }
 
