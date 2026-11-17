@@ -128,7 +128,19 @@ struct ItemRouterTests {
     @Test("a non-Apple id is refused with a clear error and writes nothing")
     func nonAppleIDRefused() async throws {
         let h = harness()
-        let id = UUID().uuidString
+        // One real Apple event with a sidecar mark under its `apple-` id. Every call below uses
+        // the event's BARE identifier (no prefix): it names the same EventKit item, but is not a
+        // model id, so it must be refused and leave the Apple item and the sidecar untouched.
+        let ref = try await h.router.add(event: Event(title: "Standup", start: at(3)))
+        try await h.router.setEventOutcome(id: ItemOrigin.modelID(for: ref), on: at(3), outcome: .attended)
+        let storedBefore = try await h.repo.details(ref)
+        let sidecarBefore = try await h.sidecar.load()
+        let itemsBefore = await h.repo.itemCount
+        let writesBefore = h.counter.writes
+        #expect(itemsBefore == 1)
+        #expect(sidecarBefore.outcomes.count == 1)
+
+        let id = ref.identifier
         let event = Event(id: id, title: "x", start: at(3))
         let reminder = Reminder(id: id, title: "x", dueDate: at(3))
         let router = h.router
@@ -155,9 +167,10 @@ struct ItemRouterTests {
                 #expect(error.message.contains("Apple Calendar or Reminders"))
             }
         }
-        #expect(await h.repo.itemCount == 0)
-        #expect(try await h.sidecar.load() == SidecarData())
-        #expect(h.counter.writes == 0)
+        #expect(await h.repo.itemCount == itemsBefore)
+        #expect(try await h.repo.details(ref) == storedBefore)
+        #expect(try await h.sidecar.load() == sidecarBefore)
+        #expect(h.counter.writes == writesBefore)
     }
 
     @Test("replacePlans ignores a non-Apple block, and plans(on:) is the sidecar's blocks only")
