@@ -48,7 +48,7 @@ struct StarkApp: App {
         _destinations = State(initialValue: destinations)
         let sidecar = ItemSidecar(fileURL: Self.sidecarURL(), calendar: .autoupdatingCurrent)
         self.sidecar = sidecar
-        let router = ItemRouter(repository: repository, local: store, sidecar: sidecar,
+        let router = ItemRouter(repository: repository, sidecar: sidecar,
                                 destinations: destinations, calendar: .autoupdatingCurrent)
         let planCache = PlanCache(router: router)
         planCache.onLoadFailure = { [weak store] message in store?.error = message }
@@ -79,11 +79,10 @@ struct StarkApp: App {
                 await overlay?.refreshAfterWrite()
                 await planCache?.refresh()
             }))
-        // Through the router: Stark's ids to the local store (idempotence, e.g. already resolved by
-        // Done/Skip, lives in `PlannerStore.completeReminder`), Apple ids to EventKit with the
-        // OCCURRENCE's own date (the repository ignores a repeating reminder already past that
-        // day, so a double tap never completes the next one). The row stays pending until the
-        // write and the overlay reload have landed; a failure shows in the main error banner.
+        // Through the router to EventKit with the OCCURRENCE's own date (the repository ignores a
+        // repeating reminder already past that day, so a double tap never completes the next
+        // one); a non-Apple id is refused (`.notApple`). The row stays pending until the write and
+        // the overlay reload have landed; a failure shows in the main error banner.
         _pending = StateObject(wrappedValue: PendingCompletions(asyncCommit: { id, occurrence in
             do {
                 try await router.complete(id: id, on: occurrence)

@@ -5,16 +5,16 @@ import StarkKit
 /// Edit + detail sheet for one agenda row. Editable fields (title, date, all-day, end for timed
 /// events, repeat, repeat end, notes, location and URL for events, priority for reminders) are
 /// committed only by Save; the action buttons act immediately and dismiss. Reminders show Done /
-/// Undo / Skip / Delete; events show Done / Skip / Undo / Remove
-/// This Occurrence / Open Link (for an http/https URL, does not dismiss) / Delete.
+/// Undo / Delete (no Skip: Apple Reminders can't skip one occurrence); events show Done / Skip /
+/// Undo / Remove This Occurrence / Open Link (for an http/https URL, does not dismiss) / Delete.
 ///
 /// The Event / Reminder switch above the form converts the item (issue #116): the form switches
 /// to the other kind's fields at once, but nothing is stored until Save, which replaces the item
 /// (`ItemRouter.convertEvent` / `convertReminder`). While converting, the per-occurrence actions
 /// and History (which belong to the old kind) are hidden.
 ///
-/// Every write goes through `ItemRouter`: Stark's own items go to the local store as before;
-/// Apple items (`details` set, loaded by `AppleItemEditor`) are diffed against the stored item's
+/// Every write goes through `ItemRouter`, which writes only Apple items (any other id is refused
+/// with `.notApple`, so the remaining `!isApple` branches only reach that refusal). Apple items (`details` set, loaded by `AppleItemEditor`) are diffed against the stored item's
 /// form baseline, so only the fields the owner changed are written (spec call 5). Apple items
 /// show no History, no reminder Skip (Apple Reminders can't skip one occurrence), and a repeat
 /// Stark can't represent is shown read-only. A failed write shows its message in the sheet's
@@ -433,14 +433,6 @@ struct EditItemView: View {
         return false
     }
 
-    /// Stark's own repeating reminders only; a recurring event's equivalent is "Remove This
-    /// Occurrence" in `eventActions`. Apple Reminders can't skip one occurrence.
-    private var showsSkip: Bool {
-        guard !isApple else { return false }
-        if case .reminder = item.kind { return item.isRecurring && !item.isCompleted }
-        return false
-    }
-
     /// Done / Skip / Undo / Remove This Occurrence, for events only.
     private var eventActions: EventOutcomeActions? {
         guard case .event = item.kind else { return nil }
@@ -544,12 +536,11 @@ struct EditItemView: View {
         perform { try await $0.setEventOutcome(id: event.id, on: occurrence, outcome: outcome) }
     }
 
+    /// "Remove This Occurrence" (events only: Apple Reminders can't skip one occurrence).
     private func skipOccurrence() {
+        guard case .event(let event) = item.kind else { return }
         let occurrence = item.occurrence
-        switch item.kind {
-        case .event(let event): perform { try await $0.skipEvent(id: event.id, on: occurrence) }
-        case .reminder(let reminder): perform { try await $0.skipReminder(id: reminder.id, on: occurrence) }
-        }
+        perform { try await $0.skipEvent(id: event.id, on: occurrence) }
     }
 
     private func delete() {

@@ -390,16 +390,15 @@ struct PlannerView: View {
         }
     }
 
-    /// Done from the block menu: completes the block's OCCURRENCE through the router (Stark's
-    /// own reminder: the store's idempotent path, same as the agenda checkbox; an Apple reminder:
-    /// EventKit, where a repeating one moves to its next date), then the block becomes a done block
+    /// Done from the block menu: completes the block's OCCURRENCE through the router (EventKit,
+    /// where a repeating reminder moves to its next date), then the block becomes a done block
     /// in the draft; the due date and the plan itself are untouched, and unsaved draft edits
     /// survive. A failed Apple write leaves the block open and shows the reason in the banner.
     func completeBlock(_ block: PlanBlock) {
         guard draft?.blocks.contains(where: { $0.id == block.id }) == true, let router else { return }
         Task {
             do {
-                try await router.complete(id: block.reminderID, on: block.occurrence, today: today)
+                try await router.complete(id: block.reminderID, on: block.occurrence)
             } catch {
                 saveError = error.routerMessage
                 return

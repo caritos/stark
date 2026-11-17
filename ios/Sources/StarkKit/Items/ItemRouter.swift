@@ -1,10 +1,11 @@
 // ios/Sources/StarkKit/Items/ItemRouter.swift
 import Foundation
 
-/// Who owns an item: Apple (Calendar / Reminders, through `ItemRepository`) or Stark's local store.
+/// Where an item lives. Stark keeps no items of its own (phase 3): the only origin is Apple
+/// Calendar / Reminders, through `ItemRepository`. The initialisers return nil for any id that is
+/// not an Apple model id; the router refuses those (`ItemRouterError.notApple`).
 public enum ItemOrigin: Equatable, Sendable {
     case apple(AppleItemRef)
-    case local
 
     /// Model ids of Apple items (`Event.id` / `Reminder.id` of an overlay row, a plan block's
     /// `reminderID`) are `apple-<EventKit identifier>` (`mergeAppleItems`).
@@ -12,18 +13,16 @@ public enum ItemOrigin: Equatable, Sendable {
 
     /// From a MODEL id (what the views pass today: `event.id`, `reminder.id`, `block.reminderID`),
     /// not an agenda ROW id (which adds `-<occurrence>`; use `init(item:)` for rows). The id cannot
-    /// say event or reminder, so the caller passes the kind. Anything else (Stark's UUIDs) is local.
-    public init(id: String, kind: AppleItemRef.Kind) {
-        guard id.hasPrefix(Self.applePrefix), id.count > Self.applePrefix.count else {
-            self = .local
-            return
-        }
+    /// say event or reminder, so the caller passes the kind. Anything else is nil.
+    public init?(id: String, kind: AppleItemRef.Kind) {
+        guard id.hasPrefix(Self.applePrefix), id.count > Self.applePrefix.count else { return nil }
         self = .apple(AppleItemRef(kind: kind, identifier: String(id.dropFirst(Self.applePrefix.count))))
     }
 
-    /// From an agenda row (`AppleItemRef.ref(for:)`).
-    public init(item: AgendaItem) {
-        self = AppleItemRef.ref(for: item).map(ItemOrigin.apple) ?? .local
+    /// From an agenda row (`AppleItemRef.ref(for:)`); nil for a row without an Apple source.
+    public init?(item: AgendaItem) {
+        guard let ref = AppleItemRef.ref(for: item) else { return nil }
+        self = .apple(ref)
     }
 
     /// The model id an Apple item carries in Stark (`apple-<identifier>`).
@@ -34,14 +33,16 @@ public enum ItemOrigin: Equatable, Sendable {
 public enum ItemRouterError: Error, Equatable, Sendable {
     /// No default calendar (for events) or list (for reminders) to create the item in.
     case noDefaultDestination(AppleItemRef.Kind)
-    /// The operation does not exist for Apple items (e.g. skipping one reminder occurrence).
+    /// The id is not an Apple item's (`apple-<identifier>`). Stark keeps no items of its own any
+    /// more, so there is nothing to write to; nothing changed.
+    case notApple
+    /// The operation can't be done on this Apple item (e.g. an edit without its stored details,
+    /// or a repeat Stark can't represent).
     case unsupported(String)
     /// EventKit refused the write; nothing changed.
     case apple(ItemRepositoryError)
     /// Stark's sidecar file (plans, outcomes) could not be read or written; nothing changed.
     case sidecar(String)
-    /// The local store refused (e.g. a month file it cannot read); nothing changed.
-    case local(String)
     /// A convert created the new item but could not finish (remap or delete of the original);
     /// both items are kept so nothing is lost.
     case convertedButOriginalKept(String)
@@ -52,6 +53,8 @@ public enum ItemRouterError: Error, Equatable, Sendable {
             return "Choose a default calendar in Settings before adding events."
         case .noDefaultDestination(.reminder):
             return "Choose a default Reminders list in Settings before adding reminders."
+        case .notApple:
+            return "This item isn't in Apple Calendar or Reminders, so Stark can't change it."
         case .unsupported(let text):
             return text
         case .apple(.notFound):
@@ -66,8 +69,6 @@ public enum ItemRouterError: Error, Equatable, Sendable {
             return "Some occurrences of this series were changed one by one in Calendar. Changing the repeat rule removes those changes."
         case .sidecar(let text):
             return "Couldn't save Stark's plans and marks: \(text)"
-        case .local(let text):
-            return text
         case .convertedButOriginalKept(let reason):
             return "The new item was created, but the original couldn't be removed (\(reason)). Both are kept; delete the old one by hand."
         }
@@ -83,20 +84,19 @@ public enum ItemRouterError: Error, Equatable, Sendable {
 }
 
 /// The write facade the views call. Apple items (`apple-` ids) go to `ItemRepository` and, for
-/// Stark-only data (plan blocks, event outcomes), to `ItemSidecar`; Stark's own items (UUID ids)
-/// go to the local store unchanged. New items always go to Apple's default calendar or list.
+/// Stark-only data (plan blocks, event outcomes), to `ItemSidecar`. Any other id is refused with
+/// `.notApple` before anything is read or written: Stark keeps no items of its own. New items
+/// always go to Apple's default calendar or list.
 ///
-/// Apple failures throw `ItemRouterError` and change nothing (the repository is all-or-nothing per
-/// call). Local operations keep `PlannerStore`'s behaviour: the silent ones stay silent (the store
-/// sets its own `error`), the ones that return false throw `.local`.
+/// Failures throw `ItemRouterError` and change nothing (the repository is all-or-nothing per
+/// call).
 ///
 /// `onDidWrite` runs after every successful Apple or sidecar write (never after a failure or a
-/// local-only write), because `EKEventStoreChanged` is not reliable after a save (spike f): the
-/// owner reloads the overlay there.
+/// no-op), because `EKEventStoreChanged` is not reliable after a save (spike f): the owner reloads
+/// the overlay there.
 @MainActor
 public final class ItemRouter {
     private let repository: any ItemRepository
-    private let local: any LocalItemStore
     private let sidecar: ItemSidecar
     private let destinations: any DefaultDestinations
     private let calendar: Calendar
@@ -104,12 +104,11 @@ public final class ItemRouter {
 
     public var onDidWrite: (() async -> Void)?
 
-    /// `calendar` decides which day a plan block belongs to when a day's Apple blocks are replaced.
-    public init(repository: any ItemRepository, local: any LocalItemStore, sidecar: ItemSidecar,
+    /// `calendar` decides which day a plan block belongs to when a day's blocks are replaced.
+    public init(repository: any ItemRepository, sidecar: ItemSidecar,
                 destinations: any DefaultDestinations, calendar: Calendar = Calendar(identifier: .gregorian),
                 now: @escaping () -> Date = Date.init) {
         self.repository = repository
-        self.local = local
         self.sidecar = sidecar
         self.destinations = destinations
         self.calendar = calendar
@@ -122,16 +121,14 @@ public final class ItemRouter {
     /// (`apple-<identifier>`) so the edited copy routes back here. Start an edit from this, never
     /// from the overlay's stand-in values (no recurrence, no write permission).
     public func details(id: String, kind: AppleItemRef.Kind) async throws -> ItemDetails {
-        guard case .apple(let ref) = ItemOrigin(id: id, kind: kind) else {
-            throw ItemRouterError.unsupported("Only Apple items have stored details.")
-        }
+        let ref = try Self.appleRef(id, kind)
         var details = try await apple { try await repository.details(ref) }
         details.event?.id = ItemOrigin.modelID(for: ref)
         details.reminder?.id = ItemOrigin.modelID(for: ref)
         return details
     }
 
-    // MARK: Add (always Apple)
+    // MARK: Add
 
     /// `calendarID` overrides the default calendar (the add sheet's picker); nil uses the default.
     @discardableResult
@@ -157,41 +154,33 @@ public final class ItemRouter {
 
     // MARK: Update
 
-    /// Local: the whole edited value, as before (`original` is not needed). Apple: `original` is the
-    /// stored item from `details(id:kind:)` and is required; only the fields that differ from it are
-    /// written, and nothing changed means no write and no `onDidWrite`. Refused when the item can't
-    /// be written, and a repeat change is refused when the stored repeat can't be represented.
+    /// `original` is the stored item from `details(id:kind:)` and is required; only the fields that
+    /// differ from it are written, and nothing changed means no write and no `onDidWrite`. Refused
+    /// when the item can't be written, and a repeat change is refused when the stored repeat can't
+    /// be represented.
     ///
     /// `confirmRuleChange`: the owner confirmed that a repeat change may lose occurrences edited one
     /// by one in Calendar; without it such a change throws `.apple(.ruleChangeLosesEditedOccurrences)`
     /// (`asksToConfirmRuleChange`), and the edit sheet asks before resending.
     public func update(event: Event, original: ItemDetails? = nil, confirmRuleChange: Bool = false) async throws {
-        switch ItemOrigin(id: event.id, kind: .event) {
-        case .local:
-            local.updateEvent(event)
-        case .apple(let ref):
-            let original = try Self.requireDetails(original)
-            var patch = EventPatch(from: original, to: event)
-            guard patch != EventPatch() else { return }
-            try Self.checkWritable(original, changesRepeat: patch.recurrence != .keep)
-            patch.confirmRuleChange = confirmRuleChange
-            try await appleWrite { try await repository.update(ref, event: patch) }
-        }
+        let ref = try Self.appleRef(event.id, .event)
+        let original = try Self.requireDetails(original)
+        var patch = EventPatch(from: original, to: event)
+        guard patch != EventPatch() else { return }
+        try Self.checkWritable(original, changesRepeat: patch.recurrence != .keep)
+        patch.confirmRuleChange = confirmRuleChange
+        try await appleWrite { try await repository.update(ref, event: patch) }
     }
 
     /// As `update(event:original:)`. `url` is the edited URL (`Reminder` has none), diffed against
-    /// `original.reminderURL`; the local store ignores it.
+    /// `original.reminderURL`.
     public func update(reminder: Reminder, url: String?, original: ItemDetails? = nil) async throws {
-        switch ItemOrigin(id: reminder.id, kind: .reminder) {
-        case .local:
-            local.updateReminder(reminder)
-        case .apple(let ref):
-            let original = try Self.requireDetails(original)
-            let patch = ReminderPatch(from: original, to: reminder, url: url)
-            guard patch != ReminderPatch() else { return }
-            try Self.checkWritable(original, changesRepeat: patch.recurrence != .keep)
-            try await appleWrite { try await repository.update(ref, reminder: patch) }
-        }
+        let ref = try Self.appleRef(reminder.id, .reminder)
+        let original = try Self.requireDetails(original)
+        let patch = ReminderPatch(from: original, to: reminder, url: url)
+        guard patch != ReminderPatch() else { return }
+        try Self.checkWritable(original, changesRepeat: patch.recurrence != .keep)
+        try await appleWrite { try await repository.update(ref, reminder: patch) }
     }
 
     private static func requireDetails(_ details: ItemDetails?) throws -> ItemDetails {
@@ -211,71 +200,47 @@ public final class ItemRouter {
 
     // MARK: Delete
 
-    /// Apple: the whole item (a whole series). Sidecar records are kept (orphans are never dropped
+    /// The whole item (a whole series). Sidecar records are kept (orphans are never dropped
     /// automatically).
     public func deleteEvent(id: String) async throws {
-        switch ItemOrigin(id: id, kind: .event) {
-        case .local: local.deleteEvent(id: id)
-        case .apple(let ref): try await appleWrite { try await repository.delete(ref) }
-        }
+        let ref = try Self.appleRef(id, .event)
+        try await appleWrite { try await repository.delete(ref) }
     }
 
     public func deleteReminder(id: String) async throws {
-        switch ItemOrigin(id: id, kind: .reminder) {
-        case .local: local.deleteReminder(id: id)
-        case .apple(let ref): try await appleWrite { try await repository.delete(ref) }
-        }
+        let ref = try Self.appleRef(id, .reminder)
+        try await appleWrite { try await repository.delete(ref) }
     }
 
     // MARK: Complete / skip / outcome
 
-    /// `today` nil means now. Apple: a recurring reminder moves to its next date (Apple's rule).
-    public func complete(id: String, on date: Date, today: Date? = nil) async throws {
-        switch ItemOrigin(id: id, kind: .reminder) {
-        case .local: local.completeReminder(id: id, on: date, today: today ?? now(), now: now())
-        case .apple(let ref): try await appleWrite { try await repository.complete(ref, on: date) }
-        }
+    /// A recurring reminder moves to its next date (Apple's rule). There is no reminder skip:
+    /// Apple Reminders can't skip one occurrence.
+    public func complete(id: String, on date: Date) async throws {
+        let ref = try Self.appleRef(id, .reminder)
+        try await appleWrite { try await repository.complete(ref, on: date) }
     }
 
     public func uncomplete(id: String) async throws {
-        switch ItemOrigin(id: id, kind: .reminder) {
-        case .local: local.uncompleteReminder(id: id)
-        case .apple(let ref): try await appleWrite { try await repository.uncomplete(ref) }
-        }
+        let ref = try Self.appleRef(id, .reminder)
+        try await appleWrite { try await repository.uncomplete(ref) }
     }
 
-    /// Apple: deletes only the occurrence on `date`'s day (a one-off event is deleted).
+    /// Deletes only the occurrence on `date`'s day (a one-off event is deleted).
     public func skipEvent(id: String, on date: Date) async throws {
-        switch ItemOrigin(id: id, kind: .event) {
-        case .local: local.skipEvent(id: id, on: date)
-        case .apple(let ref): try await appleWrite { try await repository.deleteOccurrence(ref, on: date) }
-        }
+        let ref = try Self.appleRef(id, .event)
+        try await appleWrite { try await repository.deleteOccurrence(ref, on: date) }
     }
 
-    /// Local only. Apple Reminders has no "skip this occurrence": throws `.unsupported`.
-    public func skipReminder(id: String, on date: Date, today: Date? = nil) async throws {
-        switch ItemOrigin(id: id, kind: .reminder) {
-        case .local:
-            local.skipReminder(id: id, on: date, today: today ?? now())
-        case .apple:
-            throw ItemRouterError.unsupported(
-                "Apple Reminders can't skip one occurrence. Mark it done, or change its due date.")
-        }
-    }
-
-    /// Apple: kept in the sidecar, dated by the occurrence (`date`); nil clears that day's mark.
-    /// The item's external id is read through the repository; use `setEventOutcome(ref:on:outcome:)`
+    /// Kept in the sidecar, dated by the occurrence (`date`); nil clears that day's mark. The
+    /// item's external id is read through the repository; use `setEventOutcome(ref:on:outcome:)`
     /// when the caller already holds a ref carrying it.
     public func setEventOutcome(id: String, on date: Date, outcome: EventOutcome?) async throws {
-        switch ItemOrigin(id: id, kind: .event) {
-        case .local:
-            local.setEventOutcome(id: id, on: date, outcome: outcome, now: now())
-        case .apple(let ref):
-            try await setEventOutcome(ref: await withExternalID(ref), on: date, outcome: outcome)
-        }
+        let ref = try Self.appleRef(id, .event)
+        try await setEventOutcome(ref: await withExternalID(ref), on: date, outcome: outcome)
     }
 
-    /// Apple only: the outcome for `ref`, stored with `ref.externalID` as given.
+    /// The outcome for `ref`, stored with `ref.externalID` as given.
     public func setEventOutcome(ref: AppleItemRef, on date: Date, outcome: EventOutcome?) async throws {
         let stamp = now()
         try await sidecarWrite {
@@ -289,8 +254,8 @@ public final class ItemRouter {
         await didWrite()
     }
 
-    /// An Apple event's attended/skipped mark on `date`'s day, from the sidecar; nil for Stark's
-    /// own events (their marks are on the `Event`) and when none is recorded.
+    /// An Apple event's attended/skipped mark on `date`'s day, from the sidecar; nil when none is
+    /// recorded and for an id that is not an Apple event's (a read, so nothing to refuse).
     public func eventOutcome(id: String, on date: Date) async throws -> EventOutcome? {
         guard case .apple(let ref) = ItemOrigin(id: id, kind: .event) else { return nil }
         return try await sidecarRead { try await sidecar.outcome(for: ref.identifier, externalID: nil, on: date) }?.outcome
@@ -306,40 +271,26 @@ public final class ItemRouter {
 
     // MARK: Convert
 
-    /// Local: `PlannerStore.convertEvent` (returns nil). Apple: creates the reminder in the default
-    /// list, moves the sidecar records to it, then deletes the event; returns the new ref. A failed
-    /// create changes nothing; a failure after it keeps both (`.convertedButOriginalKept`).
+    /// Creates the reminder in the default list, moves the sidecar records to it, then deletes the
+    /// event; returns the new ref. A failed create changes nothing; a failure after it keeps both
+    /// (`.convertedButOriginalKept`).
     @discardableResult
-    public func convertEvent(id: String, to reminder: Reminder, url: String? = nil) async throws -> AppleItemRef? {
-        switch ItemOrigin(id: id, kind: .event) {
-        case .local:
-            guard local.convertEvent(id: id, to: reminder) else {
-                throw ItemRouterError.local("Couldn't convert the event: it was not found or its month can't be read.")
-            }
-            return nil
-        case .apple(let ref):
-            guard let listID = destinations.listID else { throw ItemRouterError.noDefaultDestination(.reminder) }
-            try await refuseUnrepresentableConvert(ref)
-            let new = Self.newReminder(reminder, url: url)
-            return try await replace(ref) { try await self.repository.addReminder(new, listID: listID) }
-        }
+    public func convertEvent(id: String, to reminder: Reminder, url: String? = nil) async throws -> AppleItemRef {
+        let ref = try Self.appleRef(id, .event)
+        guard let listID = destinations.listID else { throw ItemRouterError.noDefaultDestination(.reminder) }
+        try await refuseUnrepresentableConvert(ref)
+        let new = Self.newReminder(reminder, url: url)
+        return try await replace(ref) { try await self.repository.addReminder(new, listID: listID) }
     }
 
     /// Reminder -> event counterpart of `convertEvent`, created in the default calendar.
     @discardableResult
-    public func convertReminder(id: String, to event: Event) async throws -> AppleItemRef? {
-        switch ItemOrigin(id: id, kind: .reminder) {
-        case .local:
-            guard local.convertReminder(id: id, to: event) else {
-                throw ItemRouterError.local("Couldn't convert the reminder: it was not found, is completed, or its month can't be read.")
-            }
-            return nil
-        case .apple(let ref):
-            guard let calendarID = destinations.calendarID else { throw ItemRouterError.noDefaultDestination(.event) }
-            try await refuseUnrepresentableConvert(ref)
-            let new = Self.newEvent(event)
-            return try await replace(ref) { try await self.repository.addEvent(new, calendarID: calendarID) }
-        }
+    public func convertReminder(id: String, to event: Event) async throws -> AppleItemRef {
+        let ref = try Self.appleRef(id, .reminder)
+        guard let calendarID = destinations.calendarID else { throw ItemRouterError.noDefaultDestination(.event) }
+        try await refuseUnrepresentableConvert(ref)
+        let new = Self.newEvent(event)
+        return try await replace(ref) { try await self.repository.addEvent(new, calendarID: calendarID) }
     }
 
     /// A convert deletes the original; one whose repeat Stark can't represent would come back
@@ -374,73 +325,60 @@ public final class ItemRouter {
 
     // MARK: Plans
 
-    /// The day's blocks from both stores. Apple blocks come back with `apple-` reminder ids.
+    /// The day's blocks, from the sidecar, with `apple-` reminder ids.
     public func plans(on day: Date) async throws -> [PlanBlock] {
-        let applePlans = try await sidecarRead { try await sidecar.plans(on: day) }
-        return local.plans(on: day) + applePlans.map { block in
-            var copy = block
-            copy.reminderID = ItemOrigin.applePrefix + block.reminderID
-            return copy
-        }
+        let stored = try await sidecarRead { try await sidecar.plans(on: day) }
+        return stored.map(Self.withModelID)
     }
 
-    /// Every Apple plan block whose start is in `range` (one sidecar read), with `apple-` reminder
-    /// ids. The agenda reads these next to the local store's own plans, so each block comes once.
+    /// Every plan block whose start is in `range` (one sidecar read), with `apple-` reminder ids.
     public func applePlans(in range: ClosedRange<Date>) async throws -> [PlanBlock] {
         let data = try await sidecarRead { try await sidecar.load() }
-        return data.plans.filter { range.contains($0.start) }.map { block in
-            var copy = block
-            copy.reminderID = ItemOrigin.applePrefix + block.reminderID
-            return copy
-        }
+        return data.plans.filter { range.contains($0.start) }.map(Self.withModelID)
     }
 
-    /// Replaces the day's blocks: blocks for Apple reminders go to the sidecar (stored under the bare
-    /// identifier), the rest to the local store. Blocks not on `day` are ignored, as in the store.
-    /// The sidecar is written first; if the local store then refuses, the Apple half is saved and
-    /// `.local` is thrown (retrying rewrites the same blocks, since this is a replace). Each planned
-    /// Apple reminder's external id is read through the repository and recorded with the blocks.
-    /// An unreadable sidecar throws `.sidecar` only when the save has Apple blocks; a day with
-    /// only Stark's own blocks is still saved.
+    /// Replaces the day's blocks in the sidecar (stored under the bare Apple identifier). Blocks
+    /// not on `day` and blocks whose reminder is not an Apple one are ignored, so a save of only
+    /// such blocks clears the day. Each planned reminder's external id is read through the
+    /// repository and recorded with the blocks. Unchanged blocks mean no write and no
+    /// `onDidWrite`; an unreadable sidecar throws `.sidecar` and writes nothing.
     public func replacePlans(on day: Date, with blocks: [PlanBlock]) async throws {
         var appleBlocks: [PlanBlock] = []
         var appleRefs: [String: AppleItemRef] = [:]
-        var localBlocks: [PlanBlock] = []
         for block in blocks {
-            if case .apple(let ref) = ItemOrigin(id: block.reminderID, kind: .reminder) {
-                guard calendar.isDate(block.start, inSameDayAs: day) else { continue }
-                var copy = block
-                copy.reminderID = ref.identifier
-                appleBlocks.append(copy)
-                appleRefs[ref.identifier] = ref
-            } else {
-                localBlocks.append(block)
-            }
+            guard case .apple(let ref) = ItemOrigin(id: block.reminderID, kind: .reminder),
+                  calendar.isDate(block.start, inSameDayAs: day) else { continue }
+            var copy = block
+            copy.reminderID = ref.identifier
+            appleBlocks.append(copy)
+            appleRefs[ref.identifier] = ref
         }
-        let storedApple: [PlanBlock]
-        do {
-            storedApple = try await sidecarRead { try await sidecar.plans(on: day) }
-        } catch where appleBlocks.isEmpty {
-            // An unreadable sidecar can't hold this save's blocks anyway: a day with only Stark's
-            // own blocks still saves them (the planner showed no Apple blocks for it either).
-            storedApple = []
+        let stored = try await sidecarRead { try await sidecar.plans(on: day) }
+        guard appleBlocks != stored else { return }
+        var externalIDs: [String: String] = [:]
+        for ref in appleRefs.values {
+            if let external = await withExternalID(ref).externalID { externalIDs[ref.identifier] = external }
         }
-        if !(appleBlocks.isEmpty && storedApple.isEmpty) && appleBlocks != storedApple {
-            var externalIDs: [String: String] = [:]
-            for ref in appleRefs.values {
-                if let external = await withExternalID(ref).externalID { externalIDs[ref.identifier] = external }
-            }
-            try await sidecarWrite {
-                try await sidecar.replacePlans(on: day, with: appleBlocks, externalIDs: externalIDs)
-            }
-            await didWrite()
+        try await sidecarWrite {
+            try await sidecar.replacePlans(on: day, with: appleBlocks, externalIDs: externalIDs)
         }
-        guard local.replacePlans(on: day, with: localBlocks) else {
-            throw ItemRouterError.local("Couldn't save the plan: that month's file can't be read.")
-        }
+        await didWrite()
     }
 
     // MARK: Helpers
+
+    /// The Apple ref behind a model id; `.notApple` (before anything is read or written) otherwise.
+    private static func appleRef(_ id: String, _ kind: AppleItemRef.Kind) throws -> AppleItemRef {
+        guard case .apple(let ref) = ItemOrigin(id: id, kind: kind) else { throw ItemRouterError.notApple }
+        return ref
+    }
+
+    /// A stored block with its reminder id turned into the model id (`apple-<identifier>`).
+    private static func withModelID(_ block: PlanBlock) -> PlanBlock {
+        var copy = block
+        copy.reminderID = ItemOrigin.applePrefix + block.reminderID
+        return copy
+    }
 
     private func didWrite() async {
         await onDidWrite?()

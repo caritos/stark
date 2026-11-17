@@ -1,6 +1,14 @@
 // ios/Sources/StarkKit/Items/DefaultDestination.swift
 import Foundation
 
+/// Where new Apple items go: the default calendar for events and the default list for reminders,
+/// nil when none is chosen or available. The app's destination model conforms.
+@MainActor
+public protocol DefaultDestinations {
+    var calendarID: String? { get }
+    var listID: String? { get }
+}
+
 /// Which calendar new events go to and which list new reminders go to. The app's destination model
 /// stores the chosen ids (ids only) and asks this for the effective one; pure so it is tested here.
 public enum DefaultDestination {

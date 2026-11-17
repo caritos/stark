@@ -3,43 +3,6 @@ import Testing
 import Foundation
 @testable import StarkKit
 
-/// Records every call the router makes on the local store; nothing is persisted.
-@MainActor
-private final class FakeLocalStore: LocalItemStore {
-    var calls: [String] = []
-    var storedPlans: [PlanBlock] = []
-    var convertResult = true
-    var replacePlansResult = true
-
-    func addEvent(_ event: Event) { calls.append("addEvent \(event.id)") }
-    func addReminder(_ reminder: Reminder) { calls.append("addReminder \(reminder.id)") }
-    func updateEvent(_ event: Event) { calls.append("updateEvent \(event.id) \(event.title)") }
-    func updateReminder(_ reminder: Reminder) { calls.append("updateReminder \(reminder.id) \(reminder.title)") }
-    func deleteEvent(id: String) { calls.append("deleteEvent \(id)") }
-    func deleteReminder(id: String) { calls.append("deleteReminder \(id)") }
-    func completeReminder(id: String, on date: Date, today: Date, now: Date) { calls.append("complete \(id)") }
-    func uncompleteReminder(id: String) { calls.append("uncomplete \(id)") }
-    func skipEvent(id: String, on date: Date) { calls.append("skipEvent \(id)") }
-    func skipReminder(id: String, on date: Date, today: Date) { calls.append("skipReminder \(id)") }
-    func setEventOutcome(id: String, on date: Date, outcome: EventOutcome?, now: Date) {
-        calls.append("outcome \(id) \(outcome?.rawValue ?? "nil")")
-    }
-    func convertEvent(id: String, to reminder: Reminder) -> Bool {
-        calls.append("convertEvent \(id)")
-        return convertResult
-    }
-    func convertReminder(id: String, to event: Event) -> Bool {
-        calls.append("convertReminder \(id)")
-        return convertResult
-    }
-    func plans(on day: Date) -> [PlanBlock] { storedPlans }
-    func replacePlans(on day: Date, with blocks: [PlanBlock]) -> Bool {
-        calls.append("replacePlans \(blocks.map(\.id))")
-        if replacePlansResult { storedPlans = blocks }
-        return replacePlansResult
-    }
-}
-
 private struct StubDestinations: DefaultDestinations {
     var calendarID: String?
     var listID: String?
@@ -106,7 +69,6 @@ struct ItemRouterTests {
     private struct Harness {
         let router: ItemRouter
         let repo: FakeItemRepository
-        let local: FakeLocalStore
         let sidecar: ItemSidecar
         let counter: Counter
         let sidecarURL: URL
@@ -124,26 +86,23 @@ struct ItemRouterTests {
                          externalIDs: Bool = false) -> Harness {
         let fake = fake ?? FakeItemRepository(calendars: Self.calendars, assignsExternalIDs: externalIDs,
                                               now: { Date(timeIntervalSince1970: 1_800_000_000) })
-        let local = FakeLocalStore()
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString).appendingPathComponent("sidecar.json")
         let sidecar = ItemSidecar(fileURL: url, calendar: days)
         let counter = Counter()
-        let router = ItemRouter(repository: repo ?? fake, local: local, sidecar: sidecar,
+        let router = ItemRouter(repository: repo ?? fake, sidecar: sidecar,
                                 destinations: destinations, calendar: days,
                                 now: { Date(timeIntervalSince1970: 1_800_000_000) })
         router.onDidWrite = { counter.writes += 1 }
-        return Harness(router: router, repo: fake, local: local, sidecar: sidecar, counter: counter, sidecarURL: url)
+        return Harness(router: router, repo: fake, sidecar: sidecar, counter: counter, sidecarURL: url)
     }
 
     // MARK: Origin
 
-    @Test("an apple- model id routes to Apple, a Stark UUID to the local store")
+    @Test("an apple- model id routes to Apple")
     func originFromID() {
         #expect(ItemOrigin(id: "apple-AB-12:x", kind: .event) == .apple(AppleItemRef(kind: .event, identifier: "AB-12:x")))
         #expect(ItemOrigin(id: "apple-R1", kind: .reminder) == .apple(AppleItemRef(kind: .reminder, identifier: "R1")))
-        #expect(ItemOrigin(id: UUID().uuidString, kind: .event) == .local)
-        #expect(ItemOrigin(id: "apple-", kind: .event) == .local)
     }
 
     @Test("an agenda row routes by its own ref")
@@ -152,9 +111,68 @@ struct ItemRouterTests {
         let apple = AgendaItem(kind: .reminder(Reminder(id: "apple-9F-8E", title: "t", dueDate: at(1))),
                                occurrence: at(1), displayDate: at(1), isOverdue: false, appleSource: source)
         #expect(ItemOrigin(item: apple) == .apple(AppleItemRef(kind: .reminder, identifier: "9F-8E")))
+    }
+
+    // MARK: Apple only
+
+    @Test("only an apple- id has an origin; there is no local origin")
+    func noLocalOrigin() {
+        #expect(ItemOrigin(id: UUID().uuidString, kind: .event) == nil)
+        #expect(ItemOrigin(id: UUID().uuidString, kind: .reminder) == nil)
+        #expect(ItemOrigin(id: "apple-", kind: .event) == nil)
         let own = AgendaItem(kind: .event(Event(title: "t", start: at(1))), occurrence: at(1),
                              displayDate: at(1), isOverdue: false)
-        #expect(ItemOrigin(item: own) == .local)
+        #expect(ItemOrigin(item: own) == nil)
+    }
+
+    @Test("a non-Apple id is refused with a clear error and writes nothing")
+    func nonAppleIDRefused() async throws {
+        let h = harness()
+        let id = UUID().uuidString
+        let event = Event(id: id, title: "x", start: at(3))
+        let reminder = Reminder(id: id, title: "x", dueDate: at(3))
+        let router = h.router
+        let operations: [(String, () async throws -> Void)] = [
+            ("update event", { try await router.update(event: event, original: ItemDetails(event: event, calendarID: "cal")) }),
+            ("update reminder", { try await router.update(reminder: reminder, url: nil,
+                                                          original: ItemDetails(reminder: reminder, calendarID: "list")) }),
+            ("delete event", { try await router.deleteEvent(id: id) }),
+            ("delete reminder", { try await router.deleteReminder(id: id) }),
+            ("complete", { try await router.complete(id: id, on: at(3)) }),
+            ("uncomplete", { try await router.uncomplete(id: id) }),
+            ("skip event", { try await router.skipEvent(id: id, on: at(3)) }),
+            ("outcome", { try await router.setEventOutcome(id: id, on: at(3), outcome: .attended) }),
+            ("convert event", { _ = try await router.convertEvent(id: id, to: reminder) }),
+            ("convert reminder", { _ = try await router.convertReminder(id: id, to: event) }),
+            ("details", { _ = try await router.details(id: id, kind: .event) }),
+        ]
+        for (name, operation) in operations {
+            do {
+                try await operation()
+                Issue.record("\(name) did not throw")
+            } catch let error as ItemRouterError {
+                #expect(error == .notApple, "\(name) threw \(error)")
+                #expect(error.message.contains("Apple Calendar or Reminders"))
+            }
+        }
+        #expect(await h.repo.itemCount == 0)
+        #expect(try await h.sidecar.load() == SidecarData())
+        #expect(h.counter.writes == 0)
+    }
+
+    @Test("replacePlans ignores a non-Apple block, and plans(on:) is the sidecar's blocks only")
+    func replacePlansIgnoresNonAppleBlocks() async throws {
+        let h = harness()
+        let apple = PlanBlock(id: "pa", reminderID: "apple-R1", occurrence: at(6), start: at(6, 9), minutes: 30)
+        let own = PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6), start: at(6, 10), minutes: 30)
+        try await h.router.replacePlans(on: at(6), with: [apple, own])
+        #expect(try await h.sidecar.plans(on: at(6)).map(\.id) == ["pa"])
+        let plans = try await h.router.plans(on: at(6))
+        #expect(plans.map(\.id) == ["pa"])
+        #expect(plans.first?.reminderID == "apple-R1")
+        // A save of only non-Apple blocks is a save of no blocks: the day's Apple blocks go.
+        try await h.router.replacePlans(on: at(6), with: [own])
+        #expect(try await h.router.plans(on: at(6)).isEmpty)
     }
 
     // MARK: Add
@@ -165,7 +183,6 @@ struct ItemRouterTests {
         let eventRef = try await h.router.add(event: Event(title: "Dentist", start: at(3, 10), end: at(3, 11)))
         let reminderRef = try await h.router.add(reminder: Reminder(title: "Call", dueDate: midnight(3)))
         let timedRef = try await h.router.add(reminder: Reminder(title: "Ring", dueDate: at(3, 15)))
-        #expect(h.local.calls.isEmpty)
         let e = try await h.repo.details(eventRef)
         #expect(e.event?.title == "Dentist" && e.calendarID == "cal" && e.event?.end == at(3, 11))
         let r = try await h.repo.details(reminderRef)
@@ -212,7 +229,6 @@ struct ItemRouterTests {
             try await h.router.add(reminder: Reminder(title: "x", dueDate: at(3)))
         }
         #expect(await h.repo.itemCount == 0)
-        #expect(h.local.calls.isEmpty)
         #expect(h.counter.writes == 0)
         #expect(!ItemRouterError.noDefaultDestination(.event).message.isEmpty)
     }
@@ -234,40 +250,6 @@ struct ItemRouterTests {
         #expect(h.counter.writes == 0)
     }
 
-    // MARK: Local routing
-
-    @Test("Stark ids go to the local store and do not fire onDidWrite")
-    func localRouting() async throws {
-        let h = harness()
-        let id = UUID().uuidString
-        try await h.router.complete(id: id, on: at(3))
-        try await h.router.uncomplete(id: id)
-        try await h.router.skipEvent(id: id, on: at(3))
-        try await h.router.skipReminder(id: id, on: at(3))
-        try await h.router.setEventOutcome(id: id, on: at(3), outcome: .attended)
-        try await h.router.deleteEvent(id: id)
-        try await h.router.deleteReminder(id: id)
-        let original = Event(id: id, title: "old", start: at(3))
-        var edited = original
-        edited.title = "new"
-        try await h.router.update(event: edited)
-        #expect(h.local.calls == [
-            "complete \(id)", "uncomplete \(id)", "skipEvent \(id)", "skipReminder \(id)",
-            "outcome \(id) attended", "deleteEvent \(id)", "deleteReminder \(id)", "updateEvent \(id) new",
-        ])
-        #expect(await h.repo.itemCount == 0)
-        #expect(h.counter.writes == 0)
-    }
-
-    @Test("a local convert the store refuses throws a readable error")
-    func localConvertRefused() async {
-        let h = harness()
-        h.local.convertResult = false
-        await #expect(throws: ItemRouterError.self) {
-            try await h.router.convertEvent(id: UUID().uuidString, to: Reminder(title: "x"))
-        }
-    }
-
     // MARK: Apple operations
 
     @Test("complete and uncomplete an Apple reminder go to the repository")
@@ -279,26 +261,7 @@ struct ItemRouterTests {
         #expect(try await h.repo.details(ref).reminder?.isCompleted == true)
         try await h.router.uncomplete(id: id)
         #expect(try await h.repo.details(ref).reminder?.isCompleted == false)
-        #expect(h.local.calls.isEmpty)
         #expect(h.counter.writes == 3)
-    }
-
-    @Test("skipReminder on an Apple reminder is unsupported and changes nothing")
-    func skipAppleReminderUnsupported() async throws {
-        let h = harness()
-        let ref = try await h.router.add(reminder: Reminder(title: "Gym", dueDate: at(3),
-                                                            recurrence: RecurrenceRule(frequency: .daily)))
-        h.counter.writes = 0
-        do {
-            try await h.router.skipReminder(id: "apple-\(ref.identifier)", on: at(3))
-            Issue.record("expected a throw")
-        } catch let error as ItemRouterError {
-            guard case .unsupported = error else { Issue.record("wrong error \(error)"); return }
-            #expect(!error.message.isEmpty)
-        }
-        let r = try await h.repo.details(ref).reminder
-        #expect(r?.dueDate == at(3) && r?.exceptionDates.isEmpty == true)
-        #expect(h.local.calls.isEmpty && h.counter.writes == 0)
     }
 
     @Test("skipEvent on an Apple series deletes only that occurrence")
@@ -309,7 +272,6 @@ struct ItemRouterTests {
         let e = try await h.repo.details(ref).event
         #expect(e?.exceptionDates == [at(4)])
         #expect(e?.recurrence == RecurrenceRule(frequency: .daily))
-        #expect(h.local.calls.isEmpty)
     }
 
     @Test("delete an Apple event removes it")
@@ -318,7 +280,6 @@ struct ItemRouterTests {
         let ref = try await h.router.add(event: Event(title: "x", start: at(3)))
         try await h.router.deleteEvent(id: "apple-\(ref.identifier)")
         await #expect(throws: ItemRepositoryError.notFound) { try await h.repo.details(ref) }
-        #expect(h.local.calls.isEmpty)
     }
 
     @Test("update of an Apple event writes back only the changed fields")
@@ -337,7 +298,6 @@ struct ItemRouterTests {
         let e = try await h.repo.details(ref).event
         #expect(e?.title == "Long lunch" && e?.location == nil)
         #expect(e?.notes == "n" && e?.start == at(3, 12) && e?.recurrence == RecurrenceRule(frequency: .weekly))
-        #expect(h.local.calls.isEmpty)
     }
 
     @Test("an event patch diff holds only what changed")
@@ -389,7 +349,6 @@ struct ItemRouterTests {
         try await h.router.setEventOutcome(id: "apple-EV1", on: at(5, 8), outcome: .skipped)
         let record = try await h.sidecar.outcome(for: "EV1", externalID: nil, on: at(5, 20))
         #expect(record?.outcome == .skipped && record?.date == at(5, 8))
-        #expect(h.local.calls.isEmpty)
         #expect(h.counter.writes == 1)
         try await h.router.setEventOutcome(id: "apple-EV1", on: at(5, 8), outcome: nil)
         #expect(try await h.sidecar.outcome(for: "EV1", externalID: nil, on: at(5)) == nil)
@@ -397,52 +356,24 @@ struct ItemRouterTests {
 
     // MARK: Plans
 
-    @Test("plans for an Apple reminder go to the sidecar, local ones to the store, and plans(on:) merges both")
-    func plansSplitAndMerge() async throws {
-        let h = harness()
-        let apple = PlanBlock(id: "pa", reminderID: "apple-R1", occurrence: at(6), start: at(6, 9), minutes: 30)
-        let localID = UUID().uuidString
-        let own = PlanBlock(id: "pl", reminderID: localID, occurrence: at(6), start: at(6, 10), minutes: 30)
-        try await h.router.replacePlans(on: at(6), with: [apple, own])
-        #expect(h.local.calls == ["replacePlans [\"pl\"]"])
-        let stored = try await h.sidecar.plans(on: at(6))
-        #expect(stored.map(\.reminderID) == ["R1"])
-        let merged = try await h.router.plans(on: at(6))
-        #expect(Set(merged.map(\.id)) == ["pa", "pl"])
-        #expect(merged.first { $0.id == "pa" }?.reminderID == "apple-R1")
-    }
-
-    @Test("a refused local plan save throws")
-    func localPlansRefused() async {
-        let h = harness()
-        h.local.replacePlansResult = false
-        let own = PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6), start: at(6, 10), minutes: 30)
-        await #expect(throws: ItemRouterError.self) { try await h.router.replacePlans(on: at(6), with: [own]) }
-    }
-
-    @Test("an unreadable sidecar does not block a day with only Stark's own blocks")
-    func unreadableSidecarKeepsLocalPlanSaves() async throws {
-        let h = harness()
-        try h.breakSidecar()
-        let own = PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6), start: at(6, 10), minutes: 30)
-        try await h.router.replacePlans(on: at(6), with: [own])
-        #expect(h.local.calls == ["replacePlans [\"pl\"]"])
-        #expect(h.counter.writes == 0)
-    }
-
-    @Test("an unreadable sidecar still refuses a save with Apple blocks, and writes nothing")
-    func unreadableSidecarRefusesApplePlanSaves() async throws {
+    @Test("an unreadable sidecar refuses every plan save, even one with no Apple blocks, and writes nothing")
+    func unreadableSidecarRefusesPlanSaves() async throws {
         let h = harness()
         try h.breakSidecar()
         let apple = PlanBlock(id: "pa", reminderID: "apple-R1", occurrence: at(6), start: at(6, 9), minutes: 30)
         let own = PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6), start: at(6, 10), minutes: 30)
-        await #expect {
-            try await h.router.replacePlans(on: at(6), with: [apple, own])
-        } throws: { error in
-            if case .sidecar = error as? ItemRouterError { return true }
-            return false
+        // Without a local store there is nothing else to save to: a day whose blocks are all
+        // non-Apple can't be compared with what the sidecar holds, so it is refused too.
+        for blocks in [[apple, own], [own], []] {
+            await #expect {
+                try await h.router.replacePlans(on: at(6), with: blocks)
+            } throws: { error in
+                if case .sidecar = error as? ItemRouterError { return true }
+                return false
+            }
         }
-        #expect(h.local.calls.isEmpty)
+        #expect(try Data(contentsOf: h.sidecarURL) == Data("not json".utf8))
+        #expect(h.counter.writes == 0)
     }
 
     // MARK: Convert
@@ -455,15 +386,13 @@ struct ItemRouterTests {
             PlanBlock(id: "b", reminderID: ref.identifier, occurrence: at(7), start: at(7, 9), minutes: 15),
         ])
         h.counter.writes = 0
-        let converted = try await h.router.convertEvent(id: "apple-\(ref.identifier)",
-                                                        to: Reminder(title: "Pay rent", dueDate: midnight(7)))
-        let newRef = try #require(converted)
+        let newRef = try await h.router.convertEvent(id: "apple-\(ref.identifier)",
+                                                     to: Reminder(title: "Pay rent", dueDate: midnight(7)))
         #expect(newRef.kind == .reminder)
         await #expect(throws: ItemRepositoryError.notFound) { try await h.repo.details(ref) }
         let r = try await h.repo.details(newRef)
         #expect(r.reminder?.title == "Pay rent" && r.calendarID == "list")
         #expect(try await h.sidecar.plans(on: at(7)).map(\.reminderID) == [newRef.identifier])
-        #expect(h.local.calls.isEmpty)
         #expect(h.counter.writes == 1)
     }
 
@@ -471,9 +400,8 @@ struct ItemRouterTests {
     func convertAppleReminder() async throws {
         let h = harness()
         let ref = try await h.router.add(reminder: Reminder(title: "Gym", dueDate: at(8)))
-        let converted = try await h.router.convertReminder(id: "apple-\(ref.identifier)",
-                                                           to: Event(title: "Gym", start: at(8, 18), end: at(8, 19)))
-        let newRef = try #require(converted)
+        let newRef = try await h.router.convertReminder(id: "apple-\(ref.identifier)",
+                                                        to: Event(title: "Gym", start: at(8, 18), end: at(8, 19)))
         #expect(newRef.kind == .event)
         let e = try await h.repo.details(newRef)
         #expect(e.event?.title == "Gym" && e.calendarID == "cal")
@@ -670,8 +598,7 @@ struct ItemRouterTests {
     func convertRecordsExternalID() async throws {
         let h = harness(externalIDs: true)
         let ref = try await h.router.add(event: Event(title: "x", start: at(7)))
-        let converted = try await h.router.convertEvent(id: "apple-\(ref.identifier)", to: Reminder(title: "x", dueDate: at(7)))
-        let newRef = try #require(converted)
+        let newRef = try await h.router.convertEvent(id: "apple-\(ref.identifier)", to: Reminder(title: "x", dueDate: at(7)))
         let ext = try #require(newRef.externalID)
         #expect(try await h.sidecar.load().externalIDs[newRef.identifier] == ext)
     }
@@ -711,8 +638,6 @@ struct ItemRouterTests {
         let later = PlanBlock(id: "a2", reminderID: "apple-R2", occurrence: at(20), start: at(20, 9), minutes: 30)
         try await h.router.replacePlans(on: at(6), with: [inside])
         try await h.router.replacePlans(on: at(20), with: [later])
-        h.local.storedPlans = [PlanBlock(id: "pl", reminderID: UUID().uuidString, occurrence: at(6),
-                                         start: at(6, 10), minutes: 30)]
         let plans = try await h.router.applePlans(in: at(5, 0)...at(10, 0))
         #expect(plans.map(\.id) == ["a1"])
         #expect(plans.first?.reminderID == "apple-R1")
