@@ -285,7 +285,7 @@ struct ItemSidecarTests {
         let text = String(decoding: first, as: UTF8.self)
         #expect(text.contains("\"identifier\""))
         #expect(text.contains("\"externalID\""))
-        #expect(SidecarData.currentVersion == 1)
+        #expect(SidecarData.currentVersion == 2)
     }
 
     @Test("the external id fallback returns the newest by date even when it has the smaller identifier")

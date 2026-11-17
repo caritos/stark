@@ -18,7 +18,7 @@ public struct OutcomeEntry: Codable, Equatable, Sendable {
 /// Everything Stark keeps locally about Apple-owned items: plan blocks, event outcomes and the
 /// bridge idempotency ledger. Plain data; never holds absolute file paths.
 public struct SidecarData: Codable, Equatable, Sendable {
-    public static let currentVersion = 1
+    public static let currentVersion = 2
 
     public var version: Int
     /// A block's `reminderID` holds the Apple identifier of the reminder it plans.
@@ -29,19 +29,61 @@ public struct SidecarData: Codable, Equatable, Sendable {
     public var bridgeLedger: [String: String]
     /// Apple identifier -> external identifier, for re-matching plans and ledger entries.
     public var externalIDs: [String: String]
+    /// Phase 2 import: local item id -> Apple identifier of the copy created in Apple.
+    public var importLedger: [String: String]
+    /// When the import last finished (nil = never).
+    public var importedAt: Date?
 
     public init(
         version: Int = SidecarData.currentVersion,
         plans: [PlanBlock] = [],
         outcomes: [OutcomeEntry] = [],
         bridgeLedger: [String: String] = [:],
-        externalIDs: [String: String] = [:]
+        externalIDs: [String: String] = [:],
+        importLedger: [String: String] = [:],
+        importedAt: Date? = nil
     ) {
         self.version = version
         self.plans = plans
         self.outcomes = outcomes
         self.bridgeLedger = bridgeLedger
         self.externalIDs = externalIDs
+        self.importLedger = importLedger
+        self.importedAt = importedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, plans, outcomes, bridgeLedger, externalIDs, importLedger, importedAt
+    }
+
+    /// Missing keys (a version 1 file) decode to empty defaults; the version stays as written
+    /// until the next save.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = try c.decode(Int.self, forKey: .version)
+        plans = try c.decodeIfPresent([PlanBlock].self, forKey: .plans) ?? []
+        outcomes = try c.decodeIfPresent([OutcomeEntry].self, forKey: .outcomes) ?? []
+        bridgeLedger = try c.decodeIfPresent([String: String].self, forKey: .bridgeLedger) ?? [:]
+        externalIDs = try c.decodeIfPresent([String: String].self, forKey: .externalIDs) ?? [:]
+        importLedger = try c.decodeIfPresent([String: String].self, forKey: .importLedger) ?? [:]
+        importedAt = try c.decodeIfPresent(Date.self, forKey: .importedAt)
+    }
+}
+
+/// Everything the import writes for one local item, saved together in one sidecar write.
+public struct ImportRecord: Equatable, Sendable {
+    public var localID: String
+    public var identifier: String
+    public var externalID: String?
+    public var plans: [PlanBlock]
+    public var outcomes: [EventOutcomeRecord]
+
+    public init(localID: String, identifier: String, externalID: String?, plans: [PlanBlock] = [], outcomes: [EventOutcomeRecord] = []) {
+        self.localID = localID
+        self.identifier = identifier
+        self.externalID = externalID
+        self.plans = plans
+        self.outcomes = outcomes
     }
 }
 
@@ -110,6 +152,7 @@ public actor ItemSidecar {
     /// Loads, applies `change`, writes. If the load or write fails nothing on disk changes.
     public func update(_ change: (inout SidecarData) -> Void) throws {
         var data = try load()
+        data.version = SidecarData.currentVersion
         change(&data)
         data.outcomes.sort(by: Self.outcomeOrder)
         try writer(try Self.encoder.encode(data), fileURL)
@@ -200,6 +243,34 @@ public actor ItemSidecar {
 
     public func bridgedIdentifier(for itemID: String) throws -> String? {
         try load().bridgeLedger[itemID]
+    }
+
+    // MARK: Import ledger
+
+    public func importedIDs() throws -> Set<String> {
+        Set(try load().importLedger.keys)
+    }
+
+    /// Writes the ledger entry, bridge ledger entry, external id, re-keyed plan blocks and
+    /// outcomes for one imported item in ONE write (all or none).
+    public func recordImport(_ item: ImportRecord) throws {
+        try update { data in
+            data.importLedger[item.localID] = item.identifier
+            data.bridgeLedger[item.localID] = item.identifier
+            if let ext = item.externalID { data.externalIDs[item.identifier] = ext }
+            for var block in item.plans {
+                block.reminderID = item.identifier
+                data.plans.removeAll { $0.id == block.id }
+                data.plans.append(block)
+            }
+            for record in item.outcomes {
+                data.outcomes.append(OutcomeEntry(identifier: item.identifier, externalID: item.externalID, record: record))
+            }
+        }
+    }
+
+    public func markImportFinished(at date: Date) throws {
+        try update { $0.importedAt = date }
     }
 
     // MARK: Identifier changes
