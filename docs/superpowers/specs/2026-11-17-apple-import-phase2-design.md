@@ -158,3 +158,5 @@ My calls (the owner can override):
    is not writable.
 
 Owner decision (2026-11-17): **import everything, no cutoff.** Every event and every open or completed one-off reminder is imported however old, and every repeating series that still has occurrences left. Only completed copies of repeating reminders (history) and finished series are left behind, as above. The preview shows the counts so the size is visible before confirming.
+
+Correction after Task 3 review (2026-11-17): decision 3's COUNT rule is superseded. A completion in the local store writes BOTH an exception date and a copy, so "exceptions + copies" double counts. The imported COUNT is the original COUNT minus the rule's occurrences before the shown date (exception dates included, as `OccurrenceExpander` counts them), so the series ends on the same last occurrence as in Stark. A clamped day-31 series pins `byMonthDay` to the original day. Skipped occurrences after the shown date cannot be carried (reminders hold no exception dates) and reappear in Apple.
