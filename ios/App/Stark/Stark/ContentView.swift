@@ -19,6 +19,7 @@ struct ContentView: View {
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(DefaultDestinationModel.self) private var destinations
     @Environment(NoticeCenter.self) private var notices
+    @Environment(ImportModel.self) private var importModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var showAdd = false
     @State private var showSearch = false
@@ -251,6 +252,9 @@ struct ContentView: View {
             // Load the wider window (includes the overdue lookback), not the display window.
             let range = AgendaWindow.loadRange(around: Date())
             store.start(windowStart: range.lowerBound, windowEnd: range.upperBound)
+            // Hide items already imported into Apple and mark the ones that can't be, before the
+            // first Apple fetch (so an imported item never shows twice for long).
+            await importModel.refreshStatus()
             // Empty (and no EventKit call) until access was granted from `AccessRequiredView`.
             await overlay.reload(for: .agenda, display: AgendaWindow.range(around: agendaAnchor), today: today)
             await destinations.refresh()

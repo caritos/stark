@@ -46,6 +46,9 @@ public final class ImportModel {
     public private(set) var isRunning = false
     /// The sidecar's `importedAt` is set (read by `refreshStatus`, `scan` and after a run).
     public private(set) var importFinished = false
+    /// The plan of the last scan, kept after a run so the result can still list the items that
+    /// could not be imported.
+    public private(set) var lastPlan: ImportPlan?
 
     @ObservationIgnored private let store: PlannerStore
     @ObservationIgnored private let sidecar: ItemSidecar
@@ -128,6 +131,7 @@ public final class ImportModel {
         let plan = ImportPlanner.plan(events: store.allEvents, reminders: store.allReminders, plans: store.allPlans,
                                       alreadyImported: imported, apple: apple, today: now(), calendar: calendar)
         store.notImportedIDs = Set(plan.unrepresentable.map(\.localID))
+        lastPlan = plan
 
         var finished = data.importedAt != nil
         if plan.isEmpty && !finished {

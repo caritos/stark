@@ -108,5 +108,6 @@ struct SearchView: View {
     private func refreshResults(events: [Event]? = nil, reminders: [Reminder]? = nil) {
         results = SearchResults.find(events: events ?? store.events, reminders: reminders ?? store.reminders,
                                      apple: overlay.snapshot, query: query)
+            .marked(notImported: store.notImportedIDs)
     }
 }

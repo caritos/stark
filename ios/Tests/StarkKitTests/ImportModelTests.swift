@@ -219,6 +219,7 @@ struct ImportModelTests {
         #expect(env.store.notImportedIDs == ["odd"])
         await model.confirm()
         #expect(model.showsSettingsRow)          // the leftover is still listed there
+        #expect(model.lastPlan?.unrepresentable.map(\.title) == ["Odd one"])
 
         // A relaunch: a fresh store and model know nothing until `refreshStatus`.
         let store = PlannerStore(file: makeFile(env.root))

@@ -21,6 +21,9 @@ struct StarkApp: App {
     @State private var planCache: PlanCache
     /// The main screen's notice strip, shared so sheets and the agenda can post to it.
     @State private var notices = NoticeCenter()
+    /// Settings > "Import Stark's own items" (phase 2): its state, the launch hiding of imported
+    /// items and the "not imported" mark (`ImportModel.refreshStatus`, run after the store starts).
+    @State private var importModel: ImportModel
     /// The one EventKit repository, sidecar and router (Apple write path). Every view write goes
     /// through the router; the Claude Code bridge writes through the same repository and sidecar.
     private let repository: AppleItemRepository
@@ -58,6 +61,20 @@ struct StarkApp: App {
             await planCache?.refresh()
         }
         self.router = router
+        _importModel = State(initialValue: ImportModel(
+            store: store, sidecar: sidecar, repository: repository, destinations: destinations,
+            appleItems: { [weak overlay] in
+                // Search's window of Apple items, for the informational "look already in Apple"
+                // count; released again right after, as Search does on close.
+                guard let overlay else { return [] }
+                let now = Date()
+                let range = SearchWindow.range(around: now)
+                await overlay.reload(for: .search, display: range, today: now)
+                let items = mergeAppleItems([], snapshot: overlay.snapshot, in: range, today: now)
+                await overlay.reload(for: .search, display: nil, today: now)
+                return items
+            },
+            calendar: .autoupdatingCurrent))
         let secrets = KeychainSecretStore(service: "com.caritos.todo-txt.bridge", account: "pairing")
         self.secrets = secrets
         // Bridge items go to Apple (default calendar / list) and are ledgered in the sidecar.
@@ -88,6 +105,7 @@ struct StarkApp: App {
                 .environment(destinations)
                 .environment(planCache)
                 .environment(notices)
+                .environment(importModel)
                 .environment(\.itemRouter, router)
                 #if targetEnvironment(macCatalyst)
                 .frame(minWidth: 480, minHeight: 520)

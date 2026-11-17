@@ -64,6 +64,19 @@ struct EditItemView: View {
     var body: some View {
         NavigationStack {
             List {
+                if isNotImported {
+                    Section {
+                        VStack(alignment: .leading, spacing: Spacing.xs) {
+                            NotImportedLabel(font: .subheadline)
+                            Text("Apple can't hold this item's repeat, so it stays in Stark's own files. Settings > Import Stark's own items lists why.")
+                                .font(.footnote)
+                                .foregroundStyle(Colors.textSecondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                    .listRowBackground(Colors.card)
+                }
+
                 Section {
                     TextField("Title", text: $form.title)
                         .focused($focusedField, equals: .title)
@@ -326,6 +339,16 @@ struct EditItemView: View {
 
     /// The form's kind (the converted one while converting), which decides the fields shown.
     private var isEvent: Bool { kind == .event }
+
+    /// Stark's own item that the import could not move to Apple (rows from Weekly Review are not
+    /// marked, so the store's set is checked too).
+    private var isNotImported: Bool {
+        if item.isNotImported { return true }
+        switch item.kind {
+        case .event(let event): return store.notImportedIDs.contains(event.id)
+        case .reminder(let reminder): return store.notImportedIDs.contains(reminder.id)
+        }
+    }
 
     /// The item's own kind, before any conversion.
     private var originalKind: ItemKind {

@@ -321,7 +321,8 @@ struct AgendaView: View {
         let merged = agendaWithApple(local: items, snapshot: overlay.snapshot,
                                      plans: store.plans + planCache.applePlans, range: range, today: now,
                                      reminders: store.reminders, calendar: Self.calendar)
-        return groupAgendaByDay(merged, in: range, calendar: Self.calendar)
+        // Last in the pipeline, so planned copies and merged rows carry the mark too.
+        return groupAgendaByDay(merged.marked(notImported: store.notImportedIDs), in: range, calendar: Self.calendar)
     }
 
     private func makeRows(_ sections: [AgendaDay], todayStart: Date) -> [ListRow] {
