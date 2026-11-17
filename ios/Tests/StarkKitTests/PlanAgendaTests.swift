@@ -150,7 +150,7 @@ struct PlanAgendaTests {
         let before = applyPlans(build(reminders: [master]), plans: [plan], today: today)
         #expect(before.contains { $0.plan == plan })
 
-        // Mirror PlannerStore.completeReminder: exdate the miss and every later miss up to today,
+        // Mirror the removed local store's completeReminder: exdate the miss and every later miss up to today,
         // and add a completed one-off copy for the resolved occurrence.
         let after = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: firstMiss))!
         let todayEnd = cal.date(byAdding: .day, value: 1, to: todayStart)!.addingTimeInterval(-1)

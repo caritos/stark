@@ -1,7 +1,7 @@
 import Foundation
 
 /// The editable plan for one day: a copy of the saved blocks that the planner UI changes
-/// (place, move, resize, remove) before saving `blocksToSave` with `PlannerStore.replacePlans`.
+/// (place, move, resize, remove) before saving `blocksToSave` with `ItemRouter.replacePlans`.
 /// Only `PlanBlock`s change; a reminder's due date and recurrence are never touched.
 public struct PlanDraft {
     /// The blocks the planner shows and edits (the model's blocks: open, loaded tasks).
@@ -20,7 +20,7 @@ public struct PlanDraft {
     private let day: Date
     private let calendar = Calendar(identifier: .gregorian)
 
-    /// - Parameter saved: the day's stored blocks (`PlannerStore.plans(on:)`); those starting on
+    /// - Parameter saved: the day's stored blocks (`ItemRouter.plans(on:)`); those starting on
     ///   `model.day` and not among `model.blocks` (by id) are retained.
     public init(model: DayPlanModel, saved: [PlanBlock] = []) {
         self.blocks = model.blocks

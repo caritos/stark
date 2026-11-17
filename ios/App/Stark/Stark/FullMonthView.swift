@@ -9,8 +9,8 @@ import StarkKit
 /// Each week row draws `monthLayout`'s result and nothing else: all-day and multi-day events as
 /// bars across the row (holiday calendars as lilac chips), then per day the timed events (dot +
 /// title) and reminders (checkbox + title), and "N more…" when the day has more than fits. The
-/// rows come from `buildAgendaItems` then `agendaWithApple` over the grid's range, the same call
-/// shape as `gridDensity`, so Month never disagrees with the agenda. They are computed off the
+/// rows come from the Apple snapshot with the sidecar's plans (`agendaWithApple`) over the grid's
+/// range, the same call shape as `gridDensity`, so Month never disagrees with the agenda. They are computed off the
 /// main actor, debounced, and tagged with the month (paging never shows the previous month's
 /// items on the new month's days).
 ///

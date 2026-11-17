@@ -11,7 +11,8 @@ import StarkKit
 /// small red squares. Whatever does not fit a cell is simply not drawn (no "N more"). The 1st of
 /// each month is a grey pill ("Dec 1") and thicker grey seams separate the months.
 ///
-/// The rows come from `buildAgendaItems` then `agendaWithApple` over the quarter's range, as in
+/// The rows come from the Apple snapshot with the sidecar's plans (`agendaWithApple`) over the
+/// quarter's range, as in
 /// `FullMonthView`, laid out by `gridLayout` with no capacity limit (the view decides what fits).
 /// They are computed off the main actor, debounced, and tagged with the month shown.
 ///

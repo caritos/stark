@@ -1,19 +1,13 @@
 // ios/Sources/StarkKit/Planner/EventOutcomeActions.swift
 
-/// Which action buttons the event detail sheet shows, given the occurrence's current outcome.
-/// Kept out of the view so it is testable.
+/// Which occurrence actions the event edit sheet shows. Kept out of the view so it is testable.
+/// (No screen sets attended/skipped marks any more; existing sidecar marks are still read
+/// through `ItemRouter`.)
 public struct EventOutcomeActions: Equatable {
-    public let showsAttended: Bool
-    public let showsDidntAttend: Bool
-    public let showsClear: Bool
-    /// Drops this one occurrence from a recurring series (an exception date). A different action
-    /// from "Didn't Attend", which keeps the occurrence visible.
+    /// Drops this one occurrence from a recurring series (an exception date).
     public let showsRemoveOccurrence: Bool
 
-    public init(outcome: EventOutcome?, isRecurring: Bool) {
-        showsAttended = outcome != .attended
-        showsDidntAttend = outcome != .skipped
-        showsClear = outcome != nil
+    public init(isRecurring: Bool) {
         showsRemoveOccurrence = isRecurring
     }
 }

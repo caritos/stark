@@ -31,9 +31,9 @@ struct DateMathTests {
 
 @Suite("YearMonth")
 struct YearMonthTests {
-    @Test("fileName formats as YYYY-MM.ics")
-    func fileNameFormat() {
-        #expect(YearMonth(year: 2026, month0: 8).fileName == "2026-09.ics")
+    @Test("description formats as YYYY-MM")
+    func descriptionFormat() {
+        #expect(YearMonth(year: 2026, month0: 8).description == "2026-09")
     }
 
     @Test("orders chronologically across a year boundary")
@@ -43,7 +43,7 @@ struct YearMonthTests {
 
     @Test("normalizes an out-of-range month0 across a year boundary")
     func normalizesOutOfRangeMonth0() {
-        // PlannerStore.start() computes center.month0 ± 1, which can land on -1 or 12.
+        // Paging a month back or forward computes month0 ± 1, which can land on -1 or 12.
         #expect(YearMonth(year: 2026, month0: -1) == YearMonth(year: 2025, month0: 11))
         #expect(YearMonth(year: 2026, month0: 12) == YearMonth(year: 2027, month0: 0))
     }

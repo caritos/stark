@@ -35,7 +35,7 @@ struct GridPagingRequest: Equatable {
 
 struct MonthGridView: View {
     @Environment(AppleOverlayModel.self) private var overlay
-    /// Apple reminders' plan blocks (sidecar), counted with Stark's own like the agenda does.
+    /// Apple reminders' plan blocks (sidecar), counted like the agenda does.
     @Environment(PlanCache.self) private var planCache
     @State private var visibleMonth = YearMonth(date: Date())
     /// The last computed density, tagged with the month it belongs to. Recomputed only when its

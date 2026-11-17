@@ -14,12 +14,11 @@ import Foundation
 /// occurrence -- the next upcoming one relative to `today`, or the most recent past one if the
 /// series has none left -- never the raw stored anchor (`Event.start`/`Reminder.dueDate`),
 /// which for a recurring item is only the series' first occurrence, not necessarily one that
-/// still happens. This matters because `EditItemView`'s actions (Done, Skip This Occurrence,
-/// Attended/Didn't Attend) all write to whatever occurrence date the `AgendaItem` they were
-/// opened from carries (`PlannerStore.completeReminder(id:on:)` and friends) -- passing the
-/// anchor would silently exdate and file a completed copy against a occurrence that may be
-/// years in the past, with no visible effect in the agenda (found in the final review of this
-/// feature; a non-recurring item's anchor already *is* its only occurrence, so it's unaffected).
+/// still happens. This matters because `EditItemView`'s actions (Done, Remove This Occurrence)
+/// write to whatever occurrence date the `AgendaItem` they were opened from carries
+/// (`ItemRouter.complete(id:on:)` and friends) -- passing the anchor would act on an occurrence
+/// that may be years in the past, with no visible effect in the agenda (a non-recurring item's
+/// anchor already *is* its only occurrence, so it's unaffected).
 public enum SearchResults {
     /// How far to look for a recurring series' occurrences around `today`. Generous enough for
     /// any realistic recurrence (a task app's items don't recur for centuries), and bounded so a

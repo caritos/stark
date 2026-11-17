@@ -37,7 +37,7 @@ struct ItemDeletePromptTests {
         #expect(ItemDeletePrompt.isSeries(isRecurring: false, details: details))
         #expect(ItemDeletePrompt.message(isRecurring: false, appleApp: "Calendar", details: details)
                 == "This deletes every occurrence from Calendar.")
-        #expect(EventOutcomeActions(outcome: nil, isRecurring: ItemDeletePrompt.isSeries(isRecurring: false, details: details))
+        #expect(EventOutcomeActions(isRecurring: ItemDeletePrompt.isSeries(isRecurring: false, details: details))
                     .showsRemoveOccurrence)
     }
 

@@ -17,7 +17,7 @@ import StarkKit
 /// shown year, or their days would silently show as empty.
 struct YearView: View {
     @Environment(AppleOverlayModel.self) private var overlay
-    /// Apple reminders' plan blocks (sidecar), counted with Stark's own like the agenda does.
+    /// Apple reminders' plan blocks (sidecar), counted like the agenda does.
     @Environment(PlanCache.self) private var planCache
     /// The year on screen. Starts as the selected day's year; the chevrons change it.
     @State private var year: Int

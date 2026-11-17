@@ -15,8 +15,8 @@ public struct OutcomeEntry: Codable, Equatable, Sendable {
     }
 }
 
-/// Everything Stark keeps locally about Apple-owned items: plan blocks, event outcomes and the
-/// import ledger. Plain data; never holds absolute file paths.
+/// Everything Stark keeps locally about Apple-owned items: plan blocks and event outcomes. Plain
+/// data; never holds absolute file paths.
 ///
 /// Files written before 2026-11-17 may also hold a `bridgeLedger` key (the removed Claude Code
 /// bridge). It is ignored on decode and dropped on the next save; no version change.
@@ -28,27 +28,26 @@ public struct SidecarData: Codable, Equatable, Sendable {
     public var plans: [PlanBlock]
     /// Written sorted by (identifier, externalID, date) so identical data gives identical bytes.
     public var outcomes: [OutcomeEntry]
-    /// Apple identifier -> external identifier, for re-matching plans and ledger entries.
+    /// Apple identifier -> external identifier, for re-matching plans and outcomes.
     public var externalIDs: [String: String]
-    /// Phase 2 import: local item id -> Apple identifier of the copy created in Apple.
-    public var importLedger: [String: String]
-    /// When the import last finished (nil = never).
-    public var importedAt: Date?
+    /// The removed phase 2 import's ledger (local item id -> Apple identifier) and when it
+    /// finished. Nothing reads them any more; they are decoded and re-encoded unchanged only so
+    /// that an older build (2.0.33 to 2.0.36) reading this file never offers the import again.
+    var importLedger: [String: String]
+    var importedAt: Date?
 
     public init(
         version: Int = SidecarData.currentVersion,
         plans: [PlanBlock] = [],
         outcomes: [OutcomeEntry] = [],
-        externalIDs: [String: String] = [:],
-        importLedger: [String: String] = [:],
-        importedAt: Date? = nil
+        externalIDs: [String: String] = [:]
     ) {
         self.version = version
         self.plans = plans
         self.outcomes = outcomes
         self.externalIDs = externalIDs
-        self.importLedger = importLedger
-        self.importedAt = importedAt
+        self.importLedger = [:]
+        self.importedAt = nil
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -65,23 +64,6 @@ public struct SidecarData: Codable, Equatable, Sendable {
         externalIDs = try c.decodeIfPresent([String: String].self, forKey: .externalIDs) ?? [:]
         importLedger = try c.decodeIfPresent([String: String].self, forKey: .importLedger) ?? [:]
         importedAt = try c.decodeIfPresent(Date.self, forKey: .importedAt)
-    }
-}
-
-/// Everything the import writes for one local item, saved together in one sidecar write.
-public struct ImportRecord: Equatable, Sendable {
-    public var localID: String
-    public var identifier: String
-    public var externalID: String?
-    public var plans: [PlanBlock]
-    public var outcomes: [EventOutcomeRecord]
-
-    public init(localID: String, identifier: String, externalID: String?, plans: [PlanBlock] = [], outcomes: [EventOutcomeRecord] = []) {
-        self.localID = localID
-        self.identifier = identifier
-        self.externalID = externalID
-        self.plans = plans
-        self.outcomes = outcomes
     }
 }
 
@@ -204,33 +186,6 @@ public actor ItemSidecar {
             calendar.isDate(e.record.date, inSameDayAs: day)
                 && (e.identifier == identifier || (externalID != nil && e.externalID == externalID))
         }
-    }
-
-    // MARK: Import ledger
-
-    public func importedIDs() throws -> Set<String> {
-        Set(try load().importLedger.keys)
-    }
-
-    /// Writes the ledger entry, external id, re-keyed plan blocks and
-    /// outcomes for one imported item in ONE write (all or none).
-    public func recordImport(_ item: ImportRecord) throws {
-        try update { data in
-            data.importLedger[item.localID] = item.identifier
-            if let ext = item.externalID { data.externalIDs[item.identifier] = ext }
-            for var block in item.plans {
-                block.reminderID = item.identifier
-                data.plans.removeAll { $0.id == block.id }
-                data.plans.append(block)
-            }
-            for record in item.outcomes {
-                data.outcomes.append(OutcomeEntry(identifier: item.identifier, externalID: item.externalID, record: record))
-            }
-        }
-    }
-
-    public func markImportFinished(at date: Date) throws {
-        try update { $0.importedAt = date }
     }
 
     // MARK: Identifier changes

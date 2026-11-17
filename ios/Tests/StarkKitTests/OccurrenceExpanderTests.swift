@@ -266,18 +266,14 @@ struct OccurrenceExpanderTests {
         expectNineThirty(dates, on: ["2026-09-21", "2026-10-05"])
     }
 
-    @Test("until round-trips through encode/decode and still includes the final day's occurrence for a non-midnight anchor")
-    func untilEncodeDecodeExpandRoundTrip() {
+    @Test("a date-only until (local midnight) still includes the final day's occurrence for a non-midnight anchor")
+    func dateOnlyUntilIncludesFinalDay() {
         let anchor = dt("2026-09-01", hour: 15, minute: 42)
         let lastIntendedOccurrence = dt("2026-09-05", hour: 15, minute: 42)
-        let rule = RecurrenceRule(frequency: .daily, until: lastIntendedOccurrence)
+        let rule = RecurrenceRule(frequency: .daily, until: dt("2026-09-05", hour: 0, minute: 0))
 
-        let encoded = RRuleCodec.encode(rule)
-        #expect(encoded == "FREQ=DAILY;UNTIL=20260905") // date-only, decodes to local midnight
-
-        let decoded = RRuleCodec.decode(encoded)!
         let dates = OccurrenceExpander.occurrences(
-            anchor: anchor, rule: decoded, exceptionDates: [],
+            anchor: anchor, rule: rule, exceptionDates: [],
             in: dt("2026-09-01", hour: 0, minute: 0)...dt("2026-09-10", hour: 0, minute: 0)
         )
         #expect(dates.contains(lastIntendedOccurrence))
@@ -306,11 +302,5 @@ struct OccurrenceExpanderTests {
         let rule = RecurrenceRule(frequency: .monthly, byMonthDay: [15, -1])
         let dates = OccurrenceExpander.occurrences(anchor: d("2027-02-15"), rule: rule, exceptionDates: [], in: range("2027-02-01", "2027-03-31"))
         #expect(dates.map { DateMath.isoDate(from: $0) } == ["2027-02-15", "2027-02-28", "2027-03-15", "2027-03-31"])
-    }
-
-    @Test("a last-day rule round-trips through RRULE")
-    func lastDayCodec() {
-        let rule = RecurrenceRule(frequency: .yearly, byMonthDay: [15, -1], byMonth: [.october])
-        #expect(RRuleCodec.decode(RRuleCodec.encode(rule)) == rule)
     }
 }

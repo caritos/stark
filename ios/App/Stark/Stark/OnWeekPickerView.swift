@@ -31,8 +31,8 @@ struct OnWeekPickerView: View {
                         Text("Last").tag(Position.last)
                     }
                     // "Day" only ever pairs with "Last" - any other position would encode as a
-                    // plain BYMONTHDAY indistinguishable from a non-positional day-of-month rule
-                    // on decode (see RRuleCodec's encoding notes), and is redundant with "On Days"
+                    // plain day-of-month rule (byMonthDay), indistinguishable from a
+                    // non-positional one, and is redundant with "On Days"
                     // anyway ("the 2nd day of the month" is just byMonthDay: [2]).
                     .disabled(isAnyDay(entry.dayType))
 

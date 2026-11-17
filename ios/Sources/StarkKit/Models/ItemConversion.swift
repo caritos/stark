@@ -7,8 +7,7 @@ public enum ItemConversion {
     /// The reminder an event becomes. Carries title, notes, start (as the due date/time; an
     /// all-day event is due at the start of its day, the model's "no time" marker), recurrence
     /// (until/count included) and exception dates. Location and URL are appended to the notes as
-    /// "Location: …" / "URL: …" lines. The end and the attended/skipped marks are dropped (see
-    /// `droppedMarks(converting:)`, which the UI confirms first).
+    /// "Location: …" / "URL: …" lines. The end and the attended/skipped marks are dropped.
     public static func reminder(from event: Event) -> Reminder {
         Reminder(
             id: event.id,
@@ -61,11 +60,6 @@ public enum ItemConversion {
         var withoutURL = event
         withoutURL.url = nil
         return (reminder(from: withoutURL), event.url.flatMap(FormFields.trimmedOrNil))
-    }
-
-    /// How many attended/skipped marks converting this event to a reminder would lose.
-    public static func droppedMarks(converting event: Event) -> Int {
-        event.outcomes.count
     }
 
     /// Only open reminders can become events; a completed one (including a recurring series'

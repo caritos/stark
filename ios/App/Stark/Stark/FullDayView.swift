@@ -7,7 +7,8 @@ import StarkKit
 /// scrolling 24-hour `HourGrid` with the timed events and timed reminders as blocks and, on
 /// today, the red now-line.
 ///
-/// The rows come from `buildAgendaItems` then `agendaWithApple` over the day, as in
+/// The rows come from the Apple snapshot with the sidecar's plans (`agendaWithApple`) over the
+/// day, as in
 /// `FullQuarterView`, and `timelineLayout` places them. They are computed off the main actor,
 /// debounced, and tagged with the day shown. Read-only: a tap on a block or chip opens the same
 /// detail sheet as an agenda row (`onOpenItem`); tapping the weekday returns to the DayTicker on

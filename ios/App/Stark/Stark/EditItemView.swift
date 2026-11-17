@@ -22,7 +22,6 @@ struct EditItemView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.itemRouter) private var router
-    @Environment(AppleOverlayModel.self) private var overlay
     let item: AgendaItem
     /// The stored Apple item this sheet edits (`ItemRouter.details`). Its form baseline is the
     /// `original` every update diffs against (spec call 5).
@@ -35,8 +34,6 @@ struct EditItemView: View {
     @State private var kind: ItemKind
     /// A router failure, shown in the sheet's banner; the sheet stays open.
     @State private var errorMessage: String?
-    /// A notice shown in the sheet (the main screen's strip would be hidden under it).
-    @State private var noticeMessage: String?
     @State private var isWorking = false
     /// A repeat change on a series with occurrences edited in Calendar: asked before resending.
     @State private var showRuleChangeConfirm = false
@@ -226,9 +223,6 @@ struct EditItemView: View {
                     if let errorMessage {
                         SheetErrorBanner(text: errorMessage) { self.errorMessage = nil }
                     }
-                    if let noticeMessage {
-                        SheetErrorBanner(text: noticeMessage, isNotice: true) { self.noticeMessage = nil }
-                    }
                     if canConvert {
                         KindSwitch(kind: $kind)
                             .padding(.horizontal, Spacing.md)
@@ -326,18 +320,11 @@ struct EditItemView: View {
         return false
     }
 
-    /// Completed one-off reminder (a recurring occurrence's completed copy is a one-off too).
-    private var showsUndo: Bool {
-        if case .reminder(let reminder) = item.kind { return reminder.isCompleted && !item.isRecurring }
-        return false
-    }
-
-    /// Done / Skip / Undo / Remove This Occurrence, for events only.
+    /// Remove This Occurrence, for events only.
     private var eventActions: EventOutcomeActions? {
         guard case .event = item.kind else { return nil }
         // An Apple repeat Stark can't represent is still a series (`ItemDeletePrompt.isSeries`).
-        return EventOutcomeActions(outcome: item.outcome,
-                                   isRecurring: ItemDeletePrompt.isSeries(isRecurring: item.isRecurring, details: details))
+        return EventOutcomeActions(isRecurring: ItemDeletePrompt.isSeries(isRecurring: item.isRecurring, details: details))
     }
 
     private var deleteMessage: String {
@@ -407,23 +394,6 @@ struct EditItemView: View {
         guard case .reminder(let reminder) = item.kind else { return }
         let occurrence = item.occurrence
         perform { try await $0.complete(id: reminder.id, on: occurrence) }
-    }
-
-    /// The completed copy of a repeating Apple reminder is never reopened (the series can't move
-    /// back): the sheet shows why and stays open. Anything else un-completes as before.
-    private func markUndone() {
-        guard case .reminder(let reminder) = item.kind else { return }
-        if let notice = UncompleteNotice.text(for: item, snapshot: overlay.snapshot) {
-            noticeMessage = notice
-            return
-        }
-        perform { try await $0.uncomplete(id: reminder.id) }
-    }
-
-    private func markOutcome(_ outcome: EventOutcome?) {
-        guard case .event(let event) = item.kind else { return }
-        let occurrence = item.occurrence
-        perform { try await $0.setEventOutcome(id: event.id, on: occurrence, outcome: outcome) }
     }
 
     /// "Remove This Occurrence" (events only: Apple Reminders can't skip one occurrence).

@@ -9,8 +9,8 @@ import StarkKit
 /// the timed blocks per column and, in a week holding today, the red now-line across with its dot
 /// in today's column.
 ///
-/// Each column is laid out exactly as the Day: `buildAgendaItems` then `agendaWithApple` over that
-/// day, then `timelineLayout`, all off the main actor and debounced, tagged with the week shown.
+/// Each column is laid out exactly as the Day: the Apple snapshot with the sidecar's plans
+/// (`agendaWithApple`) over that day, then `timelineLayout`, all off the main actor and debounced, tagged with the week shown.
 /// Read-only: a tap on a block or chip opens the agenda row's detail sheet (`onOpenItem`), a tap on
 /// a column header returns to the DayTicker on that day (`onSelectDate`). Chevrons and horizontal
 /// swipes step one week.

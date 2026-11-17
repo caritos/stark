@@ -34,14 +34,12 @@ struct RepeatEndTests {
         #expect(applied.count == nil)
     }
 
-    @Test("a foreign until with a time of day snaps to the start of its day, and the serialized rule is unchanged")
+    @Test("a foreign until with a time of day snaps to the start of its day")
     func foreignUntilWithTime() throws {
         let lateUntil = try #require(cal.date(from: DateComponents(year: 2026, month: 12, day: 31, hour: 23, minute: 59, second: 59)))
         let original = RecurrenceRule(frequency: .weekly, until: lateUntil)
         let applied = try #require(RepeatEnd(rule: original).applied(to: original.withoutEnd))
         #expect(applied.until == midnight("2026-12-31"))
-        // The codec writes UNTIL date-only, so snapping does not change what is saved.
-        #expect(RRuleCodec.encode(applied) == RRuleCodec.encode(original))
     }
 
     @Test("a foreign count of 0 reads as never and applying writes no end")

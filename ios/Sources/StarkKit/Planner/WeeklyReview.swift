@@ -13,7 +13,7 @@ import Foundation
 /// - A recurring series (daily included) has ONE open row carrying its first unresolved miss, so it
 ///   is bucketed into the week of that first miss, not the later weeks it was carried through.
 /// - For weeks older than the 90-day lookback an open row can appear for that week's first miss;
-///   resolving it clears only that occurrence (`PlannerStore` bounds clearing by the lookback).
+///   resolving it cleared only that occurrence (the removed local store bounded clearing by the lookback).
 public struct WeeklyReview: Equatable {
     /// Start of the week's Sunday.
     public let weekStart: Date
@@ -76,20 +76,6 @@ public struct WeeklyReview: Equatable {
         let first = calendar.startOfDay(for: weekStart)
         let dayAfterLast = calendar.startOfDay(for: calendar.date(byAdding: .day, value: 7, to: first)!)
         return first...dayAfterLast.addingTimeInterval(-1)
-    }
-
-    /// What `PlannerStore.loadMonths(covering:)` must read before `summary` is meaningful: the
-    /// week, widened back to the overdue lookback from `today` (otherwise overdue reminders in
-    /// unloaded month files silently vanish).
-    public static func loadRange(
-        forWeekStarting weekStart: Date,
-        today: Date,
-        calendar: Calendar = Calendar(identifier: .gregorian)
-    ) -> ClosedRange<Date> {
-        let week = range(forWeekStarting: weekStart, calendar: calendar)
-        let todayStart = calendar.startOfDay(for: today)
-        let lookbackStart = calendar.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: todayStart) ?? todayStart
-        return min(week.lowerBound, lookbackStart)...week.upperBound
     }
 
     /// `apple` (default empty: local behaviour unchanged) adds Apple reminders, read only from

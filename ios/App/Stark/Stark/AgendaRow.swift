@@ -53,7 +53,7 @@ struct AgendaRowView: View {
         item.appleSource?.colorRGB.map { Color(hex: $0) } ?? Colors.eventDot
     }
 
-    /// A reminder's checkbox outline: the list colour, `checkboxBorder` for Stark's own.
+    /// A reminder's checkbox outline: the list colour, `checkboxBorder` when the list has none.
     private var listColor: Color {
         item.appleSource?.colorRGB.map { Color(hex: $0) } ?? Colors.checkboxBorder
     }

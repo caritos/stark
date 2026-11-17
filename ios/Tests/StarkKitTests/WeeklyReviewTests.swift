@@ -167,20 +167,6 @@ struct WeeklyReviewTests {
         #expect(iso(s.range.upperBound) == "2026-10-03")
     }
 
-    @Test("the load range covers the week and the overdue lookback from today")
-    func loadRange() {
-        let week = dt("2026-09-20", hour: 0)
-        let now = dt("2026-10-05", hour: 10)
-        let r = WeeklyReview.loadRange(forWeekStarting: week, today: now)
-        #expect(r.lowerBound <= week)
-        #expect(r.upperBound == WeeklyReview.range(forWeekStarting: week).upperBound)
-        let lookback = cal.date(byAdding: .day, value: -AgendaWindow.overdueLookbackDays, to: cal.startOfDay(for: now))!
-        #expect(r.lowerBound <= lookback)
-        let future = WeeklyReview.loadRange(forWeekStarting: dt("2026-12-06", hour: 0), today: now)
-        #expect(future.lowerBound <= lookback)
-        #expect(future.upperBound >= dt("2026-12-12"))
-    }
-
     @Test("summary labels")
     func labels() {
         let done = Reminder(id: "d", title: "D", dueDate: dt("2026-09-21"), isCompleted: true, completedDate: dt("2026-09-21"))

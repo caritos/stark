@@ -62,11 +62,8 @@ public struct YearMonth: Hashable, Comparable, CustomStringConvertible {
         self.month0 = c.month0
     }
 
-    public var fileName: String {
-        String(format: "%04d-%02d.ics", year, month0 + 1)
-    }
-
-    public var description: String { fileName }
+    /// "2026-09".
+    public var description: String { String(format: "%04d-%02d", year, month0 + 1) }
 
     public static func < (lhs: YearMonth, rhs: YearMonth) -> Bool {
         (lhs.year, lhs.month0) < (rhs.year, rhs.month0)

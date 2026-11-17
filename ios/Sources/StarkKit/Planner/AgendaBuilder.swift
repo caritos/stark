@@ -26,10 +26,6 @@ public struct AgendaItem: Identifiable, Equatable {
     /// Not part of `id`.
     public let appleSource: AppleSource?
 
-    /// A local item the import could not move into Apple (set from its local id by
-    /// `marked(notImported:)`). Not part of `id`.
-    public var isNotImported: Bool = false
-
     public init(kind: Kind, occurrence: Date, displayDate: Date, isOverdue: Bool, plan: PlanBlock? = nil,
                 appleSource: AppleSource? = nil) {
         self.kind = kind
@@ -97,23 +93,6 @@ public struct AgendaItem: Identifiable, Equatable {
     public var priority: ReminderPriority {
         guard case .reminder(let reminder) = kind else { return .none }
         return ReminderPriority(icalValue: reminder.priority)
-    }
-}
-
-extension Array where Element == AgendaItem {
-    /// Sets `isNotImported` from each row's local event/reminder id. A pure function, applied once
-    /// at the END of an agenda pipeline (after `applyPlans`, search, the Apple merge), so rows
-    /// built or synthesised along the way (planned copies, tray rows, search rows) are marked too.
-    public func marked(notImported ids: Set<String>) -> [AgendaItem] {
-        guard !ids.isEmpty else { return self }
-        return map { item in
-            var item = item
-            switch item.kind {
-            case .event(let e): item.isNotImported = ids.contains(e.id)
-            case .reminder(let r): item.isNotImported = ids.contains(r.id)
-            }
-            return item
-        }
     }
 }
 
@@ -218,7 +197,7 @@ public func buildAgendaItems(
             overdueOccurrences = unresolved.min().map { [$0] } ?? []
         }
         // One open row per series: the missed occurrence (original date kept) stands in for
-        // today's own occurrence, which `PlannerStore` exdates when the miss is resolved.
+        // today's own occurrence (the removed local store exdated both when the miss was resolved).
         if let todayRow, overdueOccurrences.isEmpty {
             items.append(todayRow)
         }

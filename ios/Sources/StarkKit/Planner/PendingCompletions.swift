@@ -10,10 +10,10 @@ public typealias PendingScheduler = @MainActor (TimeInterval, @escaping @MainAct
 /// complete right away but only commits the completion after `delay` (2.5s), and tapping it again
 /// inside that window cancels. Mirrors the Expo app's `usePendingDone`.
 ///
-/// Deliberately decoupled from `PlannerStore` and `AgendaItem`: it only knows an opaque `key`
+/// Deliberately decoupled from `ItemRouter` and `AgendaItem`: it only knows an opaque `key`
 /// (the row's stable identity, never a list position — a delete or edit while a timer runs must
 /// not be able to complete the wrong item) and the `(reminderID, occurrence)` to hand to `commit`
-/// when the window closes. `commit` for a reminder that no longer exists is the store's no-op.
+/// when the window closes. `commit` for a reminder that no longer exists is the router's concern.
 ///
 /// JS timers in the Expo app don't survive backgrounding and neither does this one, so the app
 /// calls `flush()` whenever it leaves the foreground and when the agenda goes away: pending

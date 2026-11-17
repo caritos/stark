@@ -103,13 +103,11 @@ struct ItemConversionTests {
         #expect(ItemConversion.reminder(from: countedEvent).recurrence == counted)
     }
 
-    @Test("attended/skipped marks cannot be kept; droppedMarks counts them")
+    @Test("attended/skipped marks are not kept by a conversion")
     func marksDropped() {
         let event = Event(title: "Class", start: at("2026-11-03", 18), recurrence: RecurrenceRule(frequency: .weekly),
                           outcomes: [EventOutcomeRecord(date: at("2026-11-03", 18), outcome: .attended),
                                      EventOutcomeRecord(date: at("2026-11-10", 18), outcome: .skipped)])
-        #expect(ItemConversion.droppedMarks(converting: event) == 2)
-        #expect(ItemConversion.droppedMarks(converting: Event(title: "x", start: at("2026-11-03", 1))) == 0)
         // A converted reminder has no attendance concept; converting back has no marks either.
         let back = ItemConversion.event(from: ItemConversion.reminder(from: event), undatedStart: Date())
         #expect(back.outcomes.isEmpty)

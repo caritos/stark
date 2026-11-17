@@ -35,29 +35,29 @@ struct ItemSidecarTests {
         let data = try await sidecar(tempFile()).load()
         #expect(data == SidecarData())
         #expect(data.version == SidecarData.currentVersion)
-        #expect(data.plans.isEmpty && data.outcomes.isEmpty && data.importLedger.isEmpty)
+        #expect(data.plans.isEmpty && data.outcomes.isEmpty && data.externalIDs.isEmpty)
     }
 
     @Test("update then load round-trips through a fresh instance")
     func roundTrip() async throws {
         let url = tempFile()
-        try await sidecar(url).update { $0.importLedger["b1"] = "ID-1" }
+        try await sidecar(url).update { $0.externalIDs["b1"] = "ID-1" }
         let data = try await sidecar(url).load()
-        #expect(data.importLedger == ["b1": "ID-1"])
+        #expect(data.externalIDs == ["b1": "ID-1"])
     }
 
     @Test("a failing write throws and leaves the old file intact")
     func failedWriteKeepsOldFile() async throws {
         let url = tempFile()
-        try await sidecar(url).update { $0.importLedger["b1"] = "ID-1" }
+        try await sidecar(url).update { $0.externalIDs["b1"] = "ID-1" }
         let before = try Data(contentsOf: url)
 
         let failing = ItemSidecar(fileURL: url, calendar: utc, writer: { _, _ in throw WriteFailed() })
         await #expect(throws: WriteFailed.self) {
-            try await failing.update { $0.importLedger["b2"] = "ID-2" }
+            try await failing.update { $0.externalIDs["b2"] = "ID-2" }
         }
         #expect(try Data(contentsOf: url) == before)
-        #expect(try await sidecar(url).load().importLedger == ["b1": "ID-1"])
+        #expect(try await sidecar(url).load().externalIDs == ["b1": "ID-1"])
     }
 
     @Test("corrupt JSON throws and the file is left untouched")
@@ -67,7 +67,7 @@ struct ItemSidecarTests {
         try Data("{not json".utf8).write(to: url)
         let s = sidecar(url)
         await #expect(throws: (any Error).self) { try await s.load() }
-        await #expect(throws: (any Error).self) { try await s.update { $0.importLedger["x"] = "y" } }
+        await #expect(throws: (any Error).self) { try await s.update { $0.externalIDs["x"] = "y" } }
         #expect(try Data(contentsOf: url) == Data("{not json".utf8))
     }
 
@@ -158,7 +158,7 @@ struct ItemSidecarTests {
     func noAbsolutePaths() async throws {
         let url = tempFile()
         let s = sidecar(url)
-        try await s.recordImport(ImportRecord(localID: "b1", identifier: "ID-1", externalID: "EXT"))
+        try await s.replacePlans(on: day("2026-11-16"), with: [block("p1", ref: "ID-1", on: "2026-11-16")], externalIDs: ["ID-1": "EXT"])
         let text = try String(contentsOf: url, encoding: .utf8)
         #expect(!text.contains(NSTemporaryDirectory()))
     }
@@ -335,5 +335,78 @@ struct ItemSidecarTests {
         try await s.replacePlans(on: nyDate(16, 12, 0), with: [late])
         #expect(try await s.plans(on: nyDate(16, 8, 0)).map(\.id) == ["p1"])
         #expect(try await s.plans(on: nyDate(17, 0, 30)).isEmpty)
+    }
+
+    // MARK: Files written by older builds
+
+    /// The raw top-level keys of the file as written to disk.
+    private func rawKeys(_ url: URL) throws -> [String: Any] {
+        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url))
+        return try #require(object as? [String: Any])
+    }
+
+    private func copyFixture() throws -> URL {
+        let src = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/sidecar-v1.json")
+        let dst = tempFile()
+        try FileManager.default.createDirectory(at: dst.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: src, to: dst)
+        return dst
+    }
+
+    @Test("importLedger and importedAt round-trip unchanged through update; a stray bridgeLedger is dropped")
+    func importKeysRoundTripUnchanged() async throws {
+        // Builds 2.0.33 to 2.0.36 re-offer the import when these two keys are missing, so a save
+        // by this build must keep them exactly as written.
+        let url = tempFile()
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(#"""
+        {"bridgeLedger":{"bridge-1":"apple-rem-2"},\#
+        "externalIDs":{"apple-new-local-1":"ext-new-local-1"},\#
+        "importLedger":{"local-1":"apple-new-local-1","local-2":"apple-new-local-2"},\#
+        "importedAt":"2027-01-16T10:00:00Z",\#
+        "outcomes":[],"plans":[],"version":2}
+        """#.utf8).write(to: url)
+        let before = try rawKeys(url)
+
+        try await sidecar(url).update { $0.plans.append(block("p1", ref: "apple-new-local-1", on: "2027-01-17")) }
+
+        let after = try rawKeys(url)
+        #expect(after["bridgeLedger"] == nil)
+        #expect(after["importLedger"] as? [String: String] == before["importLedger"] as? [String: String])
+        #expect(after["importLedger"] as? [String: String] == ["local-1": "apple-new-local-1", "local-2": "apple-new-local-2"])
+        #expect(after["importedAt"] as? String == "2027-01-16T10:00:00Z")
+        let data = try await sidecar(url).load()
+        #expect(data.plans.map(\.id) == ["p1"])
+        #expect(data.externalIDs == ["apple-new-local-1": "ext-new-local-1"])
+    }
+
+    @Test("a file with neither import key writes neither")
+    func noImportKeysStayAbsentOrEmpty() async throws {
+        let url = tempFile()
+        try await sidecar(url).update { $0.externalIDs["A"] = "EXT" }
+        let keys = try rawKeys(url)
+        #expect(keys["importedAt"] == nil)
+        #expect((keys["importLedger"] as? [String: String] ?? [:]).isEmpty)
+    }
+
+    @Test("a version 1 file with a bridgeLedger key loads, and upgrades on the next save")
+    func oldSidecarWithBridgeLedgerKeyStillLoads() async throws {
+        let url = try copyFixture()
+        #expect(try rawKeys(url)["bridgeLedger"] != nil)
+        let data = try await sidecar(url).load()
+        #expect(data.version == 1)
+        #expect(data.plans.map(\.id) == ["blk-1"])
+        #expect(data.plans.first?.reminderID == "apple-rem-1")
+        #expect(data.outcomes.map(\.identifier) == ["apple-evt-1"])
+        #expect(data.externalIDs == ["apple-rem-1": "ext-rem-1", "apple-rem-2": "ext-rem-2"])
+
+        try await sidecar(url).update { $0.externalIDs["apple-x"] = "ext-x" }
+        let upgraded = try await sidecar(url).load()
+        #expect(upgraded.version == 2)
+        #expect(upgraded.plans == data.plans)
+        #expect(upgraded.outcomes == data.outcomes)
+        #expect(try rawKeys(url)["bridgeLedger"] == nil)
     }
 }
