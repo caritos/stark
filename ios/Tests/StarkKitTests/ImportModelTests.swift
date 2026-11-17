@@ -196,6 +196,26 @@ struct ImportModelTests {
         #expect(await env.repository.itemCount == 0)
     }
 
+    @Test("after the import finished, a repeating item that is neither ledgered nor marked brings the Settings row back")
+    func leftoverAfterFinishKeepsRow() async throws {
+        let env = try makeEnv()
+        defer { try? FileManager.default.removeItem(at: env.root) }
+        try await env.sidecar.markImportFinished(at: today)
+        let model = model(env)
+        await model.refreshStatus()
+        #expect(!model.showsSettingsRow)
+
+        // e.g. an edit that dropped a COUNT, so the series is representable again but never imported.
+        env.store.addEvent(Event(id: "left", title: "Standup", start: soon, recurrence: RecurrenceRule(frequency: .weekly)))
+        await model.refreshStatus()
+        #expect(model.showsSettingsRow)
+
+        await model.scan()
+        #expect(model.showsSettingsRow)
+        await model.confirm()
+        #expect(!model.showsSettingsRow)
+    }
+
     @Test("a retry after a partial failure plans only what is not ledgered")
     func retryAfterFailureOnlyPlansTheRest() async throws {
         let env = try makeEnv()

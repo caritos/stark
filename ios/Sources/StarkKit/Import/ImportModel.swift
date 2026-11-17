@@ -79,7 +79,12 @@ public final class ImportModel {
     }
 
     /// Whether Settings shows the "Import Stark's own items" row.
-    public var showsSettingsRow: Bool { !importFinished || !store.notImportedIDs.isEmpty }
+    public var showsSettingsRow: Bool { !importFinished || hasPendingSteps || !store.notImportedIDs.isEmpty }
+
+    /// A scan would still produce steps: set by the launch check (repeating items and reopened
+    /// series copies, the only kinds that can appear after the import finished), by a scan and
+    /// after a run. Keeps the row visible after the finish mark so a leftover is never stranded.
+    public private(set) var hasPendingSteps = false
 
     /// Launch (and foreground) work: hides ledgered items, marks the items that cannot be imported
     /// and reads whether the import finished. Cheap: no month loading, no agenda expansion. A
@@ -96,6 +101,13 @@ public final class ImportModel {
         store.notImportedIDs = ImportPlanner.unrepresentableIDs(events: store.allEvents, reminders: store.allReminders,
                                                                alreadyImported: imported)
         importFinished = data.importedAt != nil
+        let candidates = (events: store.allEvents.filter { $0.recurrence != nil },
+                          reminders: store.allReminders.filter { $0.recurrence != nil || $0.seriesID != nil })
+        hasPendingSteps = candidates.events.contains { !imported.contains($0.id) }
+            || candidates.reminders.contains { !imported.contains($0.id) }
+            ? !ImportPlanner.plan(events: candidates.events, reminders: candidates.reminders, plans: store.allPlans,
+                                  alreadyImported: imported, apple: [], today: now(), calendar: calendar).isEmpty
+            : false
     }
 
     /// Reads every local file and the sidecar, then shows the preview. Any read failure shows the
@@ -148,6 +160,7 @@ public final class ImportModel {
             }
         }
         importFinished = finished
+        hasPendingSteps = !plan.isEmpty
         state = .preview(plan, target)
     }
 
@@ -187,6 +200,7 @@ public final class ImportModel {
             store.error = "Stark's data file could not be read after the import: \(error)"
         }
         store.notImportedIDs = Set(plan.unrepresentable.map(\.localID))
+        hasPendingSteps = plan.steps.contains { !result.imported.contains($0.localID) }
         state = .finished(result)
         // The runner writes through the repository, not the router, so nothing else reloads the
         // Apple overlay and plan cache (EKEventStoreChanged is not reliable after a write burst,
