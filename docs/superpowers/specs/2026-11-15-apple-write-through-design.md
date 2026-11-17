@@ -144,6 +144,7 @@ on/off switch goes away (access is required); the per-calendar selection stays.
 - Phases ship separately as TestFlight builds (the owner approved TestFlight for testing):
   P1 write path (Add, complete, edit, delete go to Apple; local items still shown and editable until
   imported), P2 import, P3 removal. The owner checks each on the phone before the next starts.
+- **Phase 2 built (2026-11-17)**: the import is implemented as designed in `2026-11-17-apple-import-phase2-design.md` (see the "Apple import phase 2 log" in `CLAUDE.md`); awaiting the owner's run on real data. Phase 3 is not started.
 - Never delete the owner's `.ics` files; the import never runs without the preview and a confirm.
 
 ## Done when (whole design; each phase has its own list in the plan)
