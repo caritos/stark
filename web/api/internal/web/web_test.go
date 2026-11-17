@@ -62,20 +62,22 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 	body := get(Handler(), http.MethodGet, "/privacy").Body.String()
 	// Stark's policy: dated, says the app collects nothing, where the data lives, and how to ask.
 	// Since the Apple write path (2026-11-15) Stark WRITES to Calendar and Reminders, still makes
-	// no network connection itself, and plans, attended marks and the import record for Apple
-	// items live in a small file of Stark's own on the device. The Claude Code bridge was removed
-	// on 2026-11-17 (TestPagesDoNotMentionClaudeCodeBridge).
+	// no network connection itself, and plans, earlier attended marks and the import record for
+	// Apple items live in a small file of Stark's own on the device. The Claude Code bridge was
+	// removed on 2026-11-17 (TestPagesDoNotMentionClaudeCodeBridge). Since phase 3 (2026-11-17)
+	// Stark no longer reads its own older .ics files: they stay on the device, untouched, until the
+	// app is deleted, and there is no import any more (TestPagesDoNotOfferTheImport).
 	lower := strings.ToLower(body)
 	for _, want := range []string{
 		"LAST UPDATED: NOVEMBER 2026", "APPLE CALENDAR AND REMINDERS",
 		"saves what you add, edit, complete or delete in Stark to Apple Calendar and Reminders",
 		"Stark itself makes no network connection",
 		"small file of Stark's own on this device",
-		"the record of which of Stark's own items were already imported",
+		"a record of which of Stark's older items the one-time import copied into Apple",
 		"the share button in Weekly Review exports that week's summary",
 		"which Apple syncs through iCloud if you use it",
 		"never sent anywhere by Stark (like Stark's other files, it is part of your device backup)",
-		"copy them into Apple Calendar and Reminders once", "Settings, Import Stark's own items", "only as a backup", "it deletes nothing",
+		"Stark no longer reads these old files", "untouched, as a backup", "deleted only when you delete the app",
 		"unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com",
 	} {
 		if !strings.Contains(lower, strings.ToLower(want)) {
@@ -86,6 +88,34 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them"} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
+		}
+	}
+}
+
+// Phase 3 (2026-11-17) removed Stark's own store and the import: no page may still offer the
+// import, say Stark still shows its older items, or mention the "Not imported" mark.
+func TestPagesDoNotOfferTheImport(t *testing.T) {
+	for _, p := range []string{"/", "/faq", "/privacy", "/terms", "/support"} {
+		// Whitespace collapsed: page copy wraps across source lines.
+		lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, p).Body.String())), " ")
+		for _, gone := range []string{"Import Stark's own items", "still shows", "Not imported", "until you import", "hides its own copies", "Stark's older items, completing", "Stark's older events stay", "everything Stark saved in its own files"} {
+			if strings.Contains(lower, strings.ToLower(gone)) {
+				t.Errorf("%s still says %q", p, gone)
+			}
+		}
+	}
+}
+
+// The edit sheet's Attended/Didn't attend buttons were removed on 2026-11-15 (7d16605): marks can no
+// longer be set anywhere, so no page may say they can.
+func TestPagesDoNotSayAttendedMarksCanBeSet(t *testing.T) {
+	for _, p := range []string{"/", "/faq", "/privacy", "/terms", "/support"} {
+		// Whitespace collapsed: page copy wraps across source lines.
+		lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, p).Body.String())), " ")
+		for _, gone := range []string{"mark whether you attended", "tap Done if you attended", "Can I record whether I attended"} {
+			if strings.Contains(lower, strings.ToLower(gone)) {
+				t.Errorf("%s still says %q", p, gone)
+			}
 		}
 	}
 }
