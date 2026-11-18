@@ -125,7 +125,10 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
             calendar: info(ekCalendar, isReminderList: false),
             birthdayContactID: event.birthdayContactIdentifier,
             // A floating event (no zone) and an all-day one have no zone to show.
-            timeZoneID: event.isAllDay ? nil : event.timeZone?.identifier)
+            timeZoneID: event.isAllDay ? nil : event.timeZone?.identifier,
+            // Detected once here (off the main actor); everything downstream only carries it.
+            joinLink: ConferenceLinkDetector.detect(url: event.url?.absoluteString, location: event.location,
+                                                    notes: event.notes))
     }
 
     // MARK: - Reminders

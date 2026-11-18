@@ -89,7 +89,7 @@ func appleEventSource(_ apple: AppleCalendarEvent, birthYears: [String: Int]) ->
                 isWritable: apple.calendar.isWritable,
                 isBirthday: apple.calendar.isBirthdayCalendar,
                 birthYear: apple.birthdayContactID.flatMap { birthYears[$0] },
-                conferenceLink: ConferenceLinkDetector.detect(url: apple.url, location: apple.location, notes: apple.notes),
+                conferenceLink: apple.joinLink,
                 timeZoneID: apple.timeZoneID)
 }
 

@@ -18,10 +18,10 @@ import Testing
     private let work = AppleCalendarInfo(id: "work", title: "Work", accountName: "iCloud", colorHex: nil, isReminderList: false)
 
     private func snapshot(url: String? = "https://zoom.us/j/42", notes: String? = nil, allDay: Bool = false,
-                          zone: String? = "Asia/Tokyo") -> AppleSnapshot {
+                          zone: String? = "Asia/Tokyo", detect: Bool = true) -> AppleSnapshot {
         let event = AppleCalendarEvent(id: "e1", title: "Standup", notes: notes, location: nil, url: url,
                                        start: at(10, 0), end: at(10, 1), isAllDay: allDay, calendar: work,
-                                       timeZoneID: zone)
+                                       timeZoneID: zone, joinLink: detect ? ConferenceLinkDetector.detect(url: url, location: nil, notes: notes) : nil)
         return AppleSnapshot(events: [event], reminders: [])
     }
 
@@ -45,8 +45,22 @@ import Testing
         #expect(rows[0].showsJoinGlyph)
         let card = rows[0].timeZoneCard(phoneZone: TimeZone(identifier: "America/New_York")!, locale: Locale(identifier: "en_US"))
         #expect(card?.zoneName == "Tokyo")
-        #expect(card?.eventRange == "9:00 AM–10:00 AM GMT+9")
+        #expect(card?.eventRange == "Wed, Jun 10, 9:00 AM–10:00 AM GMT+9")
         #expect(card?.yourRange == "8:00 PM–9:00 PM")
+    }
+
+    /// The link is detected once, where the event is read (EventKitProvider.map); merges and Search
+    /// only carry it, so an event built without one shows none even if its URL is a Zoom link.
+    @Test func mergeAndSearchCarryTheStoredLinkInsteadOfDetectingAgain() {
+        let snap = snapshot(detect: false)
+        #expect(merged(snap)[0].conferenceLink == nil)
+        let results = SearchResults.find(events: [], reminders: [], apple: snap, query: "standup", today: at(5, 0))
+        #expect(results[0].conferenceLink == nil)
+        #expect(!results[0].showsJoinGlyph)
+    }
+
+    @Test func filteredKeepsTheStoredLink() {
+        #expect(AppleSelection().filtered(snapshot()).events[0].joinLink?.provider == .zoom)
     }
 
     @Test func linkFromNotesWhenUrlIsNotAConferenceLink() {

@@ -85,10 +85,14 @@ public struct AppleCalendarEvent: Equatable, Sendable {
     public let birthdayContactID: String?
     /// `EKEvent.timeZone` identifier; nil for a floating or all-day event.
     public let timeZoneID: String?
+    /// The video-call link found in the URL, location or notes. Detected ONCE, where the event is
+    /// read off the main actor (`EventKitProvider.map`); merges and Search only carry it.
+    public let joinLink: ConferenceLink?
 
     public init(id: String, title: String, notes: String?, location: String?, url: String?,
                 start: Date, end: Date?, isAllDay: Bool, calendar: AppleCalendarInfo,
-                birthdayContactID: String? = nil, timeZoneID: String? = nil) {
+                birthdayContactID: String? = nil, timeZoneID: String? = nil, joinLink: ConferenceLink? = nil) {
+        self.joinLink = joinLink
         self.timeZoneID = timeZoneID
         self.birthdayContactID = birthdayContactID
         self.id = id
