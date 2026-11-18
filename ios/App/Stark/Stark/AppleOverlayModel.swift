@@ -16,7 +16,7 @@ import WidgetKit
 @MainActor @Observable
 final class AppleOverlayModel {
     private enum Key {
-        static let excluded = "appleOverlay.excludedCalendarIDs"
+        static let excluded = StoredKeys.excludedCalendars
     }
 
     private static let log = Logger(subsystem: "com.caritos.todo-txt", category: "AppleOverlay")
@@ -57,6 +57,7 @@ final class AppleOverlayModel {
     /// the newest one has landed (bounded; see `LatestReloadGate`).
     @ObservationIgnored private let gate = LatestReloadGate()
     @ObservationIgnored private var changeTask: Task<Void, Never>?
+    @ObservationIgnored private var focusTask: Task<Void, Never>?
     /// Birth years of the shown Birthdays-calendar events, read from Contacts after the snapshot
     /// landed (never on the first-load path) and kept in memory for the model's lifetime.
     @ObservationIgnored private let birthYears: BirthYearCache
@@ -72,6 +73,7 @@ final class AppleOverlayModel {
         access = provider.accessState()
         mirrorSelectionForWidget()
         observeStoreChanges()
+        observeFocusFilter()
     }
 
     /// Copies the excluded ids to the App Group so the widget honours the same calendars.
@@ -82,6 +84,23 @@ final class AppleOverlayModel {
 
     deinit {
         changeTask?.cancel()
+        focusTask?.cancel()
+    }
+
+    /// The Focus filter (`StarkFocusFilter`) writes the stored selection directly; re-read it when
+    /// the app becomes active or the filter says it changed, so a stale in-memory selection never
+    /// overwrites the Focus's change. Assigns only when different (an assignment redraws).
+    func reloadStoredSelection() {
+        let stored = AppleSelection(excludedIDs: Set(defaults.stringArray(forKey: Key.excluded) ?? []))
+        if stored != selection { selection = stored }
+    }
+
+    private func observeFocusFilter() {
+        focusTask = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: FocusFilterStore.didChange) {
+                self?.reloadStoredSelection()
+            }
+        }
     }
 
     /// The only place access is requested: `AccessRequiredView`'s button, after it explained what

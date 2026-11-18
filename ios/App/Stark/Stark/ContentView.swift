@@ -249,6 +249,8 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
+                // A Focus filter may have switched the calendars while Stark was away.
+                overlay.reloadStoredSelection()
                 overlay.forgetMissingBirthYears()
                 // A no-op (no location, no network) while Weather is off.
                 Task { await weather.refreshIfNeeded() }

@@ -14,8 +14,8 @@ import StarkKit
 @MainActor @Observable
 final class DefaultDestinationModel: DefaultDestinations {
     private enum Key {
-        static let calendar = "appleWrite.defaultCalendarID"
-        static let list = "appleWrite.defaultListID"
+        static let calendar = StoredKeys.defaultCalendar
+        static let list = StoredKeys.defaultList
     }
 
     /// The effective destinations (nil when nothing writable exists or access is not granted yet).

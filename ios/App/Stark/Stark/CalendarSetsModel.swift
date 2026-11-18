@@ -14,7 +14,7 @@ import StarkKit
 
 @MainActor @Observable
 final class CalendarSetsModel {
-    static let key = "calendarSets.v1"
+    static let key = StoredKeys.calendarSets
 
     private(set) var sets: CalendarSets
     /// A plain message for the sheet (a refused apply); cleared by the next action.
