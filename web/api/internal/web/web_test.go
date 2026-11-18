@@ -73,6 +73,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		"saves what you add, edit, complete or delete in Stark to Apple Calendar and Reminders",
 		"<h2>WEATHER</h2>", "weather is optional and off by default", "the only time stark makes a network connection",
 		"rounded to about 11 km", "met norway", "sends nothing else", "never stored",
+		"the only thing that ever leaves your phone is the optional weather request",
 		"small file of Stark's own on this device",
 		"a record of which of Stark's older items the one-time import copied into Apple",
 		"the share button in Weekly Review exports that week's summary",
@@ -88,7 +89,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		}
 	}
 	// Statements that stopped being true with the write path.
-	for _, stale := range []string{"unless you turn it on", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen", "Stark itself makes no network connection", "Stark does not ask for access to your photos, location", "&mdash; Location data", "nothing is sent to us or any third party."} {
+	for _, stale := range []string{"unless you turn it on", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen", "Stark itself makes no network connection", "Stark does not ask for access to your photos, location", "&mdash; Location data", "nothing is sent to us or any third party.", "<strong>Stark collects no data about you.</strong>"} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
 		}
@@ -127,6 +128,17 @@ func TestFAQExplainsWeather(t *testing.T) {
 	}
 	if strings.Contains(lower, "sends nothing anywhere") || strings.Contains(lower, "adds no network connection") {
 		t.Error("faq still claims Stark sends nothing anywhere")
+	}
+}
+
+// Offline claims must stay true with the optional weather request (2026-11-18).
+func TestFAQOfflineAnswerMentionsWeather(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	if !strings.Contains(lower, "needs no connection except for the optional weather forecast") {
+		t.Error("faq offline answer does not mention the weather exception")
+	}
+	if strings.Contains(lower, "stark never needs a connection") {
+		t.Error("faq still says Stark never needs a connection")
 	}
 }
 
