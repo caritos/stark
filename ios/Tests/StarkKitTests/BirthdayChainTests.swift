@@ -88,6 +88,14 @@ private struct CountingLookup: BirthYearLookup {
         #expect(MilestoneInfo(kind: .anniversary, years: 1).chipTitle("Wedding") == "Wedding · 1 year")
     }
 
+    @Test func chipTitleDropsAnOrdinalAgeTheTitleAlreadyCarries() {
+        // Apple's own title says "36th Birthday"; the chip says the age once, as "Turns 36".
+        #expect(MilestoneInfo(kind: .birthday, years: 36).chipTitle("Ann Tester's 36th Birthday") == "Ann Tester's Birthday · Turns 36")
+        #expect(MilestoneInfo(kind: .birthday, years: 41).chipTitle("Bo's 41st Birthday") == "Bo's Birthday · Turns 41")
+        // A different number in the title is left alone.
+        #expect(MilestoneInfo(kind: .birthday, years: 36).chipTitle("Ann's 40th Party") == "Ann's 40th Party · Turns 36")
+    }
+
     @Test func chipTitleWithoutYearsIsTheTitle() {
         #expect(MilestoneInfo(kind: .birthday, years: nil).chipTitle("Ann's Birthday") == "Ann's Birthday")
     }

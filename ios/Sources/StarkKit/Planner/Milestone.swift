@@ -84,7 +84,23 @@ public struct MilestoneInfo: Equatable, Sendable {
     /// An all-day chip has one line: the note goes after the title ("Ann's Birthday · Turns 36").
     public func chipTitle(_ title: String) -> String {
         guard let note else { return title }
-        return "\(title) · \(note)"
+        var shown = title
+        // Apple's own titles carry the ordinal age ("Ann's 36th Birthday"); say the age once.
+        if kind == .birthday, let years {
+            let ordinal = "\(years)\(Self.ordinalSuffix(years)) "
+            shown = shown.replacingOccurrences(of: ordinal, with: "")
+        }
+        return "\(shown) · \(note)"
+    }
+
+    private static func ordinalSuffix(_ n: Int) -> String {
+        if (11...13).contains(n % 100) { return "th" }
+        switch n % 10 {
+        case 1: return "st"
+        case 2: return "nd"
+        case 3: return "rd"
+        default: return "th"
+        }
     }
 }
 
