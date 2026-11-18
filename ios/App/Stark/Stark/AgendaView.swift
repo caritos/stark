@@ -243,7 +243,7 @@ struct AgendaView: View {
         return HStack(spacing: 0) {
             title
             Spacer(minLength: Spacing.sm)
-            if let forecast = weather.forecast[day] {
+            if let forecast = weather.forecast(on: day) {
                 WeatherChip(weather: forecast)
             }
             // Plan today or tomorrow (timeboxing): opens the full-screen planner.

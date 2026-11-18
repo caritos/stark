@@ -16,6 +16,7 @@ import StarkKit
 struct FullDayView: View {
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(PlanCache.self) private var planCache
+    @Environment(WeatherModel.self) private var weather
     /// Start of the day shown.
     @State private var day: Date
     @State private var snapshot: LayoutSnapshot?
@@ -201,6 +202,10 @@ struct FullDayView: View {
             .accessibilityAddTraits(.isHeader)
             .accessibilityHint("Goes to today")
             Spacer(minLength: 0)
+            if let forecast = weather.forecast(on: day) {
+                WeatherChip(weather: forecast)
+                    .padding(.trailing, Spacing.xs)
+            }
             chevron("‹", label: "Previous day") { changeDay(by: -1) }
             chevron("›", label: "Next day") { changeDay(by: 1) }
         }

@@ -371,3 +371,10 @@ mobile/                       ← Expo Router iOS app — DEPRECATED (2026-09-22
 - **Task line numbers** are 1-based positions in the non-empty task list (blank lines stripped by `readTasks`). They renumber on every read — `task.line` is display position, not a stable ID.
 - `cleanTitle()` strips todo.txt extensions from task text for display. It is defined **inline** in each screen file — it is not exported from a shared module.
 Web app (Go + React): see web/CLAUDE.md.
+
+## Weather views log (2026-11-18)
+
+- **What**: the opt-in forecast also shows in Day (chip beside the title), Week (glyph and high under each column header) and Month (glyph in the cell corner). Spec `docs/superpowers/specs/2026-11-18-weather-views-design.md`, plan `docs/superpowers/plans/2026-11-18-weather-views.md`. All views, AgendaView included, look up through `WeatherModel.forecast(on:)` (Kit `WeatherForecastLookup`): the date is normalised to a Gregorian start of day in the model's time zone, so a view's own calendar or an earlier captured time zone cannot miss the key; nil while Weather is off. Week and Month hide the extras at accessibility sizes; Month also under 44 pt cell width.
+- **Done**: see the end of this entry for test and simulator results.
+- **Not yet verified on device**: everything on a real phone; VoiceOver labels; a phone set to a non-Gregorian calendar on screen (unit-tested only); iOS 17.
+- **Deferred**: Quarter and Year; hourly detail.

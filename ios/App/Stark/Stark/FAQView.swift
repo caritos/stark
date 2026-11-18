@@ -76,7 +76,7 @@ struct FAQView: View {
             answer: """
             Yes. Weather is optional and off by default: turn it on in Settings. Then iOS asks \
             whether Stark may use your location while you use the app, and the agenda's day \
-            headers show a forecast symbol with the high and low for the next days. Stark sends \
+            headers show a forecast symbol with the high and low for the next days; the Day, Week and Month views show it too (a symbol and the high in Week, the symbol alone in Month). Stark sends \
             an approximate location rounded to about 11 km to MET Norway's public forecast \
             service and sends nothing else; the position is never stored. Weather is the only \
             thing Stark ever sends over the network. Turn it off and Stark stops asking.

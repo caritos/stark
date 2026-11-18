@@ -17,6 +17,8 @@ import StarkKit
 struct FullWeekView: View {
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(PlanCache.self) private var planCache
+    @Environment(WeatherModel.self) private var weather
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// Start of the week's Sunday.
     @State private var weekStart: Date
     @State private var snapshot: LayoutSnapshot?
@@ -251,7 +253,12 @@ struct FullWeekView: View {
 
     /// Caps weekday over the day number per column; today has a red weekday, the number in a
     /// blue circle and the pale blue column ground. A tap opens that day in the DayTicker.
+    @ViewBuilder
     private var columnHeaders: some View {
+        // The forecast row exists only while some day of this week has one, and then in every
+        // column (an empty placeholder for a day without), so the headers stay level.
+        let forecasts = days.map { weather.forecast(on: $0) }
+        let showsForecast = !typeSize.isAccessibilitySize && forecasts.contains(where: { $0 != nil })
         HStack(spacing: 0) {
             Color.clear.frame(width: M.labelWidth, height: 1)
             ForEach(Array(days.enumerated()), id: \.offset) { index, day in
@@ -266,6 +273,13 @@ struct FullWeekView: View {
                             .foregroundStyle(isToday ? Color.white : Colors.text)
                             .frame(width: 30, height: 30)
                             .background(Circle().fill(isToday ? Colors.accent : Color.clear))
+                        if showsForecast {
+                            if let forecast = forecasts[index] {
+                                WeatherMiniChip(weather: forecast)
+                            } else {
+                                Color.clear.frame(height: 14)
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity, minHeight: 56)
                     .background(isToday ? Colors.todayCell : Color.clear)

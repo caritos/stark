@@ -20,6 +20,8 @@ struct FullMonthView: View {
     @Environment(AppleOverlayModel.self) private var overlay
     /// Apple reminders' plan blocks (sidecar), applied like the agenda does.
     @Environment(PlanCache.self) private var planCache
+    @Environment(WeatherModel.self) private var weather
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var visibleMonth: YearMonth
     @State private var snapshot: LayoutSnapshot?
     /// Rows of 18 pt that fit under a cell's number band; follows the grid's height.
@@ -27,6 +29,8 @@ struct FullMonthView: View {
     let today: Date
     let onSelectDate: (Date) -> Void
 
+    /// Under this cell width the weather glyph is hidden (the number needs the band).
+    private static let weatherMinWidth: CGFloat = 44
     /// Height of the day-number band at the top of every cell.
     private static let numberBand: CGFloat = 24
     /// Height of one bar or line row.
@@ -342,6 +346,15 @@ struct FullMonthView: View {
                 Rectangle().fill(isToday ? Colors.todayCell : (day.isInMonth ? Colors.card : Colors.background))
                 dayNumber(day, isToday: isToday)
                     .frame(width: width, height: Self.numberBand, alignment: .trailing)
+                // Glyph only, in the number band's free corner; none at accessibility sizes or in
+                // a cell too narrow to share the band with the number.
+                if !typeSize.isAccessibilitySize, width >= Self.weatherMinWidth,
+                   let forecast = weather.forecast(on: day.date) {
+                    WeatherMiniChip(weather: forecast, showsHigh: false)
+                        .padding(.leading, 3)
+                        .frame(height: Self.numberBand, alignment: .center)
+                        .allowsHitTesting(false)
+                }
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(lines, id: \.id) { line in
                         lineView(line).frame(height: Self.rowHeight)
