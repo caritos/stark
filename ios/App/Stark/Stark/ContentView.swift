@@ -242,6 +242,7 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
+                overlay.forgetMissingBirthYears()
                 Task { await overlay.refresh(today: today) }
                 followCalendarDay()
             } else {

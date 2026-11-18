@@ -51,10 +51,15 @@ final class AppleOverlayModel {
     /// the newest one has landed (bounded; see `LatestReloadGate`).
     @ObservationIgnored private let gate = LatestReloadGate()
     @ObservationIgnored private var changeTask: Task<Void, Never>?
+    /// Birth years of the shown Birthdays-calendar events, read from Contacts after the snapshot
+    /// landed (never on the first-load path) and kept in memory for the model's lifetime.
+    @ObservationIgnored private let birthYears: BirthYearCache
 
-    init(provider: AppleItemProvider, defaults: UserDefaults = .standard) {
+    init(provider: AppleItemProvider, defaults: UserDefaults = .standard,
+         birthYearLookup: BirthYearLookup = ContactsBirthYears()) {
         self.provider = provider
         self.defaults = defaults
+        self.birthYears = BirthYearCache(lookup: birthYearLookup)
         selection = AppleSelection(excludedIDs: Set(defaults.stringArray(forKey: Key.excluded) ?? []))
         access = provider.accessState()
         observeStoreChanges()
@@ -134,6 +139,12 @@ final class AppleOverlayModel {
         await refresh(today: lastRequest?.today ?? Date())
     }
 
+    /// The app came to the front: contacts that had no birth year (or no Contacts access) are
+    /// asked again on the next snapshot, since either may have changed in the meantime.
+    func forgetMissingBirthYears() {
+        birthYears.forgetMissing()
+    }
+
     /// Re-fetches the current hull (foreground). Does nothing before any screen asked for data.
     func refresh(today: Date) async {
         guard let covering = window.covering else { return }
@@ -195,7 +206,20 @@ final class AppleOverlayModel {
             if snapshot != empty { snapshot = empty }
             return
         }
-        snapshot = selection.filtered(fetched)
+        let filtered = selection.filtered(fetched)
+        // Only birthdays of calendars the owner shows; hidden ones never reach Contacts.
+        let ids = BirthYear.contactIDsNeeded(in: filtered.events)
+        let next = AppleSnapshot(events: filtered.events, reminders: filtered.reminders,
+                                 birthYears: birthYears.years(for: ids))
+        if snapshot != next { snapshot = next }
+        guard !birthYears.missing(from: ids).isEmpty else { return }
+        // The snapshot is already published (cake, no age yet); the lookup (and the one Contacts
+        // prompt) runs off the main actor, one at a time. When it learned a year, the snapshot is
+        // re-derived from whatever is current then, so an older fetch is never republished.
+        Task { [weak self] in
+            guard let self, await self.birthYears.load(ids) else { return }
+            self.applySelection()
+        }
     }
 
     private func observeStoreChanges() {

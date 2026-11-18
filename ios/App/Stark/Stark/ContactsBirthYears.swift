@@ -16,7 +16,8 @@ nonisolated struct ContactsBirthYears: BirthYearLookup {
         guard !ids.isEmpty else { return [:] }
         let store = CNContactStore()
         if CNContactStore.authorizationStatus(for: .contacts) == .notDetermined {
-            // The one prompt: the first time a birthday event is shown.
+            // The one prompt: the first time Stark loads a birthday from a calendar the owner shows
+            // (`AppleOverlayModel` calls this only for those, one lookup at a time).
             _ = try? await store.requestAccess(for: .contacts)
         }
         // .limited (iOS 18) still answers for the contacts the person shared; the rest are absent.
