@@ -22,6 +22,7 @@ struct FullMonthView: View {
     @Environment(PlanCache.self) private var planCache
     @Environment(WeatherModel.self) private var weather
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.locale) private var locale
     @State private var visibleMonth: YearMonth
     @State private var snapshot: LayoutSnapshot?
     /// Rows of 18 pt that fit under a cell's number band; follows the grid's height.
@@ -348,9 +349,11 @@ struct FullMonthView: View {
                     .frame(width: width, height: Self.numberBand, alignment: .trailing)
                 // Glyph only, in the number band's free corner; none at accessibility sizes or in
                 // a cell too narrow to share the band with the number.
-                if !typeSize.isAccessibilitySize, width >= Self.weatherMinWidth,
+                // The first of a month wears a wide grey "Nov 1" pill that would cover it.
+                if !typeSize.isAccessibilitySize, width >= Self.weatherMinWidth, day.day != 1,
                    let forecast = weather.forecast(on: day.date) {
                     WeatherMiniChip(weather: forecast, showsHigh: false)
+                        .accessibilityHidden(true)
                         .padding(.leading, 3)
                         .frame(height: Self.numberBand, alignment: .center)
                         .allowsHitTesting(false)
@@ -375,8 +378,12 @@ struct FullMonthView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(counts.accessibilityLabel(
-            title: day.isInMonth ? "\(day.day)" : AgendaFormat.monthDay(day.date), isToday: isToday))
+        // The button's label replaces its children's, so the forecast is spoken here (also for
+        // a day whose glyph is hidden).
+        .accessibilityLabel(WeatherFormat.label(
+            counts.accessibilityLabel(
+                title: day.isInMonth ? "\(day.day)" : AgendaFormat.monthDay(day.date), isToday: isToday),
+            weather: weather.forecast(on: day.date), locale: locale))
         .accessibilityHint("Opens this day")
     }
 

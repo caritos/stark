@@ -19,6 +19,7 @@ struct FullWeekView: View {
     @Environment(PlanCache.self) private var planCache
     @Environment(WeatherModel.self) private var weather
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.locale) private var locale
     /// Start of the week's Sunday.
     @State private var weekStart: Date
     @State private var snapshot: LayoutSnapshot?
@@ -276,6 +277,7 @@ struct FullWeekView: View {
                         if showsForecast {
                             if let forecast = forecasts[index] {
                                 WeatherMiniChip(weather: forecast)
+                                    .accessibilityHidden(true)
                             } else {
                                 Color.clear.frame(height: 14)
                             }
@@ -286,8 +288,10 @@ struct FullWeekView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(AgendaFormat.weekdayName(day) + ", " + AgendaFormat.monthDay(day)
-                                    + (isToday ? ", today" : ""))
+                // The button's label replaces its children's, so the forecast is spoken here.
+                .accessibilityLabel(WeatherFormat.label(
+                    AgendaFormat.weekdayName(day) + ", " + AgendaFormat.monthDay(day) + (isToday ? ", today" : ""),
+                    weather: forecasts[index], locale: locale))
                 .accessibilityHint("Opens this day in the DayTicker")
             }
         }

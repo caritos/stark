@@ -17,6 +17,7 @@ struct FullDayView: View {
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(PlanCache.self) private var planCache
     @Environment(WeatherModel.self) private var weather
+    @Environment(\.dynamicTypeSize) private var typeSize
     /// Start of the day shown.
     @State private var day: Date
     @State private var snapshot: LayoutSnapshot?
@@ -202,7 +203,9 @@ struct FullDayView: View {
             .accessibilityAddTraits(.isHeader)
             .accessibilityHint("Goes to today")
             Spacer(minLength: 0)
-            if let forecast = weather.forecast(on: day) {
+            // Hidden at accessibility text sizes so the title keeps the room (the header itself
+            // is capped at xLarge, so this reads the OUTER size).
+            if !typeSize.isAccessibilitySize, let forecast = weather.forecast(on: day) {
                 WeatherChip(weather: forecast)
                     .padding(.trailing, Spacing.xs)
             }
