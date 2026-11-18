@@ -10,7 +10,15 @@ enum AgendaState {
     /// The fetch failed: say so instead of showing an empty day.
     case failed
     /// The rows for each family, cut separately so the overdue cap applies to what is shown.
-    case items(small: [WidgetItem], medium: [WidgetItem])
+    case items(Rows)
+}
+
+/// What each family shows for one entry. Lock Screen rectangular uses `small` (3 rows) and inline
+/// the first of them; circular shows `remainingToday`.
+struct Rows {
+    let small: [WidgetItem]
+    let medium: [WidgetItem]
+    let remainingToday: Int
 }
 
 struct AgendaEntry: TimelineEntry {
@@ -31,7 +39,7 @@ struct AgendaProvider: TimelineProvider {
             WidgetItem(id: "p3", title: "Lunch", isReminder: false, isAllDay: false,
                        start: now.addingTimeInterval(7200), end: nil, colorHex: nil, isOverdue: false),
         ]
-        return AgendaEntry(date: now, state: .items(small: sample, medium: sample))
+        return AgendaEntry(date: now, state: .items(Rows(small: sample, medium: sample, remainingToday: sample.count)))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (AgendaEntry) -> Void) {
@@ -75,7 +83,9 @@ struct AgendaProvider: TimelineProvider {
                 WidgetAgenda.items(events: snapshot.events, reminders: snapshot.reminders, excluded: excluded,
                                    now: date, limit: limit, calendar: calendar)
             }
-            return AgendaEntry(date: date, state: .items(small: rows(3), medium: rows(5)))
+            let left = WidgetAgenda.remainingToday(events: snapshot.events, reminders: snapshot.reminders,
+                                                   excluded: excluded, now: date, calendar: calendar)
+            return AgendaEntry(date: date, state: .items(Rows(small: rows(3), medium: rows(5), remainingToday: left)))
         }
     }
 }
@@ -85,8 +95,14 @@ struct AgendaWidgetView: View {
     let entry: AgendaEntry
 
     var body: some View {
-        content
-            .containerBackground(.background, for: .widget)
+        switch family {
+        case .accessoryRectangular, .accessoryInline, .accessoryCircular:
+            LockScreenView(family: family, state: entry.state)
+                .containerBackground(.clear, for: .widget)
+        default:
+            content
+                .containerBackground(.background, for: .widget)
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -102,11 +118,11 @@ struct AgendaWidgetView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .items(let small, let medium):
+        case .items(let rows):
             if family == .systemMedium {
-                MediumView(date: entry.date, items: medium)
+                MediumView(date: entry.date, items: rows.medium)
             } else {
-                SmallView(items: small)
+                SmallView(items: rows.small)
             }
         }
     }
@@ -225,6 +241,104 @@ private struct RowView: View {
     }
 }
 
+/// The Lock Screen families: monochrome and tiny, so text only (no colour dots, no red).
+private struct LockScreenView: View {
+    let family: WidgetFamily
+    let state: AgendaState
+
+    var body: some View {
+        switch family {
+        case .accessoryInline: inline
+        case .accessoryCircular: circular
+        default: rectangular
+        }
+    }
+
+    /// The short text of a state with no rows ("Open Stark", "Couldn't read your calendar").
+    private var stateText: String? {
+        switch state {
+        case .needsAccess: return "Open Stark to allow Calendar access"
+        case .failed: return "Couldn't read your calendar"
+        case .items: return nil
+        }
+    }
+
+    private var rows: [WidgetItem] {
+        if case .items(let rows) = state { return rows.small }
+        return []
+    }
+
+    @ViewBuilder private var inline: some View {
+        if let stateText {
+            Text(stateText)
+        } else if let first = rows.first {
+            // An inline widget is one Text, so the whole line is redacted when titles are hidden.
+            Text(WidgetRowText.lockLine(first).text)
+                .privacySensitive()
+                .accessibilityLabel(WidgetRowText.accessibilityLabel(first))
+        } else {
+            Text("Nothing coming up")
+        }
+    }
+
+    @ViewBuilder private var rectangular: some View {
+        if let stateText {
+            Text(stateText)
+                .font(.caption)
+                .lineLimit(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if rows.isEmpty {
+            Text("Nothing coming up")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(rows) { item in
+                    let line = WidgetRowText.lockLine(item)
+                    HStack(spacing: 4) {
+                        if let time = line.time {
+                            Text(time)
+                                .fontWeight(.semibold)
+                                .widgetAccentable()
+                        }
+                        Text(line.title)
+                            .privacySensitive()
+                    }
+                    .font(.caption)
+                    .lineLimit(1)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(WidgetRowText.accessibilityLabel(item))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+
+    private var circular: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            switch state {
+            case .items(let rows):
+                VStack(spacing: 0) {
+                    Image(systemName: "calendar")
+                        .font(.caption2)
+                        .widgetAccentable()
+                    Text(WidgetRowText.countText(rows.remainingToday))
+                        .font(.title3.weight(.semibold))
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(WidgetRowText.countAccessibilityLabel(rows.remainingToday))
+            case .needsAccess, .failed:
+                Image(systemName: "calendar.badge.exclamationmark")
+                    .font(.title3)
+                    .accessibilityLabel(stateText ?? "")
+            }
+        }
+    }
+}
+
 extension Color {
     /// `0xRRGGBB`: an Apple calendar's own colour (data, not styling).
     fileprivate init(hex: UInt32) {
@@ -240,7 +354,8 @@ struct StarkAgendaWidget: Widget {
         }
         .configurationDisplayName("Up Next")
         .description("Your next events and reminders.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium,
+                            .accessoryRectangular, .accessoryInline, .accessoryCircular])
         .disfavoredLocations([.standBy], for: [.systemSmall])
     }
 }
