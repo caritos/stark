@@ -73,6 +73,9 @@ public enum QuickAddParser {
     private static let fullWeekday = "sunday|monday|tuesday|wednesday|thursday|friday|saturday"
     private static let monthWord =
         "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?"
+    /// "Dec 5-6" is not a date; "Dec 5-6pm" is (the date, then a time).
+    private static let dashNoCue =
+        #"(?!\s*[-\x{2013}]\s*\d{1,2}(?!\d|\s*(?::|am\b|pm\b|a\.m\.|p\.m\.)))"#
     private static let monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 
     public static func parse(_ text: String, now: Date, calendar given: Calendar = .current) -> QuickAddSuggestion? {
@@ -81,6 +84,7 @@ public enum QuickAddParser {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = given.timeZone
         calendar.locale = given.locale
+        calendar.firstWeekday = given.firstWeekday
         var work = Work(text: text)
         var kind: AppleItemRef.Kind?
         var recurrence: RecurrenceRule?
@@ -101,23 +105,17 @@ public enum QuickAddParser {
         }
 
         let snapshot = work.text
-        var endClock: (hour: Int, minute: Int)?
+        var range: ClockRange?
         var clock: (hour: Int, minute: Int)?
-        let rejectionsAtStart = work.rejections
-        if let range = parseRange(&work) {
-            clock = range.start
-            endClock = range.end
-        }
-        // A refused range ("6pm-5pm") is not a date-looking token.
-        work.rejections = rejectionsAtStart
-        if clock == nil { clock = parseTime(&work) }
         let rejectionsBefore = work.rejections
-        let day = parseDay(&work, today: today, calendar: calendar)
+        let day = parseDay(&work, today: today, calendar: calendar, bareLastWeekday: kind == .reminder)
         if day == nil && work.rejections > rejectionsBefore {
             // A date-looking token was refused ("1/2 gallon"): do not let a time pick the day.
             work.text = snapshot
-            clock = nil
-            endClock = nil
+        } else {
+            // A refused range ("6pm-5pm") stays whole in the title and gives no time.
+            range = parseRange(&work)
+            if let range { clock = range.start } else { clock = parseTime(&work) }
         }
         if recurrence == nil { recurrence = parseTrailingRepeat(&work) }
 
@@ -141,6 +139,22 @@ public enum QuickAddParser {
             start = nextOccurrence(of: nil, days: days, now: now, today: today, calendar: calendar)
         }
 
+        // A repeat whose typed date is not one of its days starts on the next matching day.
+        if let current = start, let rule = recurrence, rule.frequency == .weekly,
+           let days = rule.byDay, !days.isEmpty {
+            let dayStart = calendar.startOfDay(for: current)
+            let wanted = Set(days)
+            for offset in 0..<7 {
+                guard let d = calendar.date(byAdding: .day, value: offset, to: dayStart) else { break }
+                guard wanted.contains(weekday(of: d, calendar)) else { continue }
+                if offset > 0 {
+                    let c = calendar.dateComponents([.hour, .minute], from: current)
+                    start = hasTime ? at(d, (c.hour ?? 0, c.minute ?? 0), calendar) : d
+                }
+                break
+            }
+        }
+
         var end: Date?
         var rangeEnd: Date?
         if hasTime, let start {
@@ -150,11 +164,19 @@ public enum QuickAddParser {
                 let seconds = m[2].lowercased().hasPrefix("h") ? value * 3600 : value * 60
                 end = start.addingTimeInterval(seconds)
             }
-            if let endClock {
-                end = at(calendar.startOfDay(for: start), endClock, calendar)
-                rangeEnd = end
+            if let range {
+                var endDay = calendar.startOfDay(for: start)
+                if range.overnight { endDay = calendar.date(byAdding: .day, value: 1, to: endDay) ?? endDay }
+                let candidate = at(endDay, range.end, calendar)
+                // A DST gap can put the end on or before the start: then there is no end.
+                if candidate > start {
+                    end = candidate
+                    rangeEnd = candidate
+                }
             }
         }
+        // Reminders have no end.
+        if kind == .reminder { end = nil; rangeEnd = nil }
 
         let title = work.cleanedTitle
         guard !title.isEmpty, start != nil || recurrence != nil || kind != nil else { return nil }
@@ -235,38 +257,90 @@ public enum QuickAddParser {
     private struct ClockRange {
         var start: (hour: Int, minute: Int)
         var end: (hour: Int, minute: Int)
+        /// The end clock time reads earlier than the start: the end is on the next day.
+        var overnight: Bool
     }
 
+    private enum RangeVerdict {
+        case range(ClockRange)
+        case ignore
+        case refuse
+    }
+
+    /// "1-2pm", "1pm-2pm", "1 to 2pm", "from 1pm to 2pm", "between 1 and 2pm", "13:00-14:30",
+    /// "9am until 10:30am", "11pm til 1am". It needs a clock cue (am/pm or h:mm), so "Call 3-4"
+    /// and "Chapter 3-4" stay text. A missing meridiem takes whichever reading is nearest; an end
+    /// before the start is overnight (the next day). A range longer than 16 hours (10 when a
+    /// meridiem was guessed) is not one. A cue-bearing token that is refused stays whole in the
+    /// title (the text is guarded so no single time is picked out of it).
     private static func parseRange(_ work: inout Work) -> ClockRange? {
         let t = #"(\d{1,2})(?::([0-5]\d))?\s*(am|pm|a\.m\.|p\.m\.)?"#
-        let sep = #"\s*(?:-|\x{2013}|\x{2014}|\bto\b|\buntil\b|\btill\b)\s*"#
-        let pattern = #"(?<![\d:/.])(?:\b(at|from)\s+|(@)\s*)?"# + t + sep + t + #"(?![\d:a-z])"#
-        return work.remove(pattern) { m -> ClockRange? in
-            let lead = !(m[1] + m[2]).isEmpty
-            let (h1, m1, a1) = (Int(m[3])!, Int(m[4]), m[5].lowercased())
-            let (h2, m2, a2) = (Int(m[6])!, Int(m[7]), m[8].lowercased())
-            if a1.isEmpty && a2.isEmpty {
-                // 24 hour reading: colons on both sides, a lead word or two-digit hours.
-                guard let m1, let m2, lead || (m[3].count == 2 && m[6].count == 2), h1 < 24, h2 < 24 else { return nil }
-                let s = h1 * 60 + m1, e = h2 * 60 + m2
-                return s < e ? ClockRange(start: (h1, m1), end: (h2, m2)) : nil
+        let sep = #"\s*(-|\x{2013}|\x{2014}|\bto\b|\buntil\b|\btill?\b|\band\b)\s*"#
+        let pattern = #"(?<![\d:/.])(?:\b(at|from|between)\s+|(@)\s*)?"# + t + sep + t + #"(?![\d:a-z])"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
+        let ns = work.text as NSString
+        var edits: [(NSRange, String)] = []
+        var found: ClockRange?
+        for m in regex.matches(in: work.text, range: NSRange(location: 0, length: ns.length)) {
+            var g: [String] = []
+            for i in 0..<m.numberOfRanges {
+                let r = m.range(at: i)
+                g.append(r.location == NSNotFound ? "" : ns.substring(with: r))
             }
+            switch evaluateRange(g) {
+            case .ignore: continue
+            case .refuse: edits.append((m.range, work.protect(ns.substring(with: m.range))))
+            case .range(let r):
+                edits.append((m.range, " "))
+                found = r
+            }
+            if found != nil { break }
+        }
+        var text = work.text as NSString
+        for (range, replacement) in edits.reversed() {
+            text = text.replacingCharacters(in: range, with: replacement) as NSString
+        }
+        work.text = text as String
+        return found
+    }
+
+    private static func evaluateRange(_ g: [String]) -> RangeVerdict {
+        // 1 lead word, 2 "@", 3-5 first time, 6 separator, 7-9 second time.
+        let leadWord = g[1].lowercased()
+        let hasLead = !(g[1] + g[2]).isEmpty
+        let (h1, m1, a1) = (Int(g[3])!, Int(g[4]), g[5].lowercased())
+        let (h2, m2, a2) = (Int(g[7])!, Int(g[8]), g[9].lowercased())
+        if g[6].lowercased() == "and" && leadWord != "between" { return .ignore }
+        guard !a1.isEmpty || !a2.isEmpty || m1 != nil || m2 != nil else { return .ignore }
+        var candidates: [(Int, Int)] = []
+        var guessed = false
+        if a1.isEmpty && a2.isEmpty {
+            // 24 hour reading: colons on both sides and some evidence it is not a verse or a score.
+            guard let m1, let m2, h1 < 24, h2 < 24 else { return .refuse }
+            let evidence = hasLead || h1 >= 13 || h2 >= 13 || g[3].hasPrefix("0") || g[7].hasPrefix("0")
+            guard evidence else { return .refuse }
+            candidates = [(h1 * 60 + m1, h2 * 60 + m2)]
+        } else {
             func minutes(_ hour: Int, _ minute: Int?, pm: Bool) -> Int? {
                 guard (1...12).contains(hour) else { return nil }
                 return (hour % 12 + (pm ? 12 : 0)) * 60 + (minute ?? 0)
             }
             let startFixed: Bool? = a1.isEmpty ? nil : a1.hasPrefix("p")
             let endFixed: Bool? = a2.isEmpty ? nil : a2.hasPrefix("p")
-            let startOptions = startFixed.map { [$0] } ?? [endFixed!, !endFixed!]
-            let endOptions = endFixed.map { [$0] } ?? [startFixed!, !startFixed!]
+            guessed = startFixed == nil || endFixed == nil
+            let startOptions = startFixed.map { [$0] } ?? [true, false]
+            let endOptions = endFixed.map { [$0] } ?? [true, false]
             for sp in startOptions {
                 for ep in endOptions {
-                    guard let s = minutes(h1, m1, pm: sp), let e = minutes(h2, m2, pm: ep), s < e else { continue }
-                    return ClockRange(start: (s / 60, s % 60), end: (e / 60, e % 60))
+                    if let s = minutes(h1, m1, pm: sp), let e = minutes(h2, m2, pm: ep) { candidates.append((s, e)) }
                 }
             }
-            return nil
         }
+        func length(_ c: (Int, Int)) -> Int { c.1 > c.0 ? c.1 - c.0 : c.1 - c.0 + 1440 }
+        guard let best = candidates.min(by: { length($0) < length($1) }),
+              length(best) <= (guessed ? 600 : 960) else { return .refuse }
+        return .range(ClockRange(start: (best.0 / 60, best.0 % 60), end: (best.1 / 60, best.1 % 60),
+                                 overnight: best.1 <= best.0))
     }
 
     private static func parseTime(_ work: inout Work) -> (hour: Int, minute: Int)? {
@@ -288,7 +362,8 @@ public enum QuickAddParser {
 
     // MARK: - Day
 
-    private static func parseDay(_ work: inout Work, today: Date, calendar: Calendar) -> Date? {
+    private static func parseDay(_ work: inout Work, today: Date, calendar: Calendar,
+                                 bareLastWeekday: Bool = false) -> Date? {
         let lead = #"(?:\b(?:on|by|from|at)\s+)?"#
         let monthLead = #"(?:\b(?:on|by|from|at|in)\s+)?"#
         /// The lone word "may" is only May after on/by/in or when written with a capital M.
@@ -322,11 +397,19 @@ public enum QuickAddParser {
             // The coming one, strictly after today (1...7 days).
             let coming = (target - current + 6) % 7 + 1
             guard modifier == "next" else { return plus(coming) }
-            // "next friday" skips a Friday that is still in this (Monday to Sunday) week.
-            let mondayIndex = (current + 5) % 7
-            return plus(mondayIndex + coming <= 6 ? coming + 7 : coming)
+            // "next friday" is that day in the week after the one containing today, using the
+            // calendar's own first weekday.
+            let first = calendar.firstWeekday
+            let untilNextWeek = 7 - (current - first + 7) % 7
+            return plus(untilNextWeek + (target - first + 7) % 7)
         }
-        let a = work.remove(monthLead + #"\b(\#(monthWord))\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?!\s*(?::|am\b|pm\b))(?:,?\s+(\d{4})\b)?"#) { m -> Date? in
+        // After "remind me to ...", a weekday that ends the phrase is the day ("... the bank Friday").
+        if bareLastWeekday, let m = work.remove(#"\b(\#(fullWeekday))\b[\s.!?]*$"#) {
+            let target = weekdayFromPrefix(m[1].lowercased())!.rawValue + 1
+            let current = calendar.component(.weekday, from: today)
+            return plus((target - current + 6) % 7 + 1)
+        }
+        let a = work.remove(monthLead + #"\b(\#(monthWord))\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?!\s*(?::|am\b|pm\b))\#(dashNoCue)(?:,?\s+(\d{4})\b)?"#) { m -> Date? in
             guard mayOK(m[0], m[1]) else { return nil }
             let month = monthNames.firstIndex { m[1].lowercased().hasPrefix($0) }! + 1
             return resolve(month: month, day: Int(m[2])!, year: Int(m[3]), today: today, calendar: calendar)
@@ -399,6 +482,7 @@ public enum QuickAddParser {
         }
         if let recurrence {
             let s = recurrence.summary
+                .replacingOccurrences(of: "on Sunday, Saturday", with: "on Saturday, Sunday")
             parts.append("repeats " + s.prefix(1).lowercased() + s.dropFirst())
         }
         guard let first = parts.first else { return "" }
@@ -424,6 +508,14 @@ public enum QuickAddParser {
         var text: String
         /// How many regex matches `transform` refused (a date-looking token that is not a date).
         var rejections = 0
+        /// Tokens kept out of every later rule; each is held as a private-use sentinel until the
+        /// title is built.
+        var guarded: [String] = []
+
+        mutating func protect(_ token: String) -> String {
+            guarded.append(token)
+            return "\u{E000}" + String(UnicodeScalar(0xE100 + guarded.count - 1)!) + "\u{E001}"
+        }
 
         mutating func remove(_ pattern: String) -> [String]? {
             remove(pattern) { $0 }
@@ -450,7 +542,12 @@ public enum QuickAddParser {
         }
 
         var cleanedTitle: String {
-            let collapsed = text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+            var restored = text
+            for (i, token) in guarded.enumerated() {
+                restored = restored.replacingOccurrences(
+                    of: "\u{E000}" + String(UnicodeScalar(0xE100 + i)!) + "\u{E001}", with: token)
+            }
+            let collapsed = restored.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
             return collapsed.trimmingCharacters(in: CharacterSet(charactersIn: " ,;:-"))
         }
     }

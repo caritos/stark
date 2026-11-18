@@ -404,12 +404,22 @@ struct QuickAddParserTests {
         for text in ["Call 3-4", "Chapter 3-4", "Read pages 3-4", "Meet 3 to 4", "John 3:16-18"] {
             #expect(Self.parse(text, zone) == nil, "\(text)")
         }
+        // A refused range leaves its whole token in the title and picks no time out of it.
         let flight = try #require(Self.parse("Flight tomorrow 6pm-5pm", zone))
         #expect(flight.end == nil)
-        #expect(flight.start == Self.date(c, 2026, 11, 19, 18, 0))
+        #expect(flight.title == "Flight 6pm-5pm")
+        #expect(!flight.hasTime)
+        #expect(flight.start == Self.date(c, 2026, 11, 19))
         let bad = try #require(Self.parse("Call tomorrow 13pm-14pm", zone))
         #expect(bad.end == nil)
+        #expect(bad.title == "Call 13pm-14pm")
         #expect(!bad.hasTime)
+        let score = try #require(Self.parse("Score tomorrow 3-2pm", zone))
+        #expect(score.title == "Score 3-2pm")
+        #expect(!score.hasTime && score.end == nil)
+        #expect(Self.parse("Read John 11:25-12:30", zone) == nil)
+        #expect(Self.parse("Party Dec 5-6", zone) == nil)
+        #expect(Self.parse("Sync tomorrow 1 and 2pm", zone)?.end == nil)
         let tomorrow = try #require(Self.parse("Chapter 3-4 tomorrow", zone))
         #expect(tomorrow.title == "Chapter 3-4")
         #expect(!tomorrow.hasTime)
@@ -437,10 +447,38 @@ struct QuickAddParserTests {
         #expect(try #require(Self.parse("Dentist this friday", zone, now: friday)).start == Self.date(c, 2026, 11, 20))
         #expect(try #require(Self.parse("Dentist next friday", zone, now: friday)).start == Self.date(c, 2026, 11, 27))
         #expect(try #require(Self.parse("Dentist on friday", zone, now: friday)).start == Self.date(c, 2026, 11, 27))
+        // Sunday-first weeks (en_US): on Sunday 11/22 the next week starts a week later.
         let sunday = Self.date(c, 2026, 11, 22, 9, 30)
         #expect(try #require(Self.parse("Dentist this friday", zone, now: sunday)).start == Self.date(c, 2026, 11, 27))
-        #expect(try #require(Self.parse("Dentist next friday", zone, now: sunday)).start == Self.date(c, 2026, 11, 27))
-        #expect(try #require(Self.parse("Dentist next monday", zone, now: sunday)).start == Self.date(c, 2026, 11, 23))
+        #expect(try #require(Self.parse("Dentist next friday", zone, now: sunday)).start == Self.date(c, 2026, 12, 4))
+        #expect(try #require(Self.parse("Dentist next monday", zone, now: sunday)).start == Self.date(c, 2026, 11, 30))
+        #expect(try #require(Self.parse("Dentist next sunday", zone, now: sunday)).start == Self.date(c, 2026, 11, 29))
+        // Saturday 11/21: next sunday is tomorrow (the new week starts Sunday).
+        let saturday = Self.date(c, 2026, 11, 21, 9, 30)
+        #expect(try #require(Self.parse("Dentist next sunday", zone, now: saturday)).start == Self.date(c, 2026, 11, 22))
+        #expect(try #require(Self.parse("Dentist next friday", zone, now: saturday)).start == Self.date(c, 2026, 11, 27))
+        // Monday 11/23: next monday is a week away.
+        let monday = Self.date(c, 2026, 11, 23, 9, 30)
+        #expect(try #require(Self.parse("Dentist next monday", zone, now: monday)).start == Self.date(c, 2026, 11, 30))
+    }
+
+    @Test("next weekday follows the calendar's first weekday (Monday-first)", arguments: zones)
+    func nextWeekdayMondayFirst(zone: String) throws {
+        var c = Self.calendar(zone)
+        c.firstWeekday = 2
+        func start(_ text: String, _ now: Date) throws -> Date? {
+            try #require(QuickAddParser.parse(text, now: now, calendar: c)).start
+        }
+        let sunday = Self.date(c, 2026, 11, 22, 9, 30)
+        #expect(try start("Dentist next friday", sunday) == Self.date(c, 2026, 11, 27))
+        #expect(try start("Dentist next monday", sunday) == Self.date(c, 2026, 11, 23))
+        let saturday = Self.date(c, 2026, 11, 21, 9, 30)
+        #expect(try start("Dentist next sunday", saturday) == Self.date(c, 2026, 11, 29))
+        #expect(try start("Dentist next monday", saturday) == Self.date(c, 2026, 11, 23))
+        let wednesday = Self.date(c, 2026, 11, 18, 9, 30)
+        #expect(try start("Dentist next friday", wednesday) == Self.date(c, 2026, 11, 27))
+        #expect(try start("Dentist next monday", wednesday) == Self.date(c, 2026, 11, 23))
+        #expect(try start("Dentist this friday", wednesday) == Self.date(c, 2026, 11, 20))
     }
 
     @Test("next weekday across the DST change")
@@ -495,5 +533,98 @@ struct QuickAddParserTests {
         #expect(QuickAddSuggestion.shouldOffer(title: "Lunch x", appliedTitle: "Lunch"))
         #expect(QuickAddSuggestion.shouldOffer(title: "Lunch", appliedTitle: nil))
         #expect(QuickAddSuggestion.shouldOffer(title: "Dinner tomorrow 7-9pm", appliedTitle: "Lunch"))
+    }
+
+    // MARK: - Review fixes
+
+    @Test("overnight ranges end on the next day", arguments: zones)
+    func overnight(zone: String) throws {
+        let c = Self.calendar(zone)
+        let party = try #require(Self.parse("Party tomorrow 11pm-1am", zone))
+        #expect(party.title == "Party")
+        #expect(party.start == Self.date(c, 2026, 11, 19, 23, 0))
+        #expect(party.end == Self.date(c, 2026, 11, 20, 1, 0))
+        let shift = try #require(Self.parse("Shift tomorrow 10pm-6am", zone))
+        #expect(shift.start == Self.date(c, 2026, 11, 19, 22, 0))
+        #expect(shift.end == Self.date(c, 2026, 11, 20, 6, 0))
+        let thing = try #require(Self.parse("Thing tomorrow 11-12am", zone))
+        #expect(thing.title != "Thing 11")
+        #expect(thing.title == "Thing" || thing.title == "Thing 11-12am")
+        // Longer than 16 hours is not a range.
+        let flight = try #require(Self.parse("Flight tomorrow 6pm-5pm", zone))
+        #expect(flight.end == nil && flight.title == "Flight 6pm-5pm")
+    }
+
+    @Test("a day number before a range keeps the date", arguments: zones)
+    func monthDayBeforeRange(zone: String) throws {
+        let c = Self.calendar(zone)
+        let s = try #require(Self.parse("Party Dec 5-6pm", zone))
+        #expect(s.title == "Party")
+        #expect(s.start == Self.date(c, 2026, 12, 5, 18, 0))
+    }
+
+    @Test("ranges on a DST gap day never end at the start")
+    func dstGapRange() throws {
+        let c = Self.calendar("America/New_York")
+        let now = Self.date(c, 2027, 3, 10, 9, 30)
+        let s = try #require(Self.parse("Class 3/14/2027 2:30am-3:30am", "America/New_York", now: now))
+        if let start = s.start, let end = s.end { #expect(end > start) }
+    }
+
+    @Test("a reminder suggestion shows no end")
+    func reminderNoEnd() throws {
+        let s = try #require(Self.parse("Remind me to call tomorrow 1-2pm", "America/New_York"))
+        #expect(s.kind == .reminder)
+        #expect(s.end == nil)
+        #expect(s.summary == "Reminder, Tomorrow at 1:00 PM")
+    }
+
+    @Test("between X and Y, til, and 24 hour ranges needing evidence", arguments: zones)
+    func moreRangeWords(zone: String) throws {
+        let c = Self.calendar(zone)
+        let b = try #require(Self.parse("Sync tomorrow between 1 and 2pm", zone))
+        #expect(b.title == "Sync")
+        #expect(b.start == Self.date(c, 2026, 11, 19, 13, 0))
+        #expect(b.end == Self.date(c, 2026, 11, 19, 14, 0))
+        let t = try #require(Self.parse("Sync tomorrow 1pm til 2pm", zone))
+        #expect(t.end == Self.date(c, 2026, 11, 19, 14, 0))
+        let z = try #require(Self.parse("Review tomorrow 09:00-10:30", zone))
+        #expect(z.start == Self.date(c, 2026, 11, 19, 9, 0))
+        #expect(z.end == Self.date(c, 2026, 11, 19, 10, 30))
+        let at = try #require(Self.parse("Review tomorrow from 11:25 to 12:30", zone))
+        #expect(at.end == Self.date(c, 2026, 11, 19, 12, 30))
+    }
+
+    @Test("a repeat's start aligns to its days", arguments: zones)
+    func repeatStartAligns(zone: String) throws {
+        let c = Self.calendar(zone)
+        let friday = Self.date(c, 2026, 11, 20, 9, 30)
+        let a = try #require(Self.parse("Standup every weekday tomorrow at 9am", zone, now: friday))
+        #expect(a.start == Self.date(c, 2026, 11, 23, 9, 0))
+        let wed = try #require(Self.parse("Trash every weekend tomorrow", zone))
+        #expect(wed.start == Self.date(c, 2026, 11, 21))
+        let thursday = Self.date(c, 2026, 11, 19, 9, 30)
+        let keep = try #require(Self.parse("Standup every weekday tomorrow at 9am", zone, now: thursday))
+        #expect(keep.start == Self.date(c, 2026, 11, 20, 9, 0))
+    }
+
+    @Test("a bare weekday ends a reminder phrase", arguments: zones)
+    func reminderBareWeekday(zone: String) throws {
+        let c = Self.calendar(zone)
+        let r = try #require(Self.parse("Remind me to call the bank Friday", zone))
+        #expect(r.kind == .reminder)
+        #expect(r.title == "call the bank")
+        #expect(r.start == Self.date(c, 2026, 11, 20))
+        #expect(!r.hasTime)
+        let n = try #require(Self.parse("Remind me to buy Friday Night Lights tickets", zone))
+        #expect(n.start == nil)
+        #expect(n.title == "buy Friday Night Lights tickets")
+        #expect(Self.parse("Call the bank Friday", zone) == nil)
+    }
+
+    @Test("every weekend reads Saturday, Sunday")
+    func weekendSummary() throws {
+        let s = try #require(Self.parse("Trash every weekend", "America/New_York"))
+        #expect(s.summary.hasSuffix("repeats every week on Saturday, Sunday"))
     }
 }
