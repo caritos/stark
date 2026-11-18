@@ -26,6 +26,9 @@ struct EditItemView: View {
     /// The stored Apple item this sheet edits (`ItemRouter.details`). Its form baseline is the
     /// `original` every update diffs against (spec call 5).
     let details: ItemDetails
+    /// The agenda row the sheet was opened from, for the join button and time zone card (they
+    /// need the tapped occurrence's own times); nil shows neither.
+    var joinRow: AgendaItem? = nil
 
     /// The editable fields; the logic that turns them back into an item is StarkKit's.
     @State private var form: ItemEditForm
@@ -45,8 +48,9 @@ struct EditItemView: View {
     private enum Field { case title, location, url, notes }
     @FocusState private var focusedField: Field?
 
-    init(item: AgendaItem, details: ItemDetails) {
+    init(item: AgendaItem, details: ItemDetails, joinRow: AgendaItem? = nil) {
         self.item = item
+        self.joinRow = joinRow
         self.details = details
         _form = State(initialValue: ItemEditForm(item: item))
         if case .event = item.kind { _kind = State(initialValue: .event) } else { _kind = State(initialValue: .reminder) }
@@ -61,6 +65,8 @@ struct EditItemView: View {
                     TagSuggestionRow(text: form.title) { form.title = TagAutocomplete.applying($0, to: form.title) }
                 }
                 .listRowBackground(Colors.card)
+
+                if let joinRow { JoinAndZoneSection(item: joinRow) }
 
                 Section {
                     if showsNoDate {

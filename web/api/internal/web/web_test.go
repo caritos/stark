@@ -115,6 +115,22 @@ func TestFAQExplainsBirthdayAges(t *testing.T) {
 	}
 }
 
+// Join links and time zones (2026-11-18): the FAQ explains the Join button and the time zone card.
+func TestFAQExplainsJoinLinksAndTimeZones(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"a join button for zoom, google meet, microsoft teams, webex and facetime links",
+		"opened only when you tap it",
+		"stark never loads or checks the link",
+		"time zone card for events in another time zone",
+		"all-day events and events with no time zone show no card",
+	} {
+		if !strings.Contains(lower, want) {
+			t.Errorf("faq missing %q", want)
+		}
+	}
+}
+
 // Weather (2026-11-18): the first network call. The FAQ explains it, says it is optional and what is sent.
 func TestFAQExplainsWeather(t *testing.T) {
 	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")

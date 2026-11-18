@@ -55,7 +55,7 @@ struct AppleItemEditor: View {
                         .padding(Spacing.md)
                 }
             case .loaded(.edit(let details), let item):
-                EditItemView(item: item, details: details)
+                EditItemView(item: item, details: details, joinRow: row)
             case .loaded(.readOnly, let item):
                 AppleItemDetailView(item: item, today: today)
             }
@@ -192,6 +192,8 @@ struct AppleItemDetailView: View {
                 }
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: Spacing.sm, leading: Spacing.xs, bottom: Spacing.sm, trailing: Spacing.xs))
+
+                JoinAndZoneSection(item: item)
 
                 if location != nil || urlText != nil || notes != nil {
                     Section {

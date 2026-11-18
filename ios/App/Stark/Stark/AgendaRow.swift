@@ -124,7 +124,8 @@ struct AgendaRowView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 if let timeLine {
-                    Text(drawnTimeText(timeLine))
+                    (Text(drawnTimeText(timeLine))
+                        + (item.showsJoinGlyph ? Text(" ") + Text(Image(systemName: "video.fill")) : Text("")))
                         .font(Font.footnote.monospacedDigit())
                         .foregroundStyle(timeLine.isAccent ? Color.red : Colors.textSecondary)
                 }
@@ -242,6 +243,7 @@ struct AgendaRowView: View {
         }
         if showsPriorityMarks { parts.append("\(priorityWord) priority") }
         if let location { parts.append(location) }
+        if item.showsJoinGlyph, let link = item.conferenceLink { parts.append("has a \(link.provider.displayName) link") }
         if let source = item.appleSource { parts.append("from \(source.calendarTitle), read only") }
         if looksDone { parts.append("completed") }
         if item.outcome == .attended {
