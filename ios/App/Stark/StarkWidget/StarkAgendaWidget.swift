@@ -176,7 +176,9 @@ private struct RowView: View {
                     if let time { timeText(time) }
                 }
             } else {
-                if let time { timeText(time).frame(width: 52, alignment: .leading) }
+                // The column is always reserved so titles line up when a row has no time.
+                Group { if let time { timeText(time) } else { Color.clear } }
+                    .frame(width: 52, alignment: .leading)
                 title
             }
         }
