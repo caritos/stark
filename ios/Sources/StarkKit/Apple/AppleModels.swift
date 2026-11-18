@@ -14,9 +14,12 @@ public struct AppleCalendarInfo: Equatable, Identifiable, Sendable {
     /// The calendar lives in the device-only source ("On My iPhone", `EKSourceType.local`) and never
     /// syncs to the owner's other devices.
     public let isLocalOnly: Bool
+    /// The system Birthdays calendar (`EKCalendarType.birthday`).
+    public let isBirthdayCalendar: Bool
 
     public init(id: String, title: String, accountName: String, colorHex: String?, isReminderList: Bool,
-                isWritable: Bool = true, isLocalOnly: Bool = false) {
+                isWritable: Bool = true, isLocalOnly: Bool = false, isBirthdayCalendar: Bool = false) {
+        self.isBirthdayCalendar = isBirthdayCalendar
         self.isLocalOnly = isLocalOnly
         self.id = id
         self.title = title
@@ -41,9 +44,16 @@ public struct AppleSource: Equatable, Sendable {
     /// The row is a repeating Apple reminder (`AppleReminder.isRecurring`); the synthetic
     /// `Reminder` carries no recurrence, so the row's repeat glyph reads this instead.
     public let isRecurringSeries: Bool
+    /// The row is an event on the Birthdays calendar.
+    public let isBirthday: Bool
+    /// The contact's birth year, when known (`AppleSnapshot.birthYears`).
+    public let birthYear: Int?
 
     public init(calendarID: String, calendarTitle: String, colorHex: String?, isReminder: Bool,
-                url: String? = nil, isWritable: Bool = true, isRecurringSeries: Bool = false) {
+                url: String? = nil, isWritable: Bool = true, isRecurringSeries: Bool = false,
+                isBirthday: Bool = false, birthYear: Int? = nil) {
+        self.isBirthday = isBirthday
+        self.birthYear = birthYear
         self.isRecurringSeries = isRecurringSeries
         self.calendarID = calendarID
         self.calendarTitle = calendarTitle
@@ -64,9 +74,13 @@ public struct AppleCalendarEvent: Equatable, Sendable {
     public let end: Date?
     public let isAllDay: Bool
     public let calendar: AppleCalendarInfo
+    /// Contacts identifier of a Birthdays-calendar event's person, nil elsewhere.
+    public let birthdayContactID: String?
 
     public init(id: String, title: String, notes: String?, location: String?, url: String?,
-                start: Date, end: Date?, isAllDay: Bool, calendar: AppleCalendarInfo) {
+                start: Date, end: Date?, isAllDay: Bool, calendar: AppleCalendarInfo,
+                birthdayContactID: String? = nil) {
+        self.birthdayContactID = birthdayContactID
         self.id = id
         self.title = title
         self.notes = notes
@@ -129,8 +143,11 @@ public enum AppleAccess: Equatable, Sendable {
 public struct AppleSnapshot: Equatable, Sendable {
     public let events: [AppleCalendarEvent]
     public let reminders: [AppleReminder]
+    /// Contact id to birth year, for the Birthdays calendar's events.
+    public let birthYears: [String: Int]
 
-    public init(events: [AppleCalendarEvent], reminders: [AppleReminder]) {
+    public init(events: [AppleCalendarEvent], reminders: [AppleReminder], birthYears: [String: Int] = [:]) {
+        self.birthYears = birthYears
         self.events = events
         self.reminders = reminders
     }

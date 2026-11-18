@@ -40,7 +40,9 @@ public func mergeAppleItems(
     for apple in snapshot.events {
         let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
                                  colorHex: apple.calendar.colorHex, isReminder: false,
-                                 isWritable: apple.calendar.isWritable)
+                                 isWritable: apple.calendar.isWritable,
+                                 isBirthday: apple.calendar.isBirthdayCalendar,
+                                 birthYear: apple.birthdayContactID.flatMap { snapshot.birthYears[$0] })
         let event = Event(id: "apple-\(apple.id)", title: apple.title, notes: apple.notes, start: apple.start,
                           end: apple.end, isAllDay: apple.isAllDay, location: apple.location, url: apple.url)
         // An end exactly at midnight is exclusive: measure the span to the last instant before it.

@@ -87,6 +87,13 @@ extension AgendaItem {
     /// with the tag in its title is not a milestone -- only events have a start that is a birth
     /// or wedding date).
     public var milestone: MilestoneInfo? {
+        if case .event = kind, let source = appleSource, source.isBirthday {
+            let years = source.birthYear.flatMap { birth -> Int? in
+                let n = Calendar(identifier: .gregorian).component(.year, from: occurrence) - birth
+                return n > 0 ? n : nil
+            }
+            return MilestoneInfo(kind: .birthday, years: years)
+        }
         guard case .event(let event) = kind,
               let milestone = MilestoneTag.kind(title: event.title, notes: event.notes) else { return nil }
         return MilestoneInfo(kind: milestone,
