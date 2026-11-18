@@ -21,7 +21,7 @@ struct CalendarSetsTests {
     }
 
     @Test("a calendar created after the set was saved is hidden under it and shown under All")
-    func laterCalendar() throws {
+    func laterCalendarIsHiddenUnderSetShownUnderAll() throws {
         let (s, work, _) = try made()
         let later: Set<String> = all.union(["new"])
         let sel = try #require(s.selection(applying: work.id, allIDs: later))
@@ -106,8 +106,13 @@ struct CalendarSetsTests {
 
     @Test("every error has a message")
     func messages() {
-        let errors: [CalendarSetError] = [.emptyName, .nameTooLong, .duplicateName, .noCalendars, .notFound]
-        for e in errors { #expect(!e.message.isEmpty) }
+        #expect(CalendarSetError.emptyName.message == "Give the set a name.")
+        #expect(CalendarSetError.nameTooLong.message == "Use 30 characters or fewer.")
+        #expect(CalendarSetError.duplicateName.message == "Another set already has that name.")
+        #expect(CalendarSetError.noCalendars.message == "Choose at least one calendar or list.")
+        #expect(CalendarSetError.notFound.message == "That set no longer exists.")
+        #expect(CalendarSetError.everyCalendar.message == "Untick at least one calendar, or use All Calendars.")
+        #expect(CalendarSetError.reservedName.message == "That name is used by Stark. Pick another.")
     }
 
     @Test("deleting the active set leaves the selection; the label becomes Custom")
@@ -115,9 +120,14 @@ struct CalendarSetsTests {
         var (s, work, _) = try made()
         let sel = try #require(s.selection(applying: work.id, allIDs: all))
         #expect(s.label(for: sel, allIDs: all) == "Work")
+        let before = sel
         s.delete(work.id)
         #expect(s.sets.count == 1)
+        #expect(s.sets.first?.name == "Home")
+        // The selection value is untouched by the delete; only the label changes.
+        #expect(sel == before)
         #expect(sel == AppleSelection(excludedIDs: ["c", "d"]))
+        #expect(s.activeSetID(for: sel, allIDs: all) == nil)
         #expect(s.label(for: sel, allIDs: all) == "Custom")
     }
 
@@ -163,5 +173,124 @@ struct CalendarSetsTests {
         #expect(!s.canApply(work.id, allIDs: ["x", "y"]))
         #expect(!s.canApply(work.id, allIDs: []))
         #expect(!s.canApply(UUID(), allIDs: all))
+    }
+
+    // MARK: fix wave
+
+    @Test("a set that omits the always-shown default still matches, before and after keepShown")
+    func omittedDefaultStaysActive() throws {
+        var s = CalendarSets(sets: [])
+        let set = try s.add(name: "Work", includedIDs: ["a", "b"])
+        // "c" is the default calendar: always shown, so never excluded.
+        let sel = try #require(s.selection(applying: set.id, allIDs: all, alwaysShown: ["c"]))
+        #expect(sel.excludedIDs == ["d"])
+        #expect(s.label(for: sel, allIDs: all, alwaysShown: ["c"]) == "Work")
+        // keepShown re-shows "c": already shown, so a no-op, and the label is unchanged.
+        var kept = sel
+        kept.excludedIDs.remove("c")
+        #expect(kept == sel)
+        #expect(s.activeSetID(for: kept, allIDs: all, alwaysShown: ["c"]) == set.id)
+    }
+
+    @Test("changing the default: the set that was active is re-applied for the new default")
+    func changingDefaultKeepsActive() throws {
+        var s = CalendarSets(sets: [])
+        let set = try s.add(name: "Work", includedIDs: ["a", "b"])
+        let sel = try #require(s.selection(applying: set.id, allIDs: all, alwaysShown: ["c"]))
+        #expect(sel.excludedIDs == ["d"])
+        // The default moves from "c" to "d": keepShown shows "d", which empties the selection.
+        var moved = sel
+        moved.excludedIDs.remove("d")
+        #expect(s.activeSetID(for: moved, allIDs: all, alwaysShown: ["d"]) == nil)
+        let again = try #require(s.reapplied(set.id, selection: moved, allIDs: all, alwaysShown: ["d"]))
+        #expect(again.excludedIDs == ["c"])
+        #expect(s.activeSetID(for: again, allIDs: all, alwaysShown: ["d"]) == set.id)
+        #expect(s.label(for: again, allIDs: all, alwaysShown: ["d"]) == "Work")
+        // nothing to do when it already matches, or the set is gone, or its calendars are gone
+        #expect(s.reapplied(set.id, selection: again, allIDs: all, alwaysShown: ["d"]) == nil)
+        #expect(s.reapplied(UUID(), selection: moved, allIDs: all, alwaysShown: ["d"]) == nil)
+        #expect(s.reapplied(set.id, selection: moved, allIDs: ["x", "y"], alwaysShown: []) == nil)
+    }
+
+    @Test("a calendar that appears while a set is active stays hidden and the label stays")
+    func reconcileNewCalendar() throws {
+        let (s, work, _) = try made()
+        let sel = try #require(s.selection(applying: work.id, allIDs: all))
+        let later = all.union(["new"])
+        let next = try #require(s.reconciled(selection: sel, previousAllIDs: all, newAllIDs: later, alwaysShown: []))
+        #expect(!next.isShown("new"))
+        #expect(next.isShown("a") && next.isShown("b"))
+        #expect(s.label(for: next, allIDs: later) == "Work")
+    }
+
+    @Test("reconcile: nothing active, nothing new, or an always-shown newcomer changes nothing")
+    func reconcileNoChange() throws {
+        let (s, work, _) = try made()
+        let later = all.union(["new"])
+        #expect(s.reconciled(selection: AppleSelection(), previousAllIDs: all, newAllIDs: later, alwaysShown: []) == nil)
+        #expect(s.reconciled(selection: AppleSelection(excludedIDs: ["a"]), previousAllIDs: all, newAllIDs: later, alwaysShown: []) == nil)
+        let sel = try #require(s.selection(applying: work.id, allIDs: all))
+        #expect(s.reconciled(selection: sel, previousAllIDs: all, newAllIDs: all, alwaysShown: []) == nil)
+        #expect(s.reconciled(selection: sel, previousAllIDs: all, newAllIDs: later, alwaysShown: ["new"]) == nil)
+        // a calendar disappearing changes nothing
+        #expect(s.reconciled(selection: sel, previousAllIDs: all, newAllIDs: ["a", "b", "c"], alwaysShown: []) == nil)
+    }
+
+    @Test("reconcile: the first fetch from an empty list never fires")
+    func reconcileFirstFetch() throws {
+        let (s, work, _) = try made()
+        let sel = try #require(s.selection(applying: work.id, allIDs: all))
+        #expect(s.reconciled(selection: sel, previousAllIDs: [], newAllIDs: all, alwaysShown: []) == nil)
+    }
+
+    @Test("reconcile never un-hides a calendar that came back after a partial list")
+    func reconcileReturningCalendar() throws {
+        let (s, work, _) = try made()
+        let sel = try #require(s.selection(applying: work.id, allIDs: all))   // excludes c, d
+        let partial: Set<String> = ["a", "b", "c"]
+        // "d" missing for a moment, then back: it is new relative to the partial list
+        #expect(s.reconciled(selection: sel, previousAllIDs: partial, newAllIDs: all, alwaysShown: []) == nil)
+        #expect(!sel.isShown("d"))
+        // had the selection forgotten "d", it is hidden again
+        let forgot = AppleSelection(excludedIDs: ["c"])
+        let next = try #require(s.reconciled(selection: forgot, previousAllIDs: partial, newAllIDs: all, alwaysShown: []))
+        #expect(next.excludedIDs == ["c", "d"])
+    }
+
+    @Test("a set of every calendar is rejected; an unticked one is fine; stale ids do not count")
+    func everyCalendar() throws {
+        var s = CalendarSets(sets: [])
+        #expect(throws: CalendarSetError.everyCalendar) { try s.add(name: "All", includedIDs: all, allIDs: all) }
+        #expect(throws: CalendarSetError.everyCalendar) {
+            try s.add(name: "All", includedIDs: all.union(["gone"]), allIDs: all)
+        }
+        #expect(throws: CalendarSetError.noCalendars) { try s.add(name: "Gone", includedIDs: ["gone"], allIDs: all) }
+        // the always-shown default does not have to be ticked to count as "every calendar"
+        #expect(throws: CalendarSetError.everyCalendar) {
+            try s.add(name: "All", includedIDs: ["a", "b", "d"], allIDs: all, alwaysShown: ["c"])
+        }
+        let ok = try s.add(name: "Most", includedIDs: ["a", "b", "c"], allIDs: all)
+        #expect(throws: CalendarSetError.everyCalendar) { try s.updateIncluded(ok.id, to: all, allIDs: all) }
+        #expect(throws: CalendarSetError.noCalendars) { try s.updateIncluded(ok.id, to: ["zzz"], allIDs: all) }
+        // with no list loaded yet the check is skipped
+        _ = try s.add(name: "Offline", includedIDs: ["a"], allIDs: [])
+    }
+
+    @Test("the names Custom and All Calendars are reserved, case-insensitively")
+    func reservedNames() throws {
+        var (s, work, _) = try made()
+        for name in ["Custom", "custom", "ALL CALENDARS", " All calendars "] {
+            #expect(throws: CalendarSetError.reservedName) { try s.add(name: name, includedIDs: ["a"]) }
+            #expect(throws: CalendarSetError.reservedName) { try s.rename(work.id, to: name) }
+        }
+    }
+
+    @Test("before the list loads the label never claims All Calendars while something is hidden")
+    func labelBeforeLoad() throws {
+        let (s, work, _) = try made()
+        let sel = try #require(s.selection(applying: work.id, allIDs: all))
+        #expect(s.label(for: sel, allIDs: []) == "Calendars")
+        #expect(s.label(for: AppleSelection(), allIDs: []) == "All Calendars")
+        #expect(s.activeSetID(for: sel, allIDs: []) == nil)
     }
 }
