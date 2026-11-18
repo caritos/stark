@@ -11,6 +11,7 @@ import Foundation
 import Observation
 import os
 import StarkKit
+import WidgetKit
 
 @MainActor @Observable
 final class AppleOverlayModel {
@@ -31,6 +32,8 @@ final class AppleOverlayModel {
     var selection: AppleSelection {
         didSet {
             defaults.set(Array(selection.excludedIDs).sorted(), forKey: Key.excluded)
+            mirrorSelectionForWidget()
+            WidgetCenter.shared.reloadAllTimelines()
             applySelection()
         }
     }
@@ -42,6 +45,9 @@ final class AppleOverlayModel {
 
     @ObservationIgnored private let provider: AppleItemProvider
     @ObservationIgnored private let defaults: UserDefaults
+    /// The App Group suite the widget reads (`SelectionMirror`); write only, nil when the suite
+    /// cannot be opened. The app itself keeps reading `defaults`.
+    @ObservationIgnored private let widgetDefaults: UserDefaults?
     /// The unfiltered result of the last fetch, so a toggle refilters without refetching.
     @ObservationIgnored private var fetched = AppleSnapshot(events: [], reminders: [])
     @ObservationIgnored private var lastRequest: (display: ClosedRange<Date>, today: Date)?
@@ -56,13 +62,22 @@ final class AppleOverlayModel {
     @ObservationIgnored private let birthYears: BirthYearCache
 
     init(provider: AppleItemProvider, defaults: UserDefaults = .standard,
+         widgetDefaults: UserDefaults? = UserDefaults(suiteName: SelectionMirror.suiteName),
          birthYearLookup: BirthYearLookup = ContactsBirthYears()) {
         self.provider = provider
         self.defaults = defaults
+        self.widgetDefaults = widgetDefaults
         self.birthYears = BirthYearCache(lookup: birthYearLookup)
         selection = AppleSelection(excludedIDs: Set(defaults.stringArray(forKey: Key.excluded) ?? []))
         access = provider.accessState()
+        mirrorSelectionForWidget()
         observeStoreChanges()
+    }
+
+    /// Copies the excluded ids to the App Group so the widget honours the same calendars.
+    private func mirrorSelectionForWidget() {
+        guard let widgetDefaults else { return }
+        SelectionMirror.write(selection.excludedIDs, to: widgetDefaults)
     }
 
     deinit {

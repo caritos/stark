@@ -7,6 +7,7 @@
 
 import SwiftUI
 import StarkKit
+import WidgetKit
 
 @main
 struct StarkApp: App {
@@ -64,6 +65,7 @@ struct StarkApp: App {
         router.onDidWrite = { [weak overlay, weak planCache] in
             await overlay?.refreshAfterWrite()
             await planCache?.refresh()
+            WidgetCenter.shared.reloadAllTimelines()
         }
         self.router = router
         #if targetEnvironment(macCatalyst)

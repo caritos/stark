@@ -8,16 +8,51 @@
 
 /* Begin PBXBuildFile section */
 		78C5E9DD305BE94E00AEDF9B /* StarkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 78C5E9DC305BE94E00AEDF9B /* StarkKit */; };
+		78C5E9E7305BE9A000AEDF9B /* StarkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 78C5E9E6305BE9A000AEDF9B /* StarkKit */; };
+		78C5E9E8305BE9A000AEDF9B /* StarkWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 78C5E9E1305BE9A000AEDF9B /* StarkWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		78C5E9EA305BE9A000AEDF9B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 78C5E9C5305BE80F00AEDF9B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 78C5E9E0305BE9A000AEDF9B;
+			remoteInfo = StarkWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		78C5E9E9305BE9A000AEDF9B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				78C5E9E8305BE9A000AEDF9B /* StarkWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		78C5E9CD305BE80F00AEDF9B /* Stark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Stark.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		78C5E9E1305BE9A000AEDF9B /* StarkWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StarkWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		78C5E9EF305BE9A000AEDF9B /* Stark.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Stark.entitlements; sourceTree = "<group>"; };
+		78C5E9F0305BE9A000AEDF9B /* StarkWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarkWidget.entitlements; sourceTree = "<group>"; };
+		78C5E9F1305BE9A000AEDF9B /* StarkWidget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "StarkWidget-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		78C5E9CF305BE80F00AEDF9B /* Stark */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Stark;
+			sourceTree = "<group>";
+		};
+		78C5E9E2305BE9A000AEDF9B /* StarkWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StarkWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +66,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		78C5E9E4305BE9A000AEDF9B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				78C5E9E7305BE9A000AEDF9B /* StarkKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +81,10 @@
 			isa = PBXGroup;
 			children = (
 				78C5E9CF305BE80F00AEDF9B /* Stark */,
+				78C5E9E2305BE9A000AEDF9B /* StarkWidget */,
+				78C5E9EF305BE9A000AEDF9B /* Stark.entitlements */,
+				78C5E9F0305BE9A000AEDF9B /* StarkWidget.entitlements */,
+				78C5E9F1305BE9A000AEDF9B /* StarkWidget-Info.plist */,
 				78C5E9CE305BE80F00AEDF9B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				78C5E9CD305BE80F00AEDF9B /* Stark.app */,
+				78C5E9E1305BE9A000AEDF9B /* StarkWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -60,10 +108,12 @@
 				78C5E9C9305BE80F00AEDF9B /* Sources */,
 				78C5E9CA305BE80F00AEDF9B /* Frameworks */,
 				78C5E9CB305BE80F00AEDF9B /* Resources */,
+				78C5E9E9305BE9A000AEDF9B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				78C5E9EB305BE9A000AEDF9B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				78C5E9CF305BE80F00AEDF9B /* Stark */,
@@ -76,6 +126,29 @@
 			productReference = 78C5E9CD305BE80F00AEDF9B /* Stark.app */;
 			productType = "com.apple.product-type.application";
 		};
+		78C5E9E0305BE9A000AEDF9B /* StarkWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 78C5E9EC305BE9A000AEDF9B /* Build configuration list for PBXNativeTarget "StarkWidget" */;
+			buildPhases = (
+				78C5E9E3305BE9A000AEDF9B /* Sources */,
+				78C5E9E4305BE9A000AEDF9B /* Frameworks */,
+				78C5E9E5305BE9A000AEDF9B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				78C5E9E2305BE9A000AEDF9B /* StarkWidget */,
+			);
+			name = StarkWidget;
+			packageProductDependencies = (
+				78C5E9E6305BE9A000AEDF9B /* StarkKit */,
+			);
+			productName = StarkWidget;
+			productReference = 78C5E9E1305BE9A000AEDF9B /* StarkWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -87,6 +160,9 @@
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					78C5E9CC305BE80F00AEDF9B = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					78C5E9E0305BE9A000AEDF9B = {
 						CreatedOnToolsVersion = 26.6;
 					};
 				};
@@ -109,12 +185,20 @@
 			projectRoot = "";
 			targets = (
 				78C5E9CC305BE80F00AEDF9B /* Stark */,
+				78C5E9E0305BE9A000AEDF9B /* StarkWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		78C5E9CB305BE80F00AEDF9B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		78C5E9E5305BE9A000AEDF9B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -131,7 +215,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		78C5E9E3305BE9A000AEDF9B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		78C5E9EB305BE9A000AEDF9B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 78C5E9E0305BE9A000AEDF9B /* StarkWidget */;
+			targetProxy = 78C5E9EA305BE9A000AEDF9B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		78C5E9D6305BE81100AEDF9B /* Debug */ = {
@@ -255,6 +354,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Stark.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 47;
 				DEVELOPMENT_TEAM = 3U8L77G9QV;
@@ -301,6 +401,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Stark.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 47;
 				DEVELOPMENT_TEAM = 3U8L77G9QV;
@@ -342,6 +443,78 @@
 			};
 			name = Release;
 		};
+		78C5E9ED305BE9A000AEDF9B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = StarkWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 47;
+				DEVELOPMENT_TEAM = 3U8L77G9QV;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				"ENABLE_RESOURCE_ACCESS_CALENDARS[sdk=macosx*]" = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "StarkWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Stark;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.45;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.caritos.todo-txt.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator maccatalyst";
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				"TARGETED_DEVICE_FAMILY[sdk=macosx*]" = "1,2";
+			};
+			name = Debug;
+		};
+		78C5E9EE305BE9A000AEDF9B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = StarkWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 47;
+				DEVELOPMENT_TEAM = 3U8L77G9QV;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				"ENABLE_RESOURCE_ACCESS_CALENDARS[sdk=macosx*]" = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "StarkWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Stark;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.45;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.caritos.todo-txt.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator maccatalyst";
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				"TARGETED_DEVICE_FAMILY[sdk=macosx*]" = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -363,6 +536,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		78C5E9EC305BE9A000AEDF9B /* Build configuration list for PBXNativeTarget "StarkWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				78C5E9ED305BE9A000AEDF9B /* Debug */,
+				78C5E9EE305BE9A000AEDF9B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -374,6 +556,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		78C5E9DC305BE94E00AEDF9B /* StarkKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StarkKit;
+		};
+		78C5E9E6305BE9A000AEDF9B /* StarkKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StarkKit;
 		};
