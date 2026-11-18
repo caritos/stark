@@ -124,7 +124,7 @@ private func snap(_ kind: TemplateKind = .event, title: String = "Dentist", dura
         let start = Date(timeIntervalSince1970: 1_800_000_000)
         #expect(TemplateFormValues(timed, start: start, offeredDestinationIDs: []).end == start.addingTimeInterval(3600))
         let v = TemplateFormValues(allDay, start: start, offeredDestinationIDs: [])
-        #expect(v.allDay && v.end == start.addingTimeInterval(3600))
+        #expect(v.allDay && v.end == start)  // an all-day item ends on its start's day, never an hour into the next
     }
 
     @Test func destinationFallsBackWhenGone() throws {
@@ -155,5 +155,24 @@ private func snap(_ kind: TemplateKind = .event, title: String = "Dentist", dura
     @Test func endBeforeStartClampsToZero() {
         let s = Date(timeIntervalSince1970: 1_800_000_000)
         #expect(TemplateSnapshot.durationMinutes(start: s, end: s.addingTimeInterval(-600), allDay: false) == 0)
+    }
+
+    @Test func allDayEndStaysOnTheStartDayEvenLateInTheDay() throws {
+        var t = ItemTemplates()
+        let allDay = try t.add(name: "B", from: snap(duration: 90, allDay: true))
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let late = cal.date(from: DateComponents(year: 2026, month: 11, day: 18, hour: 23, minute: 30))!
+        let v = TemplateFormValues(allDay, start: late, offeredDestinationIDs: [])
+        #expect(cal.isDate(v.end, inSameDayAs: late))
+    }
+
+    @Test func unreadableDataIsDetected() throws {
+        var t = ItemTemplates()
+        try t.add(name: "A", from: snap(duration: 30))
+        #expect(!ItemTemplates.isUnreadable(nil))
+        #expect(!ItemTemplates.isUnreadable(t.encoded()))
+        #expect(ItemTemplates.isUnreadable(Data("not json".utf8)))
+        #expect(ItemTemplates.isUnreadable(Data(#"{"version":2,"templates":[]}"#.utf8)))
     }
 }

@@ -174,6 +174,16 @@ public struct ItemTemplates: Equatable, Sendable {
         return ItemTemplates(templates: env.templates)
     }
 
+    /// True when stored data exists but cannot be read (corrupt, or a newer version): a caller
+    /// must keep a copy before overwriting it.
+    public static func isUnreadable(_ data: Data?) -> Bool {
+        guard let data else { return false }
+        guard let v = try? JSONDecoder().decode(VersionOnly.self, from: data),
+              v.version == currentVersion,
+              (try? JSONDecoder().decode(Envelope.self, from: data)) != nil else { return true }
+        return false
+    }
+
     public func encoded() -> Data {
         let enc = JSONEncoder()
         enc.outputFormatting = [.sortedKeys]
@@ -201,7 +211,10 @@ public struct TemplateFormValues: Equatable, Sendable {
         priority = template.priority
         recurrence = template.recurrence
         allDay = template.allDay
-        if let minutes = template.durationMinutes, !template.allDay {
+        if template.allDay {
+            // An all-day item ends on its start's day; start + 1 h would cross midnight late in the day.
+            end = start
+        } else if let minutes = template.durationMinutes {
             end = start.addingTimeInterval(TimeInterval(minutes) * 60)
         } else {
             end = start.addingTimeInterval(EventSchedule.defaultDuration)

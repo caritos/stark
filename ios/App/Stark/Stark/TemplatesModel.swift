@@ -18,11 +18,15 @@ final class TemplatesModel {
     private(set) var templates: ItemTemplates
 
     @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private var unreadable: Data?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        // Reading never writes: a blob from a newer version stays untouched until the owner saves.
-        templates = ItemTemplates.decode(defaults.data(forKey: Self.key))
+        // Reading never writes. A blob this build cannot read (newer version or corrupt) is copied
+        // to a backup key before the first save overwrites it.
+        let stored = defaults.data(forKey: Self.key)
+        unreadable = ItemTemplates.isUnreadable(stored) ? stored : nil
+        templates = ItemTemplates.decode(stored)
     }
 
     func templates(for kind: TemplateKind) -> [ItemTemplate] {
@@ -51,6 +55,12 @@ final class TemplatesModel {
     }
 
     private func persist() {
+        if let unreadable {
+            if defaults.data(forKey: Self.key + ".unreadable") == nil {
+                defaults.set(unreadable, forKey: Self.key + ".unreadable")
+            }
+            self.unreadable = nil
+        }
         defaults.set(templates.encoded(), forKey: Self.key)
     }
 }
