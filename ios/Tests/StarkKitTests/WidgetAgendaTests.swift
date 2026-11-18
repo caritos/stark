@@ -139,6 +139,29 @@ import Testing
         let out = items(events: [event("far", date(15, 20), date(15, 21))])
         #expect(WidgetAgenda.nextRefresh(after: now, items: out, calendar: Self.cal) == date(15, 20))
     }
+
+    @Test func timelineDatesStartNowAndFollowItemBoundaries() {
+        let events = [event("a", date(15, 11), date(15, 12)), event("b", date(15, 14), date(15, 15))]
+        let dates = WidgetAgenda.timelineDates(events: events, reminders: [], excluded: [], now: now,
+                                               maxEntries: 10, calendar: Self.cal)
+        #expect(dates.first == now)
+        #expect(Array(dates.prefix(5)) == [now, date(15, 11), date(15, 12), date(15, 14), date(15, 15)])
+        #expect(dates == dates.sorted())
+    }
+
+    @Test func timelineDatesAreCappedAndStrictlyIncreasing() {
+        let dates = WidgetAgenda.timelineDates(events: [], reminders: [], excluded: [], now: now,
+                                               maxEntries: 3, calendar: Self.cal)
+        #expect(dates.count == 3)
+        #expect(zip(dates, dates.dropFirst()).allSatisfy { $0 < $1 })
+    }
+
+    @Test func timelineDatesStopAtTheEndOfTomorrowWindow() {
+        let dates = WidgetAgenda.timelineDates(events: [], reminders: [], excluded: [], now: now,
+                                               maxEntries: 100, calendar: Self.cal)
+        #expect(dates.count < 100)
+        #expect(dates.last! < date(17, 0))
+    }
 }
 
 @Suite struct SelectionMirrorTests {

@@ -16,6 +16,9 @@ public struct WidgetItem: Equatable, Identifiable, Sendable {
     /// An open reminder due before today (red in the widget, as in the app).
     public let isOverdue: Bool
 
+    /// The calendar colour as `0xRRGGBB`, nil when unknown.
+    public var colorRGB: UInt32? { AppleColor.rgb(colorHex) }
+
     public init(id: String, title: String, isReminder: Bool, isAllDay: Bool, start: Date, end: Date?,
                 colorHex: String?, isOverdue: Bool) {
         self.id = id
@@ -109,6 +112,33 @@ public enum WidgetAgenda {
         let candidate = boundaries.min() ?? fallback
         let midnight = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? fallback
         return min(candidate, midnight)
+    }
+}
+
+public extension WidgetAgenda {
+    /// The dates of the timeline entries for one fetch: `now`, then each `nextRefresh` of what the
+    /// widget would show at the previous date (the largest family, 5 rows), strictly increasing,
+    /// at most `maxEntries`, and never at or past the end of tomorrow (the fetch window).
+    static func timelineDates(
+        events: [AppleCalendarEvent],
+        reminders: [AppleReminder],
+        excluded: Set<String>,
+        now: Date,
+        maxEntries: Int = 12,
+        calendar: Calendar = Calendar(identifier: .gregorian)
+    ) -> [Date] {
+        guard maxEntries > 0 else { return [] }
+        let windowEnd = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: now))
+            ?? now.addingTimeInterval(48 * 3600)
+        var dates = [now]
+        while dates.count < maxEntries, let last = dates.last {
+            let shown = items(events: events, reminders: reminders, excluded: excluded, now: last,
+                              limit: 5, calendar: calendar)
+            let next = nextRefresh(after: last, items: shown, calendar: calendar)
+            guard next > last, next < windowEnd else { break }
+            dates.append(next)
+        }
+        return dates
     }
 }
 
