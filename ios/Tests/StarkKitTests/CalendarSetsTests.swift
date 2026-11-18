@@ -149,4 +149,19 @@ struct CalendarSetsTests {
         let blob = #"{"version":2,"sets":[{"id":"\#(UUID().uuidString)","name":"X","includedIDs":["a"]}]}"#
         #expect(CalendarSets.decode(Data(blob.utf8)).sets.isEmpty)
     }
+
+    @Test("canApply: true when at least one included id still exists")
+    func canApplySome() throws {
+        let (s, work, _) = try made()
+        #expect(s.canApply(work.id, allIDs: ["a", "x"]))
+        #expect(s.canApply(work.id, allIDs: all))
+    }
+
+    @Test("canApply: false when none of the set's ids exist, or the set is unknown")
+    func canApplyNone() throws {
+        let (s, work, _) = try made()
+        #expect(!s.canApply(work.id, allIDs: ["x", "y"]))
+        #expect(!s.canApply(work.id, allIDs: []))
+        #expect(!s.canApply(UUID(), allIDs: all))
+    }
 }

@@ -151,6 +151,18 @@ func TestHomePageDoesNotClaimNoNetwork(t *testing.T) {
 	}
 }
 
+func TestFAQExplainsCalendarSets(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"can i save sets of calendars", "create sets of calendars and reminder lists", "switch between them from the all calendars button",
+		"a calendar you add later is not in an existing set", "sets are kept on this device",
+	} {
+		if !strings.Contains(lower, want) {
+			t.Errorf("faq missing %q", want)
+		}
+	}
+}
+
 func TestFAQExplainsQuickAdd(t *testing.T) {
 	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
 	for _, want := range []string{

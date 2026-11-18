@@ -86,6 +86,13 @@ public struct CalendarSets: Equatable, Sendable {
         return AppleSelection(excludedIDs: excluded(by: set, allIDs: allIDs))
     }
 
+    /// Whether applying the set would show anything: at least one of its calendars still exists.
+    /// A set whose calendars are all gone must be refused, or the agenda would be silently empty.
+    public func canApply(_ id: UUID, allIDs: Set<String>) -> Bool {
+        guard let set = sets.first(where: { $0.id == id }) else { return false }
+        return !set.includedIDs.isDisjoint(with: allIDs)
+    }
+
     /// The first set whose selection equals the current one; nil when nothing is excluded.
     public func activeSetID(for selection: AppleSelection, allIDs: Set<String>) -> UUID? {
         let current = selection.excludedIDs.intersection(allIDs)
