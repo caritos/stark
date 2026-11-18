@@ -33,19 +33,28 @@ public extension WidgetRowText {
         }
     }
 
-    /// "9:00 AM Standup"; an all-day item and an overdue reminder are the title alone (the lock
-    /// screen is monochrome, so no red); tomorrow's say "Tmrw 9:00 AM" / "Tomorrow".
+    /// "9:00 AM Standup"; an all-day item is the title alone; an overdue reminder keeps its missed
+    /// date ("Jun 1 Pay rent": the lock screen is monochrome, so no red); tomorrow's say
+    /// "Tmrw 9:00 AM" / "Tomorrow".
     static func lockLine(_ item: WidgetItem, calendar: Calendar = .current,
                          locale: Locale = .autoupdatingCurrent) -> WidgetLockLine {
         let title = item.title.isEmpty ? "Untitled" : item.title
         let time: String?
         if item.isOverdue {
-            time = nil
+            time = WidgetRowText.time(item, calendar: calendar, locale: locale)
         } else if item.isAllDay {
             time = item.isTomorrow ? "Tomorrow" : nil
         } else {
             time = WidgetRowText.time(item, calendar: calendar, locale: locale)
         }
         return WidgetLockLine(time: time, title: title)
+    }
+}
+
+public extension WidgetAgenda {
+    /// The item the inline Lock Screen widget shows: the first that is not an overdue reminder, so
+    /// an old reminder does not hide what is next; else the first.
+    static func inlineItem(from items: [WidgetItem]) -> WidgetItem? {
+        items.first(where: { !$0.isOverdue }) ?? items.first
     }
 }

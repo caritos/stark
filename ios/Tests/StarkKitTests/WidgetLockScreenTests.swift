@@ -117,10 +117,18 @@ import Testing
         #expect(dateOnly.text == "Pay rent")
     }
 
-    @Test func overdueItemIsTitleOnly() {
+    @Test func overdueItemKeepsItsMissedDate() {
         let line = WidgetRowText.lockLine(item("Pay rent", reminder: true, overdue: true), calendar: Self.cal, locale: us)
-        #expect(line.time == nil)
-        #expect(line.text == "Pay rent")
+        #expect(line.time == "Jun 15")
+        #expect(line.text == "Jun 15 Pay rent")
+    }
+
+    @Test func inlinePrefersTheFirstItemThatIsNotOverdue() {
+        let overdue = item("Old", reminder: true, overdue: true)
+        let today = item("Standup")
+        #expect(WidgetAgenda.inlineItem(from: [overdue, today])?.title == "Standup")
+        #expect(WidgetAgenda.inlineItem(from: [overdue])?.title == "Old")
+        #expect(WidgetAgenda.inlineItem(from: []) == nil)
     }
 
     @Test func tomorrowsItemsSaySo() {

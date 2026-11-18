@@ -268,10 +268,16 @@ private struct LockScreenView: View {
         return []
     }
 
+    /// The wider list, so the inline line can skip an overdue reminder for what is next.
+    private var inlineCandidates: [WidgetItem] {
+        if case .items(let rows) = state { return rows.medium }
+        return []
+    }
+
     @ViewBuilder private var inline: some View {
         if let stateText {
             Text(stateText)
-        } else if let first = rows.first {
+        } else if let first = WidgetAgenda.inlineItem(from: inlineCandidates) {
             // An inline widget is one Text, so the whole line is redacted when titles are hidden.
             Text(WidgetRowText.lockLine(first).text)
                 .privacySensitive()
