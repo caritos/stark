@@ -196,6 +196,17 @@ func TestFAQExplainsQuickAdd(t *testing.T) {
 	}
 }
 
+func TestFAQExplainsTemplates(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"how do templates work", "save as template", "never the date", "stays on this device",
+	} {
+		if !strings.Contains(lower, want) {
+			t.Errorf("faq missing %q", want)
+		}
+	}
+}
+
 // Phase 3 (2026-11-17) removed Stark's own store and the import: no page may still offer the
 // import, say Stark still shows its older items, or mention the "Not imported" mark.
 func TestPagesDoNotOfferTheImport(t *testing.T) {

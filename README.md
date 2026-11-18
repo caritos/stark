@@ -23,6 +23,8 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
   existing set until you edit it. Sets are kept on this device only; the Apple calendar list stays under "Calendar list".
 - **Quick add**: type "Lunch with Sarah at 1pm tomorrow" in Add and tap the suggestion to fill in the date, time,
   repeat and kind (English, on the device, never applied automatically).
+- **Templates**: save an Add form (title, length, repeat, notes, calendar) as a template and fill a new item from it
+  in one tap; never the date, stored on the device only.
 - **Birthdays**: events on Apple's Birthdays calendar show a cake and, if you allow optional read-only Contacts
   access, "Turns N" from the contact's birth year (read on the device, never stored or sent).
 
