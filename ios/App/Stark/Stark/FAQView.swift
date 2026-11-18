@@ -41,6 +41,16 @@ struct FAQView: View {
             """
         ),
         Entry(
+            question: "Why do birthdays show a cake and an age?",
+            answer: """
+            Events on Apple's Birthdays calendar show a cake before the name. The first time one \
+            is on screen, iOS asks whether Stark may read your contacts; Contacts access is \
+            optional. If you allow it, Stark reads only the birth year of the people in your \
+            Birthdays calendar, on this device, to show "Turns N". The year is never stored or \
+            sent anywhere by Stark. If you decline, Stark still shows the cake without the age.
+            """
+        ),
+        Entry(
             question: "Why can't I change some items?",
             answer: """
             Items on calendars you cannot change (such as holidays or a calendar shared with you \

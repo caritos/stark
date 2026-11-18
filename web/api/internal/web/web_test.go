@@ -78,6 +78,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		"which Apple syncs through iCloud if you use it",
 		"never sent anywhere by Stark (like Stark's other files, it is part of your device backup)",
 		"Stark no longer reads these old files", "untouched, as a backup", "deleted only when you delete the app",
+		"CONTACTS", "only the birth year", "people in your Birthdays calendar", "optional", "never stored or sent anywhere",
 		"unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com",
 	} {
 		if !strings.Contains(lower, strings.ToLower(want)) {
@@ -88,6 +89,20 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them"} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
+		}
+	}
+}
+
+// Birthday ages (2026-11-17): the FAQ has an entry for the cake and the age, saying Contacts access
+// is optional and that denying it still shows the cake without the age.
+func TestFAQExplainsBirthdayAges(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"birthdays calendar", "contacts", "birth year", "optional", "never stored or sent anywhere",
+		"shows the cake without the age",
+	} {
+		if !strings.Contains(lower, strings.ToLower(want)) {
+			t.Errorf("faq missing %q", want)
 		}
 	}
 }
