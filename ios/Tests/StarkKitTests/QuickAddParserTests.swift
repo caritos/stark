@@ -9,6 +9,7 @@ struct QuickAddParserTests {
     static func calendar(_ id: String) -> Calendar {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: id)!
+        c.locale = Locale(identifier: "en_US")
         return c
     }
 
@@ -79,7 +80,7 @@ struct QuickAddParserTests {
     @Test("remind me to is a reminder", arguments: zones)
     func remind(zone: String) throws {
         let c = Self.calendar(zone)
-        let s = try #require(Self.parse("Remind me to call the bank friday", zone))
+        let s = try #require(Self.parse("Remind me to call the bank on friday", zone))
         #expect(s.kind == .reminder)
         #expect(s.title == "call the bank")
         #expect(s.start == Self.date(c, 2026, 11, 20))
@@ -157,12 +158,127 @@ struct QuickAddParserTests {
         #expect(try #require(Self.parse("Mom's birthday annually", z)).recurrence == RecurrenceRule(frequency: .yearly))
         #expect(try #require(Self.parse("Pay rent every 3 months", z)).recurrence == RecurrenceRule(frequency: .monthly, interval: 3))
         #expect(try #require(Self.parse("Trash every tuesday", z)).recurrence == RecurrenceRule(frequency: .weekly, byDay: [.tuesday]))
+        #expect(try #require(Self.parse("Review weekly at 3pm", z)).recurrence == RecurrenceRule(frequency: .weekly))
+    }
+
+    @Test("a repeat with set days and no date starts on the next matching day", arguments: zones)
+    func weekdayRepeatStart(zone: String) throws {
+        let c = Self.calendar(zone)
+        let trash = try #require(Self.parse("Trash every tuesday", zone))
+        #expect(trash.start == Self.date(c, 2026, 11, 24))
+        #expect(!trash.hasTime)
+        // Today is Wednesday and matches: date-only start today.
+        let gym = try #require(Self.parse("Gym every Mon and Wed", zone))
+        #expect(gym.start == Self.date(c, 2026, 11, 18))
+        #expect(!gym.hasTime)
+        #expect(try #require(Self.parse("Pay rent every month", zone)).start == nil)
+    }
+
+    @Test("a non-Gregorian calendar never leaks in", arguments: [Calendar.Identifier.buddhist, .hebrew, .japanese])
+    func otherCalendars(id: Calendar.Identifier) throws {
+        let g = Self.calendar("America/New_York")
+        var other = Calendar(identifier: id)
+        other.timeZone = g.timeZone
+        other.locale = Locale(identifier: "en_US")
+        let s = try #require(QuickAddParser.parse("Concert March 3 2028 at 7pm", now: Self.now(g), calendar: other))
+        #expect(s.start == Self.date(g, 2028, 3, 3, 19, 0))
+        #expect(s.summary == "Fri, Mar 3, 2028 at 7:00 PM")
+        let t = try #require(QuickAddParser.parse("Lunch tomorrow", now: Self.now(g), calendar: other))
+        #expect(t.start == Self.date(g, 2026, 11, 19))
+        #expect(t.summary == "Tomorrow")
+    }
+
+    @Test("ordinary words are not repeats, days or times", arguments: zones)
+    func wordFalsePositives(zone: String) {
+        for text in ["Weekly report", "Daily standup notes", "Friday Night Lights", "Good Friday", "Sunday roast",
+                     "Midnight Express", "Today show", "Monthly budget review"] {
+            #expect(Self.parse(text, zone) == nil, "\(text)")
+        }
+    }
+
+    @Test("the same words still work with a cue", arguments: zones)
+    func wordsWithCue(zone: String) throws {
+        let c = Self.calendar(zone)
+        let a = try #require(Self.parse("Call dad today", zone))
+        #expect(a.title == "Call dad" && a.start == Self.date(c, 2026, 11, 18))
+        let b = try #require(Self.parse("Meet on friday", zone))
+        #expect(b.start == Self.date(c, 2026, 11, 20))
+        let d = try #require(Self.parse("Ship by next monday", zone))
+        #expect(d.title == "Ship" && d.start == Self.date(c, 2026, 11, 23))
+        let e = try #require(Self.parse("Party at midnight", zone))
+        #expect(e.title == "Party" && e.hasTime && e.start == Self.date(c, 2026, 11, 19, 0, 0))
+        let f = try #require(Self.parse("Standup monthly", zone))
+        #expect(f.recurrence == RecurrenceRule(frequency: .monthly))
+    }
+
+    @Test("a rejected date token leaves the rest of the text alone", arguments: zones)
+    func rejectedDate(zone: String) throws {
+        #expect(Self.parse("Flight 11/20 at 6am", zone) == nil)
+        let s = try #require(Self.parse("Remind me to buy 1/2 gallon at 6am", zone))
+        #expect(s.kind == .reminder)
+        #expect(s.title == "buy 1/2 gallon at 6am")
+        #expect(s.start == nil)
+    }
+
+    @Test("in N minutes rounds up to a quarter hour and other words still parse", arguments: zones)
+    func relativeTimes(zone: String) throws {
+        let c = Self.calendar(zone)
+        let a = try #require(Self.parse("Call in 100 minutes", zone))
+        #expect(a.title == "Call")
+        #expect(a.start == Self.date(c, 2026, 11, 18, 11, 15))
+        #expect(a.hasTime)
+        let b = try #require(Self.parse("Call in 90 minutes", zone))
+        #expect(b.start == Self.date(c, 2026, 11, 18, 11, 0))
+        let d = try #require(Self.parse("Check in 3 hours tomorrow", zone))
+        #expect(d.title == "Check")
+        #expect(d.start == Self.date(c, 2026, 11, 19))
+        #expect(!d.hasTime)
+    }
+
+    @Test("summary names a reminder and follows the 12 or 24 hour setting")
+    func summaries() throws {
+        let z = "America/New_York"
+        let a = try #require(Self.parse("Remind me to call the bank on friday", z))
+        #expect(a.summary == "Reminder, Fri, Nov 20")
+        let b = try #require(Self.parse("Remind me to pay rent every month", z))
+        #expect(b.summary == "Reminder, repeats every month")
+        let c = Self.calendar(z)
+        var gb = c
+        gb.locale = Locale(identifier: "en_GB")
+        let t = try #require(QuickAddParser.parse("Lunch at 1pm tomorrow", now: Self.now(c), calendar: gb))
+        #expect(t.summary == "Tomorrow at 13:00")
+    }
+
+    @Test("form values: timed event")
+    func formTimed() throws {
+        let c = Self.calendar("America/New_York")
+        let s = try #require(Self.parse("Workshop tomorrow at 2pm for 2 hours", "America/New_York"))
+        let current = Self.date(c, 2026, 11, 18, 10, 0)
+        let v = s.formValues(currentStart: current)
+        #expect(v.title == "Workshop")
+        #expect(v.allDay == false)
+        #expect(v.start == s.start)
+        // The Starts picker's onChange adds (start - current) to the end, so it lands on `end`.
+        #expect(v.endForPicker!.addingTimeInterval(s.start!.timeIntervalSince(current)) == s.end)
+        let d = try #require(Self.parse("Lunch at 1pm tomorrow", "America/New_York")).formValues(currentStart: current)
+        #expect(d.endForPicker!.addingTimeInterval(d.start!.timeIntervalSince(current)) == d.start!.addingTimeInterval(3600))
+    }
+
+    @Test("form values: all day, reminder and nothing to set")
+    func formOther() throws {
+        let c = Self.calendar("America/New_York")
+        let current = Self.date(c, 2026, 11, 18, 10, 0)
+        let a = try #require(Self.parse("Dentist tomorrow", "America/New_York")).formValues(currentStart: current)
+        #expect(a.allDay == true && a.kind == nil)
+        let r = try #require(Self.parse("Remind me to pay rent every month", "America/New_York")).formValues(currentStart: current)
+        #expect(r.kind == .reminder && r.start == nil && r.allDay == nil && r.endForPicker == nil)
+        #expect(r.recurrence == RecurrenceRule(frequency: .monthly))
     }
 
     @Test("noon, 24 hour times and in N days", arguments: zones)
     func times(zone: String) throws {
         let c = Self.calendar(zone)
-        let a = try #require(Self.parse("Lunch noon tomorrow", zone))
+        let a = try #require(Self.parse("Lunch at noon tomorrow", zone))
         #expect(a.start == Self.date(c, 2026, 11, 19, 12, 0))
         #expect(a.hasTime)
         let b = try #require(Self.parse("Train today at 17:45", zone))

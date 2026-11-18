@@ -28,6 +28,32 @@ public struct QuickAddSuggestion: Equatable, Sendable {
     }
 }
 
+/// The Add form's fields for a tapped suggestion. A nil field means "leave the form as it is".
+public struct QuickAddFormValues: Equatable, Sendable {
+    public var title: String
+    public var kind: AppleItemRef.Kind?
+    public var allDay: Bool?
+    public var start: Date?
+    /// Already offset for the Starts picker: its change handler adds (start - previous start) to
+    /// the end, so this value makes the end land on the suggested one.
+    public var endForPicker: Date?
+    public var recurrence: RecurrenceRule?
+}
+
+extension QuickAddSuggestion {
+    /// `currentStart` is the Starts picker's value before the suggestion is applied.
+    public func formValues(currentStart: Date) -> QuickAddFormValues {
+        var values = QuickAddFormValues(title: title, kind: kind, recurrence: recurrence)
+        if let start {
+            values.start = start
+            values.allDay = !hasTime
+            let wanted = end ?? start.addingTimeInterval(EventSchedule.defaultDuration)
+            values.endForPicker = EventSchedule.shiftedEnd(wanted, oldStart: start, newStart: currentStart)
+        }
+        return values
+    }
+}
+
 /// Finds a date, time, repeat, duration and kind in a phrase like "Lunch with Sarah at 1pm
 /// tomorrow". English only, on device, pure.
 ///
@@ -43,7 +69,12 @@ public enum QuickAddParser {
         "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?"
     private static let monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 
-    public static func parse(_ text: String, now: Date, calendar: Calendar = .current) -> QuickAddSuggestion? {
+    public static func parse(_ text: String, now: Date, calendar given: Calendar = .current) -> QuickAddSuggestion? {
+        // All day and clock math runs on a Gregorian copy (same time zone and locale), so a phone
+        // set to a Buddhist, Hebrew or Japanese calendar cannot shift a year or a month name.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = given.timeZone
+        calendar.locale = given.locale
         var work = Work(text: text)
         var kind: AppleItemRef.Kind?
         var recurrence: RecurrenceRule?
@@ -56,39 +87,42 @@ public enum QuickAddParser {
         let today = calendar.startOfDay(for: now)
         var start: Date?
         var hasTime = false
-        var day: Date?
-        var clock: (hour: Int, minute: Int)?
 
-        if let m = work.remove(#"\bin\s+(\d{1,3})\s+(hours?|hrs?|minutes?|mins?)\b"#) {
+        let relative = work.remove(#"\bin\s+(\d{1,3})\s+(hours?|hrs?|minutes?|mins?)\b"#) { m -> Date? in
             let n = Int(m[1])!
             let minutes = m[2].lowercased().hasPrefix("h") ? n * 60 : n
-            start = calendar.date(byAdding: .minute, value: minutes, to: now)
-            hasTime = true
-        } else {
-            clock = parseTime(&work)
-            day = parseDay(&work, today: today, calendar: calendar)
+            return calendar.date(byAdding: .minute, value: minutes, to: now)
         }
 
-        if start == nil {
-            if let day {
-                if let clock {
-                    start = at(day, clock, calendar)
-                    hasTime = true
-                } else {
-                    start = day
-                }
-            } else if let clock {
+        let snapshot = work.text
+        var clock = parseTime(&work)
+        let rejectionsBefore = work.rejections
+        let day = parseDay(&work, today: today, calendar: calendar)
+        if day == nil && work.rejections > rejectionsBefore {
+            // A date-looking token was refused ("1/2 gallon"): do not let a time pick the day.
+            work.text = snapshot
+            clock = nil
+        }
+        if recurrence == nil { recurrence = parseTrailingRepeat(&work) }
+
+        if let day {
+            if let clock {
+                start = at(day, clock, calendar)
                 hasTime = true
-                // No day given: the next time this clock reading occurs (for a weekly rule, on one
-                // of its days).
-                let allowed = recurrence?.byDay.map { Set($0) }
-                for offset in 0..<8 {
-                    guard let d = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
-                    let candidate = at(d, clock, calendar)
-                    if let allowed, !allowed.contains(weekday(of: d, calendar)) { continue }
-                    if candidate > now { start = candidate; break }
-                }
+            } else {
+                start = day
             }
+        } else if let clock {
+            hasTime = true
+            // No day given: the next time this clock reading occurs (for a weekly rule, on one
+            // of its days).
+            start = nextOccurrence(of: clock, days: recurrence?.byDay, now: now, today: today, calendar: calendar)
+        } else if let relative {
+            start = QuarterHour.nextAfter(relative, calendar: calendar)
+            hasTime = true
+        } else if let days = recurrence?.byDay {
+            // "Trash every tuesday": the start is an occurrence, so begin on the next matching day.
+            start = nextOccurrence(of: nil, days: days, now: now, today: today, calendar: calendar)
         }
 
         var end: Date?
@@ -106,6 +140,20 @@ public enum QuickAddParser {
             title: title, start: start, hasTime: hasTime, end: end, recurrence: recurrence, kind: kind,
             summary: summary(start: start, hasTime: hasTime, recurrence: recurrence, kind: kind,
                              now: now, calendar: calendar))
+    }
+
+    /// The first day on or after today (with a clock time: strictly after `now`) on one of `days`.
+    private static func nextOccurrence(of clock: (hour: Int, minute: Int)?, days: [Weekday]?, now: Date,
+                                       today: Date, calendar: Calendar) -> Date? {
+        let allowed = days.map { Set($0) }
+        for offset in 0..<8 {
+            guard let d = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
+            if let allowed, !allowed.contains(weekday(of: d, calendar)) { continue }
+            guard let clock else { return d }
+            let candidate = at(d, clock, calendar)
+            if candidate > now { return candidate }
+        }
+        return nil
     }
 
     // MARK: - Repeat
@@ -126,10 +174,13 @@ public enum QuickAddParser {
         if let m = work.remove(#"\bevery\s+(day|week|month|year)\b"#) {
             return RecurrenceRule(frequency: frequency(m[1]))
         }
-        if let m = work.remove(#"\b(daily|weekly|monthly|yearly|annually)\b"#) {
-            return RecurrenceRule(frequency: frequency(m[1]))
-        }
         return nil
+    }
+
+    /// "daily", "weekly", "monthly", "yearly", "annually" count only as the last word ("Vitamins
+    /// daily"), so "Weekly report" stays a title.
+    private static func parseTrailingRepeat(_ work: inout Work) -> RecurrenceRule? {
+        work.remove(#"\b(daily|weekly|monthly|yearly|annually)\W*$"#).map { RecurrenceRule(frequency: frequency($0[1])) }
     }
 
     private static func frequency(_ word: String) -> RecurrenceRule.Frequency {
@@ -160,7 +211,7 @@ public enum QuickAddParser {
         if let m = work.remove(lead + #"(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])"#) {
             return (Int(m[1])!, Int(m[2])!)
         }
-        if let m = work.remove(#"(?:\bat\s+|@\s*)?\b(noon|midnight)\b"#) {
+        if let m = work.remove(#"(?:\bat\s+|@\s*)\b(noon|midnight)\b"#) {
             return (m[1].lowercased() == "noon" ? 12 : 0, 0)
         }
         return nil
@@ -180,8 +231,8 @@ public enum QuickAddParser {
         }
         func plus(_ days: Int) -> Date? { calendar.date(byAdding: .day, value: days, to: today) }
 
-        if let m = work.remove(lead + #"\b(today|tonight|tomorrow|tmrw)\b(?!['\x{2019}])"#) {
-            return plus(m[1].lowercased().hasPrefix("tom") || m[1].lowercased() == "tmrw" ? 1 : 0)
+        if let m = work.remove(lead + #"\b((?:tomorrow|tmrw)|(?<=\S\s)(?:today|tonight))\b(?![\'\x{2019}])"#) {
+            return plus(["tomorrow", "tmrw"].contains(m[1].lowercased()) ? 1 : 0)
         }
         if let m = work.remove(#"\bin\s+(\d{1,3})\s+(days?|weeks?|months?)\b"#) {
             let n = Int(m[1])!
@@ -194,7 +245,7 @@ public enum QuickAddParser {
         if let m = work.remove(#"\bnext\s+(week|month)\b"#) {
             return m[1].lowercased() == "week" ? plus(7) : calendar.date(byAdding: .month, value: 1, to: today)
         }
-        if let m = work.remove(lead + #"\b(?:(?:next|this)\s+)?(\#(fullWeekday))\b"#) {
+        if let m = work.remove(#"\b(?:(?:on|by|before)\s+(?:(?:this|next)\s+)?|(?:this|next)\s+)(\#(fullWeekday))\b"#) {
             let target = weekdayFromPrefix(m[1].lowercased())!.rawValue + 1
             let current = calendar.component(.weekday, from: today)
             var delta = (target - current + 7) % 7
@@ -248,6 +299,7 @@ public enum QuickAddParser {
     private static func summary(start: Date?, hasTime: Bool, recurrence: RecurrenceRule?,
                                 kind: AppleItemRef.Kind?, now: Date, calendar: Calendar) -> String {
         var parts: [String] = []
+        if kind == .reminder { parts.append("Reminder") }
         if let start {
             let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)
             var label: String
@@ -259,16 +311,21 @@ public enum QuickAddParser {
                 let sameYear = calendar.component(.year, from: start) == calendar.component(.year, from: now)
                 label = format(start, sameYear ? "EEE, MMM d" : "EEE, MMM d, yyyy", calendar)
             }
-            if hasTime { label += " at " + format(start, "h:mm a", calendar) }
+            if hasTime {
+                // The pattern follows the locale's 12 or 24 hour setting ("h:mm a" or "HH:mm").
+                let pattern = DateFormatter.dateFormat(fromTemplate: "jm", options: 0,
+                                                       locale: calendar.locale ?? .current) ?? "h:mm a"
+                label += " at " + format(start, pattern, calendar)
+            }
             parts.append(label)
         }
         if let recurrence {
             let s = recurrence.summary
             parts.append("repeats " + s.prefix(1).lowercased() + s.dropFirst())
         }
-        if parts.isEmpty { return kind == .reminder ? "Reminder" : "" }
-        let joined = parts.joined(separator: ", ")
-        return start == nil ? joined.prefix(1).uppercased() + joined.dropFirst() : joined
+        guard let first = parts.first else { return "" }
+        parts[0] = first.prefix(1).uppercased() + first.dropFirst()
+        return parts.joined(separator: ", ")
     }
 
     private static func format(_ date: Date, _ pattern: String, _ calendar: Calendar) -> String {
@@ -277,7 +334,8 @@ public enum QuickAddParser {
         f.calendar = calendar
         f.timeZone = calendar.timeZone
         f.dateFormat = pattern
-        return f.string(from: date)
+        // Newer ICU puts a narrow no-break space before AM/PM; a plain space reads the same.
+        return f.string(from: date).replacingOccurrences(of: "\u{202F}", with: " ")
     }
 
     // MARK: - Text editing
@@ -286,6 +344,8 @@ public enum QuickAddParser {
     /// its capture groups (index 0 is the whole match, a missing group is "").
     private struct Work {
         var text: String
+        /// How many regex matches `transform` refused (a date-looking token that is not a date).
+        var rejections = 0
 
         mutating func remove(_ pattern: String) -> [String]? {
             remove(pattern) { $0 }
@@ -306,6 +366,7 @@ public enum QuickAddParser {
                     text = ns.replacingCharacters(in: m.range, with: " ")
                     return value
                 }
+                rejections += 1
             }
             return nil
         }

@@ -157,16 +157,16 @@ struct AddItemView: View {
     /// Applies a quick-add suggestion (the owner tapped it). The end is set so that the Starts
     /// picker's own "move the end with the start" handler lands it on the intended value.
     private func apply(_ suggestion: QuickAddSuggestion) {
-        title = suggestion.title
-        if suggestion.kind == .reminder { kind = .reminder }
-        if let start = suggestion.start {
-            allDay = !suggestion.hasTime
-            let end = suggestion.end ?? start.addingTimeInterval(EventSchedule.defaultDuration)
-            // `onChange(of: date)` adds (start - date) to the end, so pre-subtract it.
-            endDate = end.addingTimeInterval(-start.timeIntervalSince(date))
+        let values = suggestion.formValues(currentStart: date)
+        title = values.title
+        if values.kind == .reminder { kind = .reminder }
+        if let start = values.start {
+            if let allDayValue = values.allDay { allDay = allDayValue }
+            // `onChange(of: date)` moves the end with the start; the Kit value is pre-offset.
+            if let end = values.endForPicker { endDate = end }
             date = start
         }
-        if let rule = suggestion.recurrence { recurrence = rule }
+        if let rule = values.recurrence { recurrence = rule }
         focusedField = nil
     }
 

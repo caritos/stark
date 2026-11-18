@@ -10,8 +10,17 @@ struct QuickAddRow: View {
     let text: String
     let onApply: (QuickAddSuggestion) -> Void
 
+    /// Gregorian whatever calendar the phone uses (as the planner does), in the phone's time zone
+    /// and locale (the locale decides the 12 or 24 hour summary).
+    private static var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        calendar.locale = .current
+        return calendar
+    }
+
     var body: some View {
-        if let suggestion = QuickAddParser.parse(text, now: Date(), calendar: .current) {
+        if let suggestion = QuickAddParser.parse(text, now: Date(), calendar: Self.calendar) {
             Button {
                 onApply(suggestion)
             } label: {
@@ -28,7 +37,7 @@ struct QuickAddRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Apply: \(suggestion.summary)")
-            .accessibilityHint("Fills in the date, time and repeat from your title.")
+            .accessibilityHint("Fills the title, date, time, repeat and kind.")
         }
     }
 }
