@@ -171,6 +171,7 @@ func TestFAQExplainsQuickAdd(t *testing.T) {
 	for _, want := range []string{
 		"type a phrase such as", "lunch with sarah at 1pm tomorrow", "tap the suggestion to apply it",
 		"stark never fills in a date by itself", "works on your device only", "nothing is sent anywhere",
+		"time ranges such as 1-2pm", "next friday", "every weekday",
 	} {
 		if !strings.Contains(lower, want) {
 			t.Errorf("faq missing %q", want)

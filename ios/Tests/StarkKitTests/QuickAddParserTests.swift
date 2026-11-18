@@ -488,4 +488,12 @@ struct QuickAddParserTests {
         let n = try #require(QuickAddParser.parse("Dentist next friday", now: Self.now(g), calendar: other))
         #expect(n.start == Self.date(g, 2026, 11, 27))
     }
+
+    @Test("the row is hidden while the title is the one Apply produced")
+    func hideRule() {
+        #expect(!QuickAddSuggestion.shouldOffer(title: "Lunch", appliedTitle: "Lunch"))
+        #expect(QuickAddSuggestion.shouldOffer(title: "Lunch x", appliedTitle: "Lunch"))
+        #expect(QuickAddSuggestion.shouldOffer(title: "Lunch", appliedTitle: nil))
+        #expect(QuickAddSuggestion.shouldOffer(title: "Dinner tomorrow 7-9pm", appliedTitle: "Lunch"))
+    }
 }

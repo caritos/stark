@@ -17,6 +17,9 @@ struct AddItemView: View {
 
     @State private var kind: ItemKind = .event
     @State private var title = ""
+    /// The title the last quick-add Apply produced; the suggestion row stays hidden while the
+    /// title equals it, and comes back once the owner edits the title.
+    @State private var appliedTitle: String?
     @State private var date: Date
     @State private var endDate: Date
     @State private var allDay = false
@@ -54,7 +57,9 @@ struct AddItemView: View {
                 TextField("Title", text: $title)
                     .focused($focusedField, equals: .title)
                 TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
-                QuickAddRow(text: title) { apply($0) }
+                if QuickAddSuggestion.shouldOffer(title: title, appliedTitle: appliedTitle) {
+                    QuickAddRow(text: title) { apply($0) }
+                }
                 }
                 Section {
                 QuarterHourDatePicker(kind == .event ? "Starts" : "Due", selection: $date,
@@ -159,6 +164,7 @@ struct AddItemView: View {
     private func apply(_ suggestion: QuickAddSuggestion) {
         let values = suggestion.formValues(currentStart: date)
         title = values.title
+        appliedTitle = values.title
         if values.kind == .reminder { kind = .reminder }
         if let start = values.start {
             if let allDayValue = values.allDay { allDay = allDayValue }

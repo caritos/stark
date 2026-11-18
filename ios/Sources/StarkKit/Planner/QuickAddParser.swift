@@ -41,6 +41,12 @@ public struct QuickAddFormValues: Equatable, Sendable {
 }
 
 extension QuickAddSuggestion {
+    /// False while `title` is exactly what the last Apply produced: the cleaned title can still
+    /// parse (a leftover "on friday"), and the row must not come back until the owner edits it.
+    public static func shouldOffer(title: String, appliedTitle: String?) -> Bool {
+        title != appliedTitle
+    }
+
     /// `currentStart` is the Starts picker's value before the suggestion is applied.
     public func formValues(currentStart: Date) -> QuickAddFormValues {
         var values = QuickAddFormValues(title: title, kind: kind, recurrence: recurrence)
