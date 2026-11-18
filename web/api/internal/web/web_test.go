@@ -113,6 +113,18 @@ func TestFAQExplainsBirthdayAges(t *testing.T) {
 	}
 }
 
+func TestFAQExplainsQuickAdd(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"type a phrase such as", "lunch with sarah at 1pm tomorrow", "tap the suggestion to apply it",
+		"stark never fills in a date by itself", "works on your device only", "nothing is sent anywhere",
+	} {
+		if !strings.Contains(lower, want) {
+			t.Errorf("faq missing %q", want)
+		}
+	}
+}
+
 // Phase 3 (2026-11-17) removed Stark's own store and the import: no page may still offer the
 // import, say Stark still shows its older items, or mention the "Not imported" mark.
 func TestPagesDoNotOfferTheImport(t *testing.T) {

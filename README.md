@@ -17,6 +17,8 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
   Stark itself makes no network connection. Items made in Stark before it saved to Apple Calendar and Reminders
   were kept in `.ics` files in the app's Documents folder; Stark no longer reads them, and they stay there untouched
   until the app is deleted. No account, no subscription.
+- **Quick add**: type "Lunch with Sarah at 1pm tomorrow" in Add and tap the suggestion to fill in the date, time,
+  repeat and kind (English, on the device, never applied automatically).
 - **Birthdays**: events on Apple's Birthdays calendar show a cake and, if you allow optional read-only Contacts
   access, "Turns N" from the contact's birth year (read on the device, never stored or sent).
 
