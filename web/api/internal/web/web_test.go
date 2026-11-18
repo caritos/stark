@@ -71,7 +71,8 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 	for _, want := range []string{
 		"LAST UPDATED: NOVEMBER 2026", "APPLE CALENDAR AND REMINDERS",
 		"saves what you add, edit, complete or delete in Stark to Apple Calendar and Reminders",
-		"Stark itself makes no network connection",
+		"<h2>WEATHER</h2>", "weather is optional and off by default", "the only time stark makes a network connection",
+		"rounded to about 11 km", "met norway", "sends nothing else", "never stored",
 		"small file of Stark's own on this device",
 		"a record of which of Stark's older items the one-time import copied into Apple",
 		"the share button in Weekly Review exports that week's summary",
@@ -87,7 +88,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		}
 	}
 	// Statements that stopped being true with the write path.
-	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen"} {
+	for _, stale := range []string{"unless you turn it on", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen", "Stark itself makes no network connection", "Stark does not ask for access to your photos, location", "&mdash; Location data", "nothing is sent to us or any third party."} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
 		}
@@ -110,6 +111,31 @@ func TestFAQExplainsBirthdayAges(t *testing.T) {
 	// The prompt comes when a birthday is loaded, not when one is on screen.
 	if strings.Contains(lower, "the first time one is on screen") {
 		t.Error("faq still says the prompt comes when a birthday is on screen")
+	}
+}
+
+// Weather (2026-11-18): the first network call. The FAQ explains it, says it is optional and what is sent.
+func TestFAQExplainsWeather(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"weather is optional and off by default", "turn it on in settings", "approximate location rounded to about 11 km",
+		"met norway", "sends nothing else", "never stored", "weather is the only thing stark ever sends over the network",
+	} {
+		if !strings.Contains(lower, want) {
+			t.Errorf("faq missing %q", want)
+		}
+	}
+	if strings.Contains(lower, "sends nothing anywhere") || strings.Contains(lower, "adds no network connection") {
+		t.Error("faq still claims Stark sends nothing anywhere")
+	}
+}
+
+func TestHomePageDoesNotClaimNoNetwork(t *testing.T) {
+	lower := strings.ToLower(get(Handler(), http.MethodGet, "/").Body.String())
+	for _, stale := range []string{"stark itself sends nothing anywhere", "stark itself makes no network connection"} {
+		if strings.Contains(lower, stale) {
+			t.Errorf("home still says %q", stale)
+		}
 	}
 }
 

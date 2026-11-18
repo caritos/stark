@@ -18,7 +18,7 @@
   </header>
   <main>
     <h2>THE SHORT VERSION</h2>
-    <p><strong>Stark collects no data about you.</strong> Your reminders and events are kept on your device, in your own Apple Calendar and Reminders, which Apple syncs through iCloud if you use it. Stark itself makes no network connection, and nothing is sent to us or any third party.</p>
+    <p><strong>Stark collects no data about you.</strong> Your reminders and events are kept on your device, in your own Apple Calendar and Reminders, which Apple syncs through iCloud if you use it. Weather is the only time Stark makes a network connection: it is optional, off by default, and described under WEATHER. Nothing is ever sent to us.</p>
 
     <h2>APPLE CALENDAR AND REMINDERS</h2>
     <p>Stark keeps your events and to-dos in Apple Calendar and Reminders. It needs full access to both, and before iOS asks, Stark shows a screen that says what the access is for. You can withdraw access in iOS Settings at any time; Stark then shows that screen again and cannot add items.</p>
@@ -29,6 +29,9 @@
     <h2>CONTACTS</h2>
     <p>Contacts access is optional. Events on Apple's Birthdays calendar show a cake, and if you allow it, their age. The first time Stark loads a birthday from a calendar you show, iOS asks whether Stark may read your contacts. If you allow it, Stark reads only the birth year of the people in your Birthdays calendar, on your device, to show "Turns N" under their name. The birth year is used only for that: it is never stored or sent anywhere by Stark, and Stark does not read, copy or keep any other contact detail. If you decline, or withdraw access in iOS Settings, birthday events still show the cake, without the age.</p>
 
+    <h2>WEATHER</h2>
+    <p>Weather is optional and off by default. Until you turn it on in Settings, Stark makes no network connection and does not ask for your location. When you turn it on, iOS asks whether Stark may use your location while you use the app. Stark asks for an approximate location only, rounded to about 11 km (0.1 degree), and sends just that position to MET Norway's public forecast service (api.met.no) over https, to show a forecast in the agenda's day headers. Stark sends nothing else: no identifiers, no account, no calendar or reminder data. The position is never stored or logged by Stark, and the forecast is kept only in memory on your device. Turn Weather off and Stark stops asking. MET Norway receives the request like any website would, including your IP address, and handles it under its own terms; we receive nothing. Forecast data from MET Norway.</p>
+
     <h2>DATA STORAGE</h2>
     <p>Items Stark created before it saved to Apple Calendar and Reminders may still be stored in files inside Stark's private storage on your device; earlier versions could copy them into Apple Calendar and Reminders once. Stark no longer reads these old files: they remain on your device, untouched, as a backup, and are deleted only when you delete the app. Stark does not use iCloud for these files and does not sync them between devices.</p>
     <p>If you back up your device with iCloud Backup or to a computer, Apple's backup includes Stark's files along with your other apps. That backup is handled entirely by Apple using your Apple ID. We have no access to it and never receive your data.</p>
@@ -38,9 +41,8 @@
     <p>&mdash; Personal information or identifiers<br>
     &mdash; Usage data or analytics<br>
     &mdash; Crash reports or diagnostics<br>
-    &mdash; Location data<br>
     &mdash; Reminder or event content or metadata</p>
-    <p>Stark does not ask for access to your photos, location, or notifications. It asks for access to your calendars and reminders, as described above, and optionally to your contacts, only as described under CONTACTS.</p>
+    <p>Stark does not ask for access to your photos or notifications. It asks for access to your calendars and reminders, as described above, and optionally to your contacts (under CONTACTS) and your approximate location (under WEATHER), only when you turn those features on or use them. Apart from the optional weather position described above, Stark collects, transmits and stores no location data.</p>
 
     <h2>LINKS</h2>
     <p>If you tap a link in Stark, such as an event's URL or a link in Settings, it opens in your browser. That site's own privacy policy applies to your visit.</p>
