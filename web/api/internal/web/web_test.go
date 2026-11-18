@@ -184,6 +184,17 @@ func TestFAQExplainsCalendarSets(t *testing.T) {
 	}
 }
 
+func TestFAQExplainsFocusFilter(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"can a focus switch my calendars", "calendar set", "turns off", "stays on this device",
+	} {
+		if !strings.Contains(lower, want) {
+			t.Errorf("faq missing %q", want)
+		}
+	}
+}
+
 func TestFAQExplainsQuickAdd(t *testing.T) {
 	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
 	for _, want := range []string{

@@ -21,6 +21,8 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
 - **Calendar sets**: the calendars button at the bottom lists "All Calendars" and your saved sets (named choices of calendars
   and reminder lists, for example Work and Home); tapping one switches every view. A calendar added later is not in an
   existing set until you edit it. Sets are kept on this device only; the Apple calendar list stays under "Calendar list".
+- **Focus filter**: Settings > Focus > a Focus > Add Filter > Stark picks a calendar set to show while that Focus is on;
+  when it turns off Stark restores the calendars it showed before (unless you changed them meanwhile). Device only.
 - **Quick add**: type "Lunch with Sarah at 1pm tomorrow" in Add and tap the suggestion to fill in the date, time,
   repeat and kind (English, on the device, never applied automatically).
 - **Templates**: save an Add form (title, length, repeat, notes, calendar) as a template and fill a new item from it

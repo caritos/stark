@@ -107,6 +107,16 @@ struct FAQView: View {
             """
         ),
         Entry(
+            question: "Can a Focus switch my calendars?",
+            answer: """
+            Yes. In the iPhone's Settings, open Focus, pick a Focus (for example Work), tap Add \
+            Filter, choose Stark and pick one of your saved calendar sets. While that Focus is on, \
+            Stark shows only that set's calendars; when the Focus turns off, Stark goes back to the \
+            calendars it showed before, unless you changed them yourself in the meantime. The \
+            choice stays on this device and nothing is sent anywhere.
+            """
+        ),
+        Entry(
             question: "Can Stark show the weather?",
             answer: """
             Yes. Weather is optional and off by default: turn it on in Settings. Then iOS asks \
