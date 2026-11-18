@@ -41,6 +41,16 @@ struct FAQView: View {
             """
         ),
         Entry(
+            question: "How does quick add work?",
+            answer: """
+            In Add, type a phrase such as "Lunch with Sarah at 1pm tomorrow", "Pay rent every \
+            month" or "Remind me to call the bank Friday". When Stark recognises a date, time, \
+            repeat or reminder in it, a suggestion appears under the title. Tap the suggestion to \
+            apply it; Stark never fills in a date by itself. It works on your device only, in \
+            English, and nothing is sent anywhere.
+            """
+        ),
+        Entry(
             question: "Why do birthdays show a cake and an age?",
             answer: """
             Events on Apple's Birthdays calendar show a cake before the name. The first time Stark \

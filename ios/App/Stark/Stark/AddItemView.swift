@@ -54,6 +54,7 @@ struct AddItemView: View {
                 TextField("Title", text: $title)
                     .focused($focusedField, equals: .title)
                 TagSuggestionRow(text: title) { title = TagAutocomplete.applying($0, to: title) }
+                QuickAddRow(text: title) { apply($0) }
                 }
                 Section {
                 QuarterHourDatePicker(kind == .event ? "Starts" : "Due", selection: $date,
@@ -151,6 +152,22 @@ struct AddItemView: View {
             }
         }
         .tint(Colors.accent)
+    }
+
+    /// Applies a quick-add suggestion (the owner tapped it). The end is set so that the Starts
+    /// picker's own "move the end with the start" handler lands it on the intended value.
+    private func apply(_ suggestion: QuickAddSuggestion) {
+        title = suggestion.title
+        if suggestion.kind == .reminder { kind = .reminder }
+        if let start = suggestion.start {
+            allDay = !suggestion.hasTime
+            let end = suggestion.end ?? start.addingTimeInterval(EventSchedule.defaultDuration)
+            // `onChange(of: date)` adds (start - date) to the end, so pre-subtract it.
+            endDate = end.addingTimeInterval(-start.timeIntervalSince(date))
+            date = start
+        }
+        if let rule = suggestion.recurrence { recurrence = rule }
+        focusedField = nil
     }
 
     private func insertSigil(_ sigil: Character) {
