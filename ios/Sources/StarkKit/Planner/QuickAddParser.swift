@@ -48,7 +48,7 @@ public enum QuickAddParser {
         var kind: AppleItemRef.Kind?
         var recurrence: RecurrenceRule?
 
-        if work.remove(#"^\s*(?:remind me to|remind me|reminder|todo|to-do|task)\b[:,]?\s+"#) != nil {
+        if work.remove(#"^\s*(?:(?:remind me|reminder)\s+to\s+|(?:todo|to-do|task)\s*:\s*)"#) != nil {
             kind = .reminder
         }
         recurrence = parseRecurrence(&work)
@@ -150,18 +150,17 @@ public enum QuickAddParser {
     // MARK: - Time
 
     private static func parseTime(_ work: inout Work) -> (hour: Int, minute: Int)? {
-        let lead = #"(?:\b(?:at|@)\s+)?"#
-        if let m = work.remove(lead + #"\b(\d{1,2})(?::([0-5]\d))?\s*(am|pm|a\.m\.|p\.m\.)(?![a-z])"#) {
-            let h = Int(m[1])!
-            if (1...12).contains(h) {
-                let pm = m[3].lowercased().hasPrefix("p")
-                return (h % 12 + (pm ? 12 : 0), Int(m[2]) ?? 0)
-            }
+        let lead = #"(?:\bat\s+|@\s*)"#
+        let ampm = work.remove(lead + #"?\b(\d{1,2})(?::([0-5]\d))?\s*(am|pm|a\.m\.|p\.m\.)(?![a-z])"#) { m -> (hour: Int, minute: Int)? in
+            guard let h = Int(m[1]), (1...12).contains(h) else { return nil }
+            return (h % 12 + (m[3].lowercased().hasPrefix("p") ? 12 : 0), Int(m[2]) ?? 0)
         }
+        if let ampm { return ampm }
+        // A bare h:mm ("John 3:16") is only a time after "at" or "@".
         if let m = work.remove(lead + #"(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])"#) {
             return (Int(m[1])!, Int(m[2])!)
         }
-        if let m = work.remove(lead + #"\b(noon|midnight)\b"#) {
+        if let m = work.remove(#"(?:\bat\s+|@\s*)?\b(noon|midnight)\b"#) {
             return (m[1].lowercased() == "noon" ? 12 : 0, 0)
         }
         return nil
@@ -171,9 +170,17 @@ public enum QuickAddParser {
 
     private static func parseDay(_ work: inout Work, today: Date, calendar: Calendar) -> Date? {
         let lead = #"(?:\b(?:on|by|from|at)\s+)?"#
+        let monthLead = #"(?:\b(?:on|by|from|at|in)\s+)?"#
+        /// The lone word "may" is only May after on/by/in or when written with a capital M.
+        func mayOK(_ whole: String, _ word: String) -> Bool {
+            guard word.lowercased() == "may" else { return true }
+            if word.first?.isUppercase == true { return true }
+            let w = whole.lowercased()
+            return w.hasPrefix("on ") || w.hasPrefix("by ") || w.hasPrefix("in ")
+        }
         func plus(_ days: Int) -> Date? { calendar.date(byAdding: .day, value: days, to: today) }
 
-        if let m = work.remove(lead + #"\b(today|tonight|tomorrow|tmrw)\b"#) {
+        if let m = work.remove(lead + #"\b(today|tonight|tomorrow|tmrw)\b(?!['\x{2019}])"#) {
             return plus(m[1].lowercased().hasPrefix("tom") || m[1].lowercased() == "tmrw" ? 1 : 0)
         }
         if let m = work.remove(#"\bin\s+(\d{1,3})\s+(days?|weeks?|months?)\b"#) {
@@ -194,20 +201,25 @@ public enum QuickAddParser {
             if delta == 0 { delta = 7 }
             return plus(delta)
         }
-        if let m = work.remove(lead + #"\b(\#(monthWord))\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?!\s*(?::|am\b|pm\b))(?:,?\s+(\d{4})\b)?"#) {
+        let a = work.remove(monthLead + #"\b(\#(monthWord))\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?!\s*(?::|am\b|pm\b))(?:,?\s+(\d{4})\b)?"#) { m -> Date? in
+            guard mayOK(m[0], m[1]) else { return nil }
             let month = monthNames.firstIndex { m[1].lowercased().hasPrefix($0) }! + 1
             return resolve(month: month, day: Int(m[2])!, year: Int(m[3]), today: today, calendar: calendar)
         }
-        if let m = work.remove(lead + #"\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(\#(monthWord))\b(?:,?\s+(\d{4})\b)?"#) {
+        if let a { return a }
+        let b = work.remove(monthLead + #"\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?(\#(monthWord))\b(?:,?\s+(\d{4})\b)?"#) { m -> Date? in
+            guard mayOK(m[0], m[2]) else { return nil }
             let month = monthNames.firstIndex { m[2].lowercased().hasPrefix($0) }! + 1
             return resolve(month: month, day: Int(m[1])!, year: Int(m[3]), today: today, calendar: calendar)
         }
-        if let m = work.remove(lead + #"(?<![\d/])(\d{1,2})/(\d{1,2})(?:/(\d{2}|\d{4}))?(?![\d/])"#) {
-            var year = Int(m[3])
+        if let b { return b }
+        // A bare m/d is also a fraction ("1/2 gallon"): it needs a year or on/by/due/before/until.
+        return work.remove(#"(?:\b(on|by|due|before|until)\s+)?(?<![\d/])(\d{1,2})/(\d{1,2})(?:/(\d{2}|\d{4}))?(?![\d/])"#) { m -> Date? in
+            var year = Int(m[4])
+            if year == nil && m[1].isEmpty { return nil }
             if let y = year, y < 100 { year = 2000 + y }
-            return resolve(month: Int(m[1])!, day: Int(m[2])!, year: year, today: today, calendar: calendar)
+            return resolve(month: Int(m[2])!, day: Int(m[3])!, year: year, today: today, calendar: calendar)
         }
-        return nil
     }
 
     private static func resolve(month: Int, day: Int, year: Int?, today: Date, calendar: Calendar) -> Date? {
@@ -276,16 +288,26 @@ public enum QuickAddParser {
         var text: String
 
         mutating func remove(_ pattern: String) -> [String]? {
+            remove(pattern) { $0 }
+        }
+
+        /// Consumes the first match for which `transform` returns a value; a match it rejects
+        /// ("13pm", "Feb 30") stays in the text.
+        mutating func remove<T>(_ pattern: String, _ transform: ([String]) -> T?) -> T? {
             guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
             let ns = text as NSString
-            guard let m = regex.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)) else { return nil }
-            var groups: [String] = []
-            for i in 0..<m.numberOfRanges {
-                let r = m.range(at: i)
-                groups.append(r.location == NSNotFound ? "" : ns.substring(with: r))
+            for m in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+                var groups: [String] = []
+                for i in 0..<m.numberOfRanges {
+                    let r = m.range(at: i)
+                    groups.append(r.location == NSNotFound ? "" : ns.substring(with: r))
+                }
+                if let value = transform(groups) {
+                    text = ns.replacingCharacters(in: m.range, with: " ")
+                    return value
+                }
             }
-            text = ns.replacingCharacters(in: m.range, with: " ")
-            return groups
+            return nil
         }
 
         var cleanedTitle: String {

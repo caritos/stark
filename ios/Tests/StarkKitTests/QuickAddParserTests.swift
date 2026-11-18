@@ -88,7 +88,7 @@ struct QuickAddParserTests {
 
     @Test("a kind prefix alone is a suggestion")
     func prefixOnly() throws {
-        let s = try #require(Self.parse("todo buy milk", "Asia/Tokyo"))
+        let s = try #require(Self.parse("todo: buy milk", "Asia/Tokyo"))
         #expect(s.kind == .reminder)
         #expect(s.title == "buy milk")
         #expect(s.start == nil)
@@ -111,7 +111,7 @@ struct QuickAddParserTests {
     @Test("may with a day number is May", arguments: zones)
     func mayDate(zone: String) throws {
         let c = Self.calendar(zone)
-        let s = try #require(Self.parse("Conference may 5", zone))
+        let s = try #require(Self.parse("Conference May 5", zone))
         #expect(s.title == "Conference")
         #expect(s.start == Self.date(c, 2027, 5, 5))
     }
@@ -123,7 +123,7 @@ struct QuickAddParserTests {
         #expect(a.title == "Party")
         #expect(a.start == Self.date(c, 2026, 12, 5, 19, 30))
         #expect(a.hasTime)
-        let b = try #require(Self.parse("Taxes 3/4", zone))
+        let b = try #require(Self.parse("Taxes on 3/4", zone))
         #expect(b.start == Self.date(c, 2027, 3, 4))
         let d = try #require(Self.parse("Concert March 3 2028", zone))
         #expect(d.start == Self.date(c, 2028, 3, 3))
@@ -165,7 +165,7 @@ struct QuickAddParserTests {
         let a = try #require(Self.parse("Lunch noon tomorrow", zone))
         #expect(a.start == Self.date(c, 2026, 11, 19, 12, 0))
         #expect(a.hasTime)
-        let b = try #require(Self.parse("Train today 17:45", zone))
+        let b = try #require(Self.parse("Train today at 17:45", zone))
         #expect(b.start == Self.date(c, 2026, 11, 18, 17, 45))
         let d = try #require(Self.parse("Follow up in 3 days", zone))
         #expect(d.start == Self.date(c, 2026, 11, 21))
@@ -211,5 +211,35 @@ struct QuickAddParserTests {
         #expect(r.summary == "Mon, Nov 23 at 6:00 AM, repeats every week on Monday, Wednesday")
         let m = try #require(Self.parse("Pay rent every month", "America/New_York"))
         #expect(m.summary == "Repeats every month")
+    }
+
+    @Test("false positives from the review")
+    func falsePositives() throws {
+        let z = "America/New_York"
+        let c = Self.calendar(z)
+        for text in ["Task force meeting", "Todo list app", "Read John 3:16", "Buy 1/2 gallon milk",
+                     "Pick up 20 may people", "Tomorrow's meeting", "Reminder about rent"] {
+            #expect(Self.parse(text, z) == nil, "\(text)")
+        }
+        let r = try #require(Self.parse("task: file taxes", z))
+        #expect(r.kind == .reminder && r.title == "file taxes")
+        let r2 = try #require(Self.parse("Reminder to pay rent", z))
+        #expect(r2.kind == .reminder && r2.title == "pay rent")
+        let by = try #require(Self.parse("Report due by 1/2", z))
+        #expect(by.start == Self.date(c, 2027, 1, 2))
+        let yr = try #require(Self.parse("Report 1/2/2028", z))
+        #expect(yr.start == Self.date(c, 2028, 1, 2))
+        let on = try #require(Self.parse("Party on may 20", z))
+        #expect(on.start == Self.date(c, 2027, 5, 20))
+        let bad = try #require(Self.parse("Call at 13pm tomorrow", z))
+        #expect(bad.title == "Call at 13pm")
+        #expect(bad.start == Self.date(c, 2026, 11, 19))
+        #expect(!bad.hasTime)
+        let feb = try #require(Self.parse("Feb 30 dentist tomorrow", z))
+        #expect(feb.title == "Feb 30 dentist")
+        #expect(feb.start == Self.date(c, 2026, 11, 19))
+        let at = try #require(Self.parse("Coffee @5pm tomorrow", z))
+        #expect(at.title == "Coffee")
+        #expect(at.start == Self.date(c, 2026, 11, 19, 17, 0))
     }
 }
