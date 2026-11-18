@@ -40,7 +40,9 @@ struct CalendarSetsSheet: View {
                             .foregroundStyle(Colors.accent)
                     }
                 } footer: {
-                    Text("Swipe a set to edit or delete it. Sets are kept on this device.")
+                    Text(model.sets.sets.isEmpty
+                         ? "Sets are kept on this device."
+                         : "Swipe a set to edit or delete it. Sets are kept on this device.")
                         .font(.footnote)
                         .foregroundStyle(Colors.textSecondary)
                 }

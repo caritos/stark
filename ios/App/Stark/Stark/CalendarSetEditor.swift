@@ -38,9 +38,18 @@ struct CalendarSetEditor: View {
                         Toggle(isOn: binding(calendar.id)) {
                             AppleCalendarToggleLabel(calendar: calendar)
                         }
+                        .disabled(locked(calendar.id))
                     }
                 }
                 .listRowBackground(Colors.card)
+            }
+
+            if !model.alwaysShown.isEmpty {
+                Section {} footer: {
+                    Text("The default calendar and list are always shown, so items you add in Stark stay in view.")
+                        .font(.footnote)
+                        .foregroundStyle(Colors.textSecondary)
+                }
             }
         }
         .listStyle(.insetGrouped)
@@ -58,16 +67,20 @@ struct CalendarSetEditor: View {
             loaded = true
             name = editing?.name ?? ""
             // A new set starts from what is shown now; an edited one from its saved calendars.
-            included = editing?.includedIDs ?? model.shownIDs
+            // Ids of calendars that no longer exist are dropped, so a save never keeps a stale one.
+            included = (editing?.includedIDs ?? model.shownIDs).intersection(model.allIDs)
         }
     }
 
     private func binding(_ id: String) -> Binding<Bool> {
-        Binding(get: { included.contains(id) },
+        Binding(get: { locked(id) || included.contains(id) },
                 set: { on in
                     if on { included.insert(id) } else { included.remove(id) }
                 })
     }
+
+    /// The default calendar and list show locked on, as in Settings: a set cannot hide them.
+    private func locked(_ id: String) -> Bool { model.alwaysShown.contains(id) }
 
     private func save() {
         error = model.save(id: editing?.id, name: name, included: included)

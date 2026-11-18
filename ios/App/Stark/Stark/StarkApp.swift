@@ -49,7 +49,9 @@ struct StarkApp: App {
             if overlay?.selection.isShown(id) == false { overlay?.setShown(id, true) }
         })
         _destinations = State(initialValue: destinations)
-        _calendarSets = State(initialValue: CalendarSetsModel(overlay: overlay))
+        _calendarSets = State(initialValue: CalendarSetsModel(overlay: overlay, alwaysShown: { [weak destinations] in
+            Set([destinations?.calendarID, destinations?.listID].compactMap { $0 })
+        }))
         let sidecar = ItemSidecar(fileURL: Self.sidecarURL(), calendar: .autoupdatingCurrent)
         self.sidecar = sidecar
         let router = ItemRouter(repository: repository, sidecar: sidecar,

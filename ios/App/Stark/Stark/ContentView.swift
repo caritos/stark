@@ -228,6 +228,7 @@ struct ContentView: View {
             })
         }
         .sheet(isPresented: $showSearch) { SearchView() }
+        .onChange(of: calendarSets.syncKey, initial: true) { calendarSets.sync() }
         .sheet(isPresented: $showCalendars) { CalendarSetsSheet() }
         .sheet(isPresented: $showSettings) {
             SettingsView()
