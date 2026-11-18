@@ -10,7 +10,7 @@ The original design promised a cake emoji and the current age on birthdays. Sinc
 - NOT part of done: App Store review, Contacts writing, anniversaries from Contacts, device verification (listed as not verified).
 
 ## Approaches (picked: 1, by the owner)
-1. **Birth year from Contacts (picked).** Exact age; needs read-only Contacts access, asked the first time a birthday event is shown.
+1. **Birth year from Contacts (picked).** Exact age; needs read-only Contacts access, asked the first time Stark loads a birthday from a calendar the owner shows (wording corrected in the 2026-11-17 fix wave).
 2. Cake only, no age: no permission, but drops the promised age.
 3. Age from the series master's start: works only for events Stark/the owner tagged `%birthday`, not for Apple's Birthdays calendar. Kept as a follow-up if cheap.
 

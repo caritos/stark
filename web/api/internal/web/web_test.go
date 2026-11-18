@@ -79,6 +79,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		"never sent anywhere by Stark (like Stark's other files, it is part of your device backup)",
 		"Stark no longer reads these old files", "untouched, as a backup", "deleted only when you delete the app",
 		"<h2>CONTACTS</h2>", "contacts access is optional", "reads only the birth year of the people in your birthdays calendar", "never stored or sent anywhere by stark",
+		"the first time stark loads a birthday from a calendar you show",
 		"unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com",
 	} {
 		if !strings.Contains(lower, strings.ToLower(want)) {
@@ -86,7 +87,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		}
 	}
 	// Statements that stopped being true with the write path.
-	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders"} {
+	for _, stale := range []string{"unless you turn it on", "off by default", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen"} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
 		}
@@ -100,10 +101,15 @@ func TestFAQExplainsBirthdayAges(t *testing.T) {
 	for _, want := range []string{
 		"events on apple's birthdays calendar show a cake", "contacts access is optional", "reads only the birth year of the people in your birthdays calendar", "never stored or sent anywhere by stark",
 		"birthday events keep the cake and show no age",
+		"the first time stark loads a birthday from a calendar you show",
 	} {
 		if !strings.Contains(lower, strings.ToLower(want)) {
 			t.Errorf("faq missing %q", want)
 		}
+	}
+	// The prompt comes when a birthday is loaded, not when one is on screen.
+	if strings.Contains(lower, "the first time one is on screen") {
+		t.Error("faq still says the prompt comes when a birthday is on screen")
 	}
 }
 
