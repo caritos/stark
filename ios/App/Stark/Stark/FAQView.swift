@@ -62,6 +62,16 @@ struct FAQView: View {
             """
         ),
         Entry(
+            question: "Can I save sets of calendars?",
+            answer: """
+            Yes. Tap the calendars button at the bottom of the screen (it reads "All Calendars") \
+            to create sets of calendars and reminder lists, for example Work and Home, and to \
+            switch between them from the All Calendars button; the button then shows the set's \
+            name. A calendar you add later is not in an existing set until you edit the set, but \
+            it shows under All Calendars. Sets are kept on this device and are not sent anywhere.
+            """
+        ),
+        Entry(
             question: "Can Stark show the weather?",
             answer: """
             Yes. Weather is optional and off by default: turn it on in Settings. Then iOS asks \

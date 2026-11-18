@@ -25,6 +25,7 @@ struct ContentView: View {
     @State private var showSearch = false
     @State private var showSettings = false
     @State private var showCalendars = false
+    @Environment(CalendarSetsModel.self) private var calendarSets
     @State private var showViewMenu = false
     @State private var selectedItem: AgendaItem?
     @State private var selectedDate: Date
@@ -204,6 +205,7 @@ struct ContentView: View {
                                                }
                                            })
                               },
+                              calendarsLabel: calendarSets.label,
                               onCalendars: { showCalendars = true },
                               onSearch: { showSearch = true },
                               onAdd: { showAdd = true })
@@ -226,7 +228,7 @@ struct ContentView: View {
             })
         }
         .sheet(isPresented: $showSearch) { SearchView() }
-        .sheet(isPresented: $showCalendars) { CalendarsSheet() }
+        .sheet(isPresented: $showCalendars) { CalendarSetsSheet() }
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }

@@ -210,7 +210,7 @@ private struct DestinationChoiceList: View {
 
 /// A calendar's toggle label: a square in the calendar's own colour (data, the one non-token
 /// colour, as on `AppleSourceLabel`), its title, and "Reminders" under a reminder list.
-private struct AppleCalendarToggleLabel: View {
+struct AppleCalendarToggleLabel: View {
     let calendar: AppleCalendarInfo
 
     var body: some View {

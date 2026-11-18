@@ -18,6 +18,9 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
   were kept in `.ics` files in the app's Documents folder; Stark no longer reads them, and they stay there untouched
   until the app is deleted. No account, no subscription.
 - **Weather** (optional, off by default): Settings > Show weather puts a forecast glyph and high/low in the agenda day headers, from MET Norway's public service. Only an approximate location rounded to about 11 km is sent, nothing else, and it is never stored.
+- **Calendar sets**: the calendars button at the bottom lists "All Calendars" and your saved sets (named choices of calendars
+  and reminder lists, for example Work and Home); tapping one switches every view. A calendar added later is not in an
+  existing set until you edit it. Sets are kept on this device only; the Apple calendar list stays under "Calendar list".
 - **Quick add**: type "Lunch with Sarah at 1pm tomorrow" in Add and tap the suggestion to fill in the date, time,
   repeat and kind (English, on the device, never applied automatically).
 - **Birthdays**: events on Apple's Birthdays calendar show a cake and, if you allow optional read-only Contacts

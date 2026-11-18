@@ -16,6 +16,8 @@ struct StarkApp: App {
     @State private var overlay: AppleOverlayModel
     /// Where new Apple items go (Settings > Apple Calendar and Reminders).
     @State private var destinations: DefaultDestinationModel
+    /// Saved calendar sets (the bottom bar's calendars button); a view over `overlay.selection`.
+    @State private var calendarSets: CalendarSetsModel
     /// Apple reminders' plan blocks for the agenda (read through the router).
     @State private var planCache: PlanCache
     /// The main screen's notice strip, shared so sheets and the agenda can post to it.
@@ -47,6 +49,7 @@ struct StarkApp: App {
             if overlay?.selection.isShown(id) == false { overlay?.setShown(id, true) }
         })
         _destinations = State(initialValue: destinations)
+        _calendarSets = State(initialValue: CalendarSetsModel(overlay: overlay))
         let sidecar = ItemSidecar(fileURL: Self.sidecarURL(), calendar: .autoupdatingCurrent)
         self.sidecar = sidecar
         let router = ItemRouter(repository: repository, sidecar: sidecar,
@@ -87,6 +90,7 @@ struct StarkApp: App {
                 .environmentObject(pending)
                 .environment(overlay)
                 .environment(destinations)
+                .environment(calendarSets)
                 .environment(planCache)
                 .environment(notices)
                 .environment(errors)

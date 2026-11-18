@@ -3,7 +3,7 @@ import Foundation
 
 /// A saved, named choice of calendars and reminder lists. Stores the INCLUDED ids, so a
 /// calendar created after the set was saved is not in it.
-public struct CalendarSet: Equatable, Codable, Sendable, Identifiable {
+public struct CalendarSet: Equatable, Hashable, Codable, Sendable, Identifiable {
     public var id: UUID
     public var name: String
     public var includedIDs: Set<String>

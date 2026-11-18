@@ -16,6 +16,8 @@ struct FloatingBottomBar: View {
     let full: FullScreenCalendar
     @Binding var showViewMenu: Bool
     let viewMenu: () -> ViewMenu
+    /// The calendars button's text: "All Calendars", a set's name or "Custom" (`CalendarSets.label`).
+    let calendarsLabel: String
     let onCalendars: () -> Void
     let onSearch: () -> Void
     let onAdd: () -> Void
@@ -41,7 +43,7 @@ struct FloatingBottomBar: View {
             Spacer(minLength: 0)
 
             Button(action: onCalendars) {
-                Text("All Calendars")
+                Text(calendarsLabel)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Colors.text)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -53,8 +55,8 @@ struct FloatingBottomBar: View {
             }
             .buttonStyle(.plain)
             .glassBackground(Capsule())
-            .accessibilityLabel("All Calendars")
-            .accessibilityHint("Opens the calendar list.")
+            .accessibilityLabel("Calendars: \(calendarsLabel)")
+            .accessibilityHint("Opens your calendar sets and the calendar list.")
 
             Spacer(minLength: 0)
 
@@ -94,20 +96,6 @@ private extension View {
         } else {
             self.background(shape.fill(.ultraThinMaterial))
                 .overlay(shape.stroke(Colors.separator, lineWidth: 0.5))
-        }
-    }
-}
-
-/// The existing Apple calendar visibility screen (`AppleSettingsView`), in its own sheet.
-struct CalendarsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            AppleSettingsView()
-                .toolbar {
-                    SquareToolbarButton(systemImage: "xmark", label: "Close", placement: .cancellationAction) { dismiss() }
-                }
         }
     }
 }
