@@ -80,6 +80,12 @@ public struct MilestoneInfo: Equatable, Sendable {
 
     public var emoji: String { kind.emoji }
     public var note: String? { MilestoneTag.note(for: kind, years: years) }
+
+    /// An all-day chip has one line: the note goes after the title ("Ann's Birthday · Turns 36").
+    public func chipTitle(_ title: String) -> String {
+        guard let note else { return title }
+        return "\(title) · \(note)"
+    }
 }
 
 extension AgendaItem {

@@ -162,10 +162,16 @@ struct AppleItemDetailView: View {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: Spacing.xs) {
-                        Text(item.title)
+                        // A birthday's cake (or an anniversary's popper) in front, as on the row.
+                        Text(item.milestone.map { "\($0.emoji) \(item.title)" } ?? item.title)
                             .font(.title.weight(.bold))
                             .foregroundStyle(item.isCompleted ? Colors.textSecondary : Colors.text)
                             .strikethrough(item.isCompleted)
+                        if let note = item.milestone?.note {
+                            Text(note)
+                                .font(Fonts.mono(13))
+                                .foregroundStyle(Colors.textSecondary)
+                        }
                         if let dayLine {
                             Text(dayLine)
                                 .font(Fonts.mono(13))

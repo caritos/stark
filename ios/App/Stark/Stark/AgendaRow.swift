@@ -84,7 +84,9 @@ struct AgendaRowView: View {
                 if let milestone = item.milestone {
                     Text(milestone.emoji).accessibilityHidden(true)
                 }
-                Text(item.title)
+                // A birthday's "Turns N" (or an anniversary's years) rides on the title: the chip
+                // has no second line. VoiceOver reads `accessibilitySummary`, unchanged.
+                Text(item.milestone?.chipTitle(item.title) ?? item.title)
                     .font(.subheadline)
                     .strikethrough(hasOutcome)
                     .lineLimit(2)

@@ -82,6 +82,17 @@ private struct CountingLookup: BirthYearLookup {
     }
 }
 
+@Suite struct MilestoneChipTitleTests {
+    @Test func chipTitleAppendsTheNote() {
+        #expect(MilestoneInfo(kind: .birthday, years: 36).chipTitle("Ann's Birthday") == "Ann's Birthday · Turns 36")
+        #expect(MilestoneInfo(kind: .anniversary, years: 1).chipTitle("Wedding") == "Wedding · 1 year")
+    }
+
+    @Test func chipTitleWithoutYearsIsTheTitle() {
+        #expect(MilestoneInfo(kind: .birthday, years: nil).chipTitle("Ann's Birthday") == "Ann's Birthday")
+    }
+}
+
 @MainActor @Suite struct BirthYearCacheTests {
     @Test func emptyIDsNeverCallTheLookup() async {
         let lookup = CountingLookup(years: [:])
