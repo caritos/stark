@@ -27,6 +27,11 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
 
     private let storeLock = NSLock()
     private var createdStore: EKEventStore?
+    private let birthYearLookup: BirthYearLookup
+
+    init(birthYears: BirthYearLookup = ContactsBirthYears()) {
+        self.birthYearLookup = birthYears
+    }
 
     /// Created on first real use (an access request, `calendars()`, `fetch` or a repository
     /// write), so nothing creates an `EKEventStore` before the access screen asked. `accessState()`
@@ -82,7 +87,10 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
         #endif
         let fetchedEvents = fetchEvents(in: events)
         let fetchedReminders = try await fetchReminders(in: reminders)
-        return AppleSnapshot(events: fetchedEvents, reminders: fetchedReminders)
+        // Contacts is touched only when the Birthdays calendar has events with a contact link.
+        let contactIDs = BirthYear.contactIDsNeeded(in: fetchedEvents)
+        let years = contactIDs.isEmpty ? [:] : await birthYearLookup.birthYears(forContactIDs: contactIDs)
+        return AppleSnapshot(events: fetchedEvents, reminders: fetchedReminders, birthYears: years)
     }
 
     // MARK: - Events
@@ -120,7 +128,8 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
             // All-day: inclusive last day (see `appleEventEnd`); timed: EventKit's end as is.
             end: appleEventEnd(start: start, end: event.endDate, isAllDay: event.isAllDay, calendar: calendar),
             isAllDay: event.isAllDay,
-            calendar: info(ekCalendar, isReminderList: false))
+            calendar: info(ekCalendar, isReminderList: false),
+            birthdayContactID: event.birthdayContactIdentifier)
     }
 
     // MARK: - Reminders
@@ -189,7 +198,8 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
                           colorHex: hex(calendar.cgColor),
                           isReminderList: isReminderList,
                           isWritable: calendar.allowsContentModifications,
-                          isLocalOnly: calendar.source?.sourceType == .local)
+                          isLocalOnly: calendar.source?.sourceType == .local,
+                          isBirthdayCalendar: calendar.type == .birthday)
     }
 
     /// "#RRGGBB" in sRGB, or nil if the colour cannot be converted.

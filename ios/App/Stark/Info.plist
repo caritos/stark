@@ -6,5 +6,7 @@
 	<string>Stark shows your Apple Calendar events and Reminders in its agenda and saves the items you add, edit, complete or delete in Stark back to Calendar and Reminders. This happens on this device through Apple's own storage; Stark sends nothing anywhere else.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
 	<string>Stark shows your Apple Calendar events and Reminders in its agenda and saves the items you add, edit, complete or delete in Stark back to Calendar and Reminders. This happens on this device through Apple's own storage; Stark sends nothing anywhere else.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Stark reads the birth year of the people in your Birthdays calendar, only to show their age. It is never stored or sent anywhere.</string>
 </dict>
 </plist>
