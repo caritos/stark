@@ -15,7 +15,7 @@ When an iOS Focus (Work, Personal, ...) turns on, Stark shows only the calendars
 - perform() with no set (Focus turned OFF, or a filter with nothing chosen): if something is remembered and the current selection still equals `applied`, restore `before`; if the owner changed calendars by hand meanwhile, leave their choice. Either way forget the memory.
 - A deleted set, no Calendar access or no calendars yet: change nothing and remember nothing.
 - State is device-only UserDefaults (`focusFilter.v1`, JSON `{before, applied}`). It writes the same excluded-id key the app reads (`AppleOverlayModel.Key.excluded`), mirrors it to the widget App Group, reloads widget timelines. The running app re-reads the stored selection when it becomes active, so a stale in-memory selection never overwrites the Focus's change.
-- The default calendar and list (always shown) are the stored ones (`appleWrite.defaultCalendarID/ListID`); if unset the system default is not known inside the intent, and the app's next `sync()` reapplies the active set.
+- The default calendar and list (always shown) are the stored ones (`appleWrite. If the stored default is unset (a fallback is in use) the intent cannot keep that fallback shown; the app keeps it shown at its next launch.
 - Unknown on device: whether iOS runs the intent again with no parameter when the Focus turns off (the docs say the filter is re-run with defaults); the code treats nil that way.
 
 ## Not built

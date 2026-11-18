@@ -56,13 +56,13 @@ nonisolated struct StarkFocusFilter: SetFocusFilterIntent {
 
     func perform() async throws -> some IntentResult {
         let store = FocusFilterStore()
+        let provider = EventKitProvider()
+        // Never prompts: without access (or before any calendar exists) nothing changes.
+        let allIDs = provider.accessState() == .granted ? Set(provider.calendars().map(\.id)) : []
         if let calendarSet {
-            let provider = EventKitProvider()
-            // Never prompts: without access (or before any calendar exists) nothing changes.
-            let allIDs = provider.accessState() == .granted ? Set(provider.calendars().map(\.id)) : []
             store.turnOn(setID: calendarSet.id, allIDs: allIDs)
         } else {
-            store.turnOff()
+            store.turnOff(allIDs: allIDs)
         }
         return .result()
     }

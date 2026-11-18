@@ -49,7 +49,7 @@ nonisolated struct FocusFilterStore {
     }
 
     /// The stored default calendar and list (always shown). When unset the system default is not
-    /// known here; the app's next `CalendarSetsModel.sync()` re-applies the active set.
+    /// known here, so a fallback default calendar is not kept shown until the app next launches.
     var alwaysShown: Set<String> {
         Set([defaults.string(forKey: StoredKeys.defaultCalendar),
              defaults.string(forKey: StoredKeys.defaultList)].compactMap { $0 })
@@ -80,8 +80,9 @@ nonisolated struct FocusFilterStore {
     }
 
     /// The Focus turned off, or its filter has no set chosen.
-    func turnOff() {
-        let result = FocusFilter.turnOff(current: excluded, state: state)
+    func turnOff(allIDs: Set<String>) {
+        let result = FocusFilter.turnOff(current: excluded, state: state, sets: sets, allIDs: allIDs,
+                                         alwaysShown: alwaysShown)
         writeState(result.state)
         if let selection = result.selection, selection != excluded { writeExcluded(selection) }
     }
