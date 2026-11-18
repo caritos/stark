@@ -8,8 +8,9 @@ public enum WidgetRowText {
     public static func time(_ item: WidgetItem, calendar: Calendar = .current,
                             locale: Locale = .autoupdatingCurrent) -> String? {
         if item.isOverdue { return dateText(item.start, calendar: calendar, locale: locale) }
-        if item.isAllDay { return item.isReminder ? nil : "All day" }
-        return clock(item.start, calendar: calendar, locale: locale)
+        if item.isAllDay { return item.isReminder ? nil : (item.isTomorrow ? "Tomorrow" : "All day") }
+        let clockText = clock(item.start, calendar: calendar, locale: locale)
+        return item.isTomorrow ? "Tmrw \(clockText)" : clockText
     }
 
     /// "Event, Team sync, 2:30 PM" / "Reminder, Pay rent, overdue since Jun 1" / "Event, Trip, all day".
@@ -20,8 +21,10 @@ public enum WidgetRowText {
         if item.isOverdue {
             parts.append("overdue since \(dateText(item.start, calendar: calendar, locale: locale))")
         } else if item.isAllDay {
+            if item.isTomorrow { parts.append("tomorrow") }
             parts.append(item.isReminder ? "due today" : "all day")
         } else {
+            if item.isTomorrow { parts.append("tomorrow") }
             parts.append(clock(item.start, calendar: calendar, locale: locale))
         }
         return parts.joined(separator: ", ")

@@ -15,12 +15,14 @@ public struct WidgetItem: Equatable, Identifiable, Sendable {
     public let colorHex: String?
     /// An open reminder due before today (red in the widget, as in the app).
     public let isOverdue: Bool
+    /// An event of tomorrow (the widget says so, so it is not read as today's).
+    public let isTomorrow: Bool
 
     /// The calendar colour as `0xRRGGBB`, nil when unknown.
     public var colorRGB: UInt32? { AppleColor.rgb(colorHex) }
 
     public init(id: String, title: String, isReminder: Bool, isAllDay: Bool, start: Date, end: Date?,
-                colorHex: String?, isOverdue: Bool) {
+                colorHex: String?, isOverdue: Bool, isTomorrow: Bool = false) {
         self.id = id
         self.title = title
         self.isReminder = isReminder
@@ -29,6 +31,7 @@ public struct WidgetItem: Equatable, Identifiable, Sendable {
         self.end = end
         self.colorHex = colorHex
         self.isOverdue = isOverdue
+        self.isTomorrow = isTomorrow
     }
 }
 
@@ -61,12 +64,13 @@ public enum WidgetAgenda {
                 let firstDay = calendar.startOfDay(for: start)
                 guard lastDay >= todayStart, firstDay < windowEnd else { continue }
                 let day = firstDay >= tomorrowStart ? 1 : 0
-                ranked.append(Ranked(item: eventItem(apple, start: max(firstDay, todayStart)), day: day, group: 0))
+                ranked.append(Ranked(item: eventItem(apple, start: max(firstDay, todayStart), tomorrow: day == 1), day: day, group: 0))
             } else {
                 let over = (apple.end.map { $0 > start } ?? false) ? apple.end! : start
                 // A zero-length event is over once it has started; a longer one at its end.
-                guard start < windowEnd, (over > start ? over > now : start >= now) else { continue }
-                ranked.append(Ranked(item: eventItem(apple, start: start), day: start >= tomorrowStart ? 1 : 0, group: 1))
+                guard start < windowEnd, (over > start ? over > now : start > now) else { continue }
+                let isTomorrow = start >= tomorrowStart
+                ranked.append(Ranked(item: eventItem(apple, start: start, tomorrow: isTomorrow), day: isTomorrow ? 1 : 0, group: 1))
             }
         }
 
@@ -102,9 +106,10 @@ public enum WidgetAgenda {
         return shown.map(\.item)
     }
 
-    private static func eventItem(_ apple: AppleCalendarEvent, start: Date) -> WidgetItem {
+    private static func eventItem(_ apple: AppleCalendarEvent, start: Date, tomorrow: Bool) -> WidgetItem {
         WidgetItem(id: "apple-\(apple.id)", title: apple.title, isReminder: false, isAllDay: apple.isAllDay,
-                   start: start, end: apple.end, colorHex: apple.calendar.colorHex, isOverdue: false)
+                   start: start, end: apple.end, colorHex: apple.calendar.colorHex, isOverdue: false,
+                   isTomorrow: tomorrow)
     }
 
     /// When the timeline should next change: the first start or end of a shown timed item after

@@ -99,6 +99,18 @@ import Testing
         #expect(items(reminders: old, limit: 3).map(\.id) == ["apple-o1", "apple-o2", "apple-o3"])
     }
 
+    @Test func tomorrowsItemsAreMarkedTomorrow() {
+        let out = items(events: [event("today", date(15, 18), date(15, 19)),
+                                 event("tom", date(16, 9), date(16, 10)),
+                                 event("tomAll", date(16), date(16), allDay: true)])
+        #expect(out.map(\.isTomorrow) == [false, true, true])
+    }
+
+    @Test func zeroLengthEventStartingExactlyNowIsDropped() {
+        #expect(items(events: [event("z", now, now)]).isEmpty)
+        #expect(items(events: [event("z", date(15, 10, 1), date(15, 10, 1))]).count == 1)
+    }
+
     @Test func reminderDueEarlierTodayIsNotOverdue() {
         let out = items(reminders: [reminder("r", due: date(15, 8))])
         #expect(out.count == 1 && !out[0].isOverdue && out[0].isReminder)

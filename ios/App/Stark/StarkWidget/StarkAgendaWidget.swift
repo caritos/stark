@@ -7,7 +7,10 @@ import WidgetKit
 /// entry says to open Stark.
 enum AgendaState {
     case needsAccess
-    case items([WidgetItem])
+    /// The fetch failed: say so instead of showing an empty day.
+    case failed
+    /// The rows for each family, cut separately so the overdue cap applies to what is shown.
+    case items(small: [WidgetItem], medium: [WidgetItem])
 }
 
 struct AgendaEntry: TimelineEntry {
@@ -28,7 +31,7 @@ struct AgendaProvider: TimelineProvider {
             WidgetItem(id: "p3", title: "Lunch", isReminder: false, isAllDay: false,
                        start: now.addingTimeInterval(7200), end: nil, colorHex: nil, isOverdue: false),
         ]
-        return AgendaEntry(date: now, state: .items(sample))
+        return AgendaEntry(date: now, state: .items(small: sample, medium: sample))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (AgendaEntry) -> Void) {
@@ -39,9 +42,11 @@ struct AgendaProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<AgendaEntry>) -> Void) {
         Task {
             let list = await entries()
-            let end = list.last?.date ?? Date()
-            // Reload at the last entry (or in an hour when only one): the fetch window is two days.
-            let reload = list.count > 1 ? end : Date().addingTimeInterval(3600)
+            let now = Date()
+            // Fetch again within the hour, or at the last entry if that comes first: changes made in
+            // Calendar or Reminders (or on another device) reach the widget at least hourly.
+            let hour = now.addingTimeInterval(3600)
+            let reload = list.count > 1 ? min(list.last?.date ?? hour, hour) : hour
             completion(Timeline(entries: list, policy: .after(reload)))
         }
     }
@@ -61,14 +66,16 @@ struct AgendaProvider: TimelineProvider {
             // Completed reminders are not shown, so the completed window is empty.
             snapshot = try await provider.fetch(events: start...end, reminders: now...now)
         } catch {
-            return [AgendaEntry(date: now, state: .items([]))]
+            return [AgendaEntry(date: now, state: .failed)]
         }
         let dates = WidgetAgenda.timelineDates(events: snapshot.events, reminders: snapshot.reminders,
                                                excluded: excluded, now: now, calendar: calendar)
         return dates.map { date in
-            AgendaEntry(date: date, state: .items(
+            func rows(_ limit: Int) -> [WidgetItem] {
                 WidgetAgenda.items(events: snapshot.events, reminders: snapshot.reminders, excluded: excluded,
-                                   now: date, limit: 5, calendar: calendar)))
+                                   now: date, limit: limit, calendar: calendar)
+            }
+            return AgendaEntry(date: date, state: .items(small: rows(3), medium: rows(5)))
         }
     }
 }
@@ -89,11 +96,17 @@ struct AgendaWidgetView: View {
                 .font(.footnote)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .items(let items):
+        case .failed:
+            Text("Couldn't read your calendar")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .items(let small, let medium):
             if family == .systemMedium {
-                MediumView(date: entry.date, items: Array(items.prefix(5)))
+                MediumView(date: entry.date, items: medium)
             } else {
-                SmallView(items: Array(items.prefix(3)))
+                SmallView(items: small)
             }
         }
     }
@@ -159,6 +172,7 @@ private struct MediumView: View {
 private struct RowView: View {
     let item: WidgetItem
     let stacked: Bool
+    @ScaledMetric(relativeTo: .caption2) private var timeWidth: CGFloat = 64
 
     private var tint: Color {
         if item.isOverdue { return .red }
@@ -178,7 +192,7 @@ private struct RowView: View {
             } else {
                 // The column is always reserved so titles line up when a row has no time.
                 Group { if let time { timeText(time) } else { Color.clear } }
-                    .frame(width: 52, alignment: .leading)
+                    .frame(width: timeWidth, alignment: .leading)
                 title
             }
         }
@@ -198,6 +212,7 @@ private struct RowView: View {
         Text(item.title.isEmpty ? "Untitled" : item.title)
             .font(.caption.weight(.medium))
             .lineLimit(1)
+            .privacySensitive()
             .foregroundStyle(item.isOverdue ? Color.red : Color.primary)
     }
 
@@ -226,5 +241,6 @@ struct StarkAgendaWidget: Widget {
         .configurationDisplayName("Up Next")
         .description("Your next events and reminders.")
         .supportedFamilies([.systemSmall, .systemMedium])
+        .disfavoredLocations([.standBy], for: [.systemSmall])
     }
 }

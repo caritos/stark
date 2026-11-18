@@ -14,9 +14,20 @@ import Testing
         Self.cal.date(from: DateComponents(year: 2026, month: month, day: day, hour: h, minute: m))!
     }
 
-    private func item(reminder: Bool = false, allDay: Bool = false, overdue: Bool = false, start: Date? = nil) -> WidgetItem {
+    private func item(reminder: Bool = false, allDay: Bool = false, overdue: Bool = false, start: Date? = nil,
+                      tomorrow: Bool = false) -> WidgetItem {
         WidgetItem(id: "x", title: "Title", isReminder: reminder, isAllDay: allDay, start: start ?? d(15, 14, 30),
-                   end: nil, colorHex: nil, isOverdue: overdue)
+                   end: nil, colorHex: nil, isOverdue: overdue, isTomorrow: tomorrow)
+    }
+
+    @Test func tomorrowsItemsSayTomorrow() {
+        let timed = WidgetRowText.time(item(tomorrow: true), calendar: Self.cal, locale: us)
+        #expect(timed?.hasPrefix("Tmrw") == true && timed?.contains("2:30") == true)
+        #expect(WidgetRowText.time(item(allDay: true, tomorrow: true), calendar: Self.cal, locale: us) == "Tomorrow")
+        let label = WidgetRowText.accessibilityLabel(item(tomorrow: true), calendar: Self.cal, locale: us)
+        #expect(label.contains("tomorrow"))
+        let allDay = WidgetRowText.accessibilityLabel(item(allDay: true, tomorrow: true), calendar: Self.cal, locale: us)
+        #expect(allDay == "Event, Title, tomorrow, all day")
     }
 
     @Test func timedEventShowsTheClockTime() {
