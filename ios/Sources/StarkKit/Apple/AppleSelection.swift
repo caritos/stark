@@ -23,6 +23,7 @@ public struct AppleSelection: Equatable, Sendable {
     public func filtered(_ snapshot: AppleSnapshot) -> AppleSnapshot {
         AppleSnapshot(
             events: snapshot.events.filter { isShown($0.calendar.id) },
-            reminders: snapshot.reminders.filter { isShown($0.calendar.id) })
+            reminders: snapshot.reminders.filter { isShown($0.calendar.id) },
+            birthYears: snapshot.birthYears)
     }
 }
