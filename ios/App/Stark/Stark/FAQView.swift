@@ -45,7 +45,7 @@ struct FAQView: View {
             answer: """
             In Add, type a phrase such as "Lunch with Sarah at 1pm tomorrow", "Pay rent every \
             month" or "Remind me to call the bank Friday". It also understands time ranges such \
-            as 1-2pm ("Lunch tomorrow 1-2pm"), "this Friday" and "next Friday", and "every \
+            as 1-2pm ("Lunch tomorrow 1-2pm"), "this Friday" and "next Friday" (that day in next week), and "every \
             weekday" or "every weekend". When Stark recognises a date, time, \
             repeat or reminder in it, a suggestion appears under the title. Tap the suggestion to \
             apply it; Stark never fills in a date by itself. It works on your device only, in \
