@@ -45,9 +45,9 @@ struct FAQView: View {
             answer: """
             In Add, fill in a form the way you like it (title, length, all day, repeat, notes, \
             URL or priority) and tap "Save as Template...". Next time, tap Templates and pick \
-            one to fill the form; swipe a template to delete it. A template never includes the \
+            one to fill the form; swipe a template to delete it. A template keeps the details, never the \
             date or time, so the form keeps the one it shows, and nothing is saved until you tap \
-            Add. Templates stay on this device only: nothing is sent anywhere and they do not sync.
+            Add. A template stays on this device only: nothing is sent anywhere and it does not sync.
             """
         ),
         Entry(
