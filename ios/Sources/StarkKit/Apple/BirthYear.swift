@@ -8,6 +8,11 @@ public enum BirthYear {
         guard let year = components?.year, year >= 1900 else { return nil }
         return year
     }
+
+    /// Contact ids of the Birthdays calendar's events. Empty means Contacts must not be touched.
+    public static func contactIDsNeeded(in events: [AppleCalendarEvent]) -> Set<String> {
+        Set(events.compactMap { $0.calendar.isBirthdayCalendar ? $0.birthdayContactID : nil })
+    }
 }
 
 /// Looks up birth years in Contacts. Returns `[:]` when access is missing; never throws.
