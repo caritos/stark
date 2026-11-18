@@ -358,4 +358,134 @@ struct QuickAddParserTests {
         #expect(at.title == "Coffee")
         #expect(at.start == Self.date(c, 2026, 11, 19, 17, 0))
     }
+
+    // MARK: - Second round
+
+    @Test("time ranges", arguments: zones)
+    func ranges(zone: String) throws {
+        let c = Self.calendar(zone)
+        let lunch = try #require(Self.parse("Lunch tomorrow 1-2pm", zone))
+        #expect(lunch.title == "Lunch")
+        #expect(lunch.start == Self.date(c, 2026, 11, 19, 13, 0))
+        #expect(lunch.end == Self.date(c, 2026, 11, 19, 14, 0))
+        #expect(lunch.hasTime)
+        #expect(lunch.summary == "Tomorrow, 1:00 PM to 2:00 PM")
+        let meet = try #require(Self.parse("Meeting tomorrow 11-1pm", zone))
+        #expect(meet.start == Self.date(c, 2026, 11, 19, 11, 0))
+        #expect(meet.end == Self.date(c, 2026, 11, 19, 13, 0))
+        let cls = try #require(Self.parse("Class tomorrow 9am-10:30am", zone))
+        #expect(cls.title == "Class")
+        #expect(cls.start == Self.date(c, 2026, 11, 19, 9, 0))
+        #expect(cls.end == Self.date(c, 2026, 11, 19, 10, 30))
+        let words = try #require(Self.parse("Sync tomorrow from 1pm to 2pm", zone))
+        #expect(words.title == "Sync")
+        #expect(words.start == Self.date(c, 2026, 11, 19, 13, 0))
+        #expect(words.end == Self.date(c, 2026, 11, 19, 14, 0))
+        let to = try #require(Self.parse("Sync tomorrow 1 to 2pm", zone))
+        #expect(to.end == Self.date(c, 2026, 11, 19, 14, 0))
+        let until = try #require(Self.parse("Sync tomorrow 9am until 10:30am", zone))
+        #expect(until.end == Self.date(c, 2026, 11, 19, 10, 30))
+        let h24 = try #require(Self.parse("Review tomorrow 13:00-14:30", zone))
+        #expect(h24.start == Self.date(c, 2026, 11, 19, 13, 0))
+        #expect(h24.end == Self.date(c, 2026, 11, 19, 14, 30))
+        let noDay = try #require(Self.parse("Standup 10-10:30am", zone))
+        // 10:00 today has passed at 09:30? No: 10:00 is ahead, so today.
+        #expect(noDay.start == Self.date(c, 2026, 11, 18, 10, 0))
+        #expect(noDay.end == Self.date(c, 2026, 11, 18, 10, 30))
+        let both = try #require(Self.parse("Dinner on friday 7-9pm for 2 hours", zone))
+        #expect(both.title == "Dinner")
+        #expect(both.start == Self.date(c, 2026, 11, 20, 19, 0))
+        #expect(both.end == Self.date(c, 2026, 11, 20, 21, 0))
+    }
+
+    @Test("things that are not ranges", arguments: zones)
+    func notRanges(zone: String) throws {
+        let c = Self.calendar(zone)
+        for text in ["Call 3-4", "Chapter 3-4", "Read pages 3-4", "Meet 3 to 4", "John 3:16-18"] {
+            #expect(Self.parse(text, zone) == nil, "\(text)")
+        }
+        let flight = try #require(Self.parse("Flight tomorrow 6pm-5pm", zone))
+        #expect(flight.end == nil)
+        #expect(flight.start == Self.date(c, 2026, 11, 19, 18, 0))
+        let bad = try #require(Self.parse("Call tomorrow 13pm-14pm", zone))
+        #expect(bad.end == nil)
+        #expect(!bad.hasTime)
+        let tomorrow = try #require(Self.parse("Chapter 3-4 tomorrow", zone))
+        #expect(tomorrow.title == "Chapter 3-4")
+        #expect(!tomorrow.hasTime)
+    }
+
+    @Test("this and next weekday on a Wednesday", arguments: zones)
+    func nextWeekdayWednesday(zone: String) throws {
+        let c = Self.calendar(zone)
+        #expect(try #require(Self.parse("Dentist this friday", zone)).start == Self.date(c, 2026, 11, 20))
+        #expect(try #require(Self.parse("Dentist next friday", zone)).start == Self.date(c, 2026, 11, 27))
+        #expect(try #require(Self.parse("Dentist this wednesday", zone)).start == Self.date(c, 2026, 11, 18))
+        #expect(try #require(Self.parse("Dentist next wednesday", zone)).start == Self.date(c, 2026, 11, 25))
+        #expect(try #require(Self.parse("Dentist next monday", zone)).start == Self.date(c, 2026, 11, 23))
+        #expect(try #require(Self.parse("Dentist on friday", zone)).start == Self.date(c, 2026, 11, 20))
+        #expect(try #require(Self.parse("Dentist on wednesday", zone)).start == Self.date(c, 2026, 11, 25))
+        let t = try #require(Self.parse("Dentist next friday at 3pm", zone))
+        #expect(t.title == "Dentist")
+        #expect(t.start == Self.date(c, 2026, 11, 27, 15, 0))
+    }
+
+    @Test("this and next weekday on a Friday and a Sunday", arguments: zones)
+    func nextWeekdayOtherDays(zone: String) throws {
+        let c = Self.calendar(zone)
+        let friday = Self.date(c, 2026, 11, 20, 9, 30)
+        #expect(try #require(Self.parse("Dentist this friday", zone, now: friday)).start == Self.date(c, 2026, 11, 20))
+        #expect(try #require(Self.parse("Dentist next friday", zone, now: friday)).start == Self.date(c, 2026, 11, 27))
+        #expect(try #require(Self.parse("Dentist on friday", zone, now: friday)).start == Self.date(c, 2026, 11, 27))
+        let sunday = Self.date(c, 2026, 11, 22, 9, 30)
+        #expect(try #require(Self.parse("Dentist this friday", zone, now: sunday)).start == Self.date(c, 2026, 11, 27))
+        #expect(try #require(Self.parse("Dentist next friday", zone, now: sunday)).start == Self.date(c, 2026, 11, 27))
+        #expect(try #require(Self.parse("Dentist next monday", zone, now: sunday)).start == Self.date(c, 2026, 11, 23))
+    }
+
+    @Test("next weekday across the DST change")
+    func nextWeekdayDST() throws {
+        let c = Self.calendar("America/New_York")
+        // Wednesday 2026-10-28; clocks fall back on Sunday 11/1.
+        let now = Self.date(c, 2026, 10, 28, 9, 30)
+        let s = try #require(Self.parse("Dentist next friday at 3pm", "America/New_York", now: now))
+        #expect(s.start == Self.date(c, 2026, 11, 6, 15, 0))
+        let t = try #require(Self.parse("Dentist this sunday", "America/New_York", now: now))
+        #expect(t.start == Self.date(c, 2026, 11, 1))
+    }
+
+    @Test("every weekday and every weekend", arguments: zones)
+    func weekdayRepeats(zone: String) throws {
+        let c = Self.calendar(zone)
+        let stand = try #require(Self.parse("Standup every weekday at 9am", zone))
+        #expect(stand.title == "Standup")
+        #expect(stand.recurrence == RecurrenceRule(frequency: .weekly,
+                                                   byDay: [.monday, .tuesday, .wednesday, .thursday, .friday]))
+        // Wednesday 9:00 has passed at 9:30: the next weekday is Thursday.
+        #expect(stand.start == Self.date(c, 2026, 11, 19, 9, 0))
+        #expect(stand.hasTime)
+        let trash = try #require(Self.parse("Trash every weekend", zone))
+        #expect(trash.title == "Trash")
+        #expect(trash.recurrence == RecurrenceRule(frequency: .weekly, byDay: [.saturday, .sunday]))
+        #expect(trash.start == Self.date(c, 2026, 11, 21))
+        #expect(!trash.hasTime)
+        let plural = try #require(Self.parse("Gym every weekdays", zone))
+        #expect(plural.recurrence?.byDay?.count == 5)
+        for text in ["Weekdays only", "Open weekdays 9am", "Weekend plans"] {
+            #expect(Self.parse(text, zone)?.recurrence == nil, "\(text)")
+        }
+    }
+
+    @Test("a range works under other calendars and next friday too", arguments: [Calendar.Identifier.buddhist, .hebrew])
+    func rangeOtherCalendars(id: Calendar.Identifier) throws {
+        let g = Self.calendar("America/New_York")
+        var other = Calendar(identifier: id)
+        other.timeZone = g.timeZone
+        other.locale = Locale(identifier: "en_US")
+        let s = try #require(QuickAddParser.parse("Lunch tomorrow 1-2pm", now: Self.now(g), calendar: other))
+        #expect(s.start == Self.date(g, 2026, 11, 19, 13, 0))
+        #expect(s.end == Self.date(g, 2026, 11, 19, 14, 0))
+        let n = try #require(QuickAddParser.parse("Dentist next friday", now: Self.now(g), calendar: other))
+        #expect(n.start == Self.date(g, 2026, 11, 27))
+    }
 }

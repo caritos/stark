@@ -95,13 +95,23 @@ public enum QuickAddParser {
         }
 
         let snapshot = work.text
-        var clock = parseTime(&work)
+        var endClock: (hour: Int, minute: Int)?
+        var clock: (hour: Int, minute: Int)?
+        let rejectionsAtStart = work.rejections
+        if let range = parseRange(&work) {
+            clock = range.start
+            endClock = range.end
+        }
+        // A refused range ("6pm-5pm") is not a date-looking token.
+        work.rejections = rejectionsAtStart
+        if clock == nil { clock = parseTime(&work) }
         let rejectionsBefore = work.rejections
         let day = parseDay(&work, today: today, calendar: calendar)
         if day == nil && work.rejections > rejectionsBefore {
             // A date-looking token was refused ("1/2 gallon"): do not let a time pick the day.
             work.text = snapshot
             clock = nil
+            endClock = nil
         }
         if recurrence == nil { recurrence = parseTrailingRepeat(&work) }
 
@@ -126,11 +136,18 @@ public enum QuickAddParser {
         }
 
         var end: Date?
-        if hasTime, let start,
-           let m = work.remove(#"\bfor\s+(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)\b"#) {
-            let value = Double(m[1])!
-            let seconds = m[2].lowercased().hasPrefix("h") ? value * 3600 : value * 60
-            end = start.addingTimeInterval(seconds)
+        var rangeEnd: Date?
+        if hasTime, let start {
+            // A duration phrase is always consumed; an explicit range wins over it.
+            if let m = work.remove(#"\bfor\s+(\d+(?:\.\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m)\b"#) {
+                let value = Double(m[1])!
+                let seconds = m[2].lowercased().hasPrefix("h") ? value * 3600 : value * 60
+                end = start.addingTimeInterval(seconds)
+            }
+            if let endClock {
+                end = at(calendar.startOfDay(for: start), endClock, calendar)
+                rangeEnd = end
+            }
         }
 
         let title = work.cleanedTitle
@@ -138,7 +155,7 @@ public enum QuickAddParser {
 
         return QuickAddSuggestion(
             title: title, start: start, hasTime: hasTime, end: end, recurrence: recurrence, kind: kind,
-            summary: summary(start: start, hasTime: hasTime, recurrence: recurrence, kind: kind,
+            summary: summary(start: start, hasTime: hasTime, rangeEnd: rangeEnd, recurrence: recurrence, kind: kind,
                              now: now, calendar: calendar))
     }
 
@@ -160,6 +177,11 @@ public enum QuickAddParser {
 
     private static func parseRecurrence(_ work: inout Work) -> RecurrenceRule? {
         let list = "(?:\(weekdayWord))"
+        if let m = work.remove(#"\bevery\s+(weekday|weekend)s?\b"#) {
+            let days: [Weekday] = m[1].lowercased() == "weekday"
+                ? [.monday, .tuesday, .wednesday, .thursday, .friday] : [.saturday, .sunday]
+            return RecurrenceRule(frequency: .weekly, byDay: days)
+        }
         if let m = work.remove(#"\bevery\s+(\#(list)(?:\s*(?:,|and|&)\s*\#(list))*)\b"#) {
             var days: [Weekday] = []
             for word in m[1].lowercased().split(whereSeparator: { !$0.isLetter }) where word != "and" {
@@ -199,6 +221,47 @@ public enum QuickAddParser {
     }
 
     // MARK: - Time
+
+    /// "1-2pm", "1pm-2pm", "1 to 2pm", "from 1pm to 2pm", "13:00-14:30", "9am until 10:30am".
+    /// It needs a clock cue (am/pm, or h:mm on both sides with "at"/"from"/"@" or two-digit
+    /// hours), so "Call 3-4" and "Chapter 3-4" stay text. A missing meridiem takes the other
+    /// side's, and the reading must end after it starts; otherwise the text is left alone.
+    private struct ClockRange {
+        var start: (hour: Int, minute: Int)
+        var end: (hour: Int, minute: Int)
+    }
+
+    private static func parseRange(_ work: inout Work) -> ClockRange? {
+        let t = #"(\d{1,2})(?::([0-5]\d))?\s*(am|pm|a\.m\.|p\.m\.)?"#
+        let sep = #"\s*(?:-|\x{2013}|\x{2014}|\bto\b|\buntil\b|\btill\b)\s*"#
+        let pattern = #"(?<![\d:/.])(?:\b(at|from)\s+|(@)\s*)?"# + t + sep + t + #"(?![\d:a-z])"#
+        return work.remove(pattern) { m -> ClockRange? in
+            let lead = !(m[1] + m[2]).isEmpty
+            let (h1, m1, a1) = (Int(m[3])!, Int(m[4]), m[5].lowercased())
+            let (h2, m2, a2) = (Int(m[6])!, Int(m[7]), m[8].lowercased())
+            if a1.isEmpty && a2.isEmpty {
+                // 24 hour reading: colons on both sides, a lead word or two-digit hours.
+                guard let m1, let m2, lead || (m[3].count == 2 && m[6].count == 2), h1 < 24, h2 < 24 else { return nil }
+                let s = h1 * 60 + m1, e = h2 * 60 + m2
+                return s < e ? ClockRange(start: (h1, m1), end: (h2, m2)) : nil
+            }
+            func minutes(_ hour: Int, _ minute: Int?, pm: Bool) -> Int? {
+                guard (1...12).contains(hour) else { return nil }
+                return (hour % 12 + (pm ? 12 : 0)) * 60 + (minute ?? 0)
+            }
+            let startFixed: Bool? = a1.isEmpty ? nil : a1.hasPrefix("p")
+            let endFixed: Bool? = a2.isEmpty ? nil : a2.hasPrefix("p")
+            let startOptions = startFixed.map { [$0] } ?? [endFixed!, !endFixed!]
+            let endOptions = endFixed.map { [$0] } ?? [startFixed!, !startFixed!]
+            for sp in startOptions {
+                for ep in endOptions {
+                    guard let s = minutes(h1, m1, pm: sp), let e = minutes(h2, m2, pm: ep), s < e else { continue }
+                    return ClockRange(start: (s / 60, s % 60), end: (e / 60, e % 60))
+                }
+            }
+            return nil
+        }
+    }
 
     private static func parseTime(_ work: inout Work) -> (hour: Int, minute: Int)? {
         let lead = #"(?:\bat\s+|@\s*)"#
@@ -245,12 +308,17 @@ public enum QuickAddParser {
         if let m = work.remove(#"\bnext\s+(week|month)\b"#) {
             return m[1].lowercased() == "week" ? plus(7) : calendar.date(byAdding: .month, value: 1, to: today)
         }
-        if let m = work.remove(#"\b(?:(?:on|by|before)\s+(?:(?:this|next)\s+)?|(?:this|next)\s+)(\#(fullWeekday))\b"#) {
-            let target = weekdayFromPrefix(m[1].lowercased())!.rawValue + 1
+        if let m = work.remove(#"\b(?:(?:on|by|before)\s+(this\s+|next\s+)?|(this\s+|next\s+))(\#(fullWeekday))\b"#) {
+            let target = weekdayFromPrefix(m[3].lowercased())!.rawValue + 1
             let current = calendar.component(.weekday, from: today)
-            var delta = (target - current + 7) % 7
-            if delta == 0 { delta = 7 }
-            return plus(delta)
+            let modifier = (m[1] + m[2]).trimmingCharacters(in: .whitespaces).lowercased()
+            if modifier == "this" { return plus((target - current + 7) % 7) }
+            // The coming one, strictly after today (1...7 days).
+            let coming = (target - current + 6) % 7 + 1
+            guard modifier == "next" else { return plus(coming) }
+            // "next friday" skips a Friday that is still in this (Monday to Sunday) week.
+            let mondayIndex = (current + 5) % 7
+            return plus(mondayIndex + coming <= 6 ? coming + 7 : coming)
         }
         let a = work.remove(monthLead + #"\b(\#(monthWord))\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?!\s*(?::|am\b|pm\b))(?:,?\s+(\d{4})\b)?"#) { m -> Date? in
             guard mayOK(m[0], m[1]) else { return nil }
@@ -296,7 +364,7 @@ public enum QuickAddParser {
 
     // MARK: - Summary
 
-    private static func summary(start: Date?, hasTime: Bool, recurrence: RecurrenceRule?,
+    private static func summary(start: Date?, hasTime: Bool, rangeEnd: Date?, recurrence: RecurrenceRule?,
                                 kind: AppleItemRef.Kind?, now: Date, calendar: Calendar) -> String {
         var parts: [String] = []
         if kind == .reminder { parts.append("Reminder") }
@@ -315,7 +383,11 @@ public enum QuickAddParser {
                 // The pattern follows the locale's 12 or 24 hour setting ("h:mm a" or "HH:mm").
                 let pattern = DateFormatter.dateFormat(fromTemplate: "jm", options: 0,
                                                        locale: calendar.locale ?? .current) ?? "h:mm a"
-                label += " at " + format(start, pattern, calendar)
+                if let rangeEnd {
+                    label += ", " + format(start, pattern, calendar) + " to " + format(rangeEnd, pattern, calendar)
+                } else {
+                    label += " at " + format(start, pattern, calendar)
+                }
             }
             parts.append(label)
         }
