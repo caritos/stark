@@ -38,11 +38,7 @@ public func mergeAppleItems(
     var ownRows: [AgendaItem] = []
     var spillRows: [AgendaItem] = []
     for apple in snapshot.events {
-        let source = AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
-                                 colorHex: apple.calendar.colorHex, isReminder: false,
-                                 isWritable: apple.calendar.isWritable,
-                                 isBirthday: apple.calendar.isBirthdayCalendar,
-                                 birthYear: apple.birthdayContactID.flatMap { snapshot.birthYears[$0] })
+        let source = appleEventSource(apple, birthYears: snapshot.birthYears)
         let event = Event(id: "apple-\(apple.id)", title: apple.title, notes: apple.notes, start: apple.start,
                           end: apple.end, isAllDay: apple.isAllDay, location: apple.location, url: apple.url)
         // An end exactly at midnight is exclusive: measure the span to the last instant before it.
@@ -83,6 +79,18 @@ public func mergeAppleItems(
     }
 
     return sortAgendaItems(merged, calendar: calendar)
+}
+
+/// The `AppleSource` of one Apple event, shared by the agenda merge and Search so both carry the
+/// same fields (birthday, join link, time zone).
+func appleEventSource(_ apple: AppleCalendarEvent, birthYears: [String: Int]) -> AppleSource {
+    AppleSource(calendarID: apple.calendar.id, calendarTitle: apple.calendar.title,
+                colorHex: apple.calendar.colorHex, isReminder: false,
+                isWritable: apple.calendar.isWritable,
+                isBirthday: apple.calendar.isBirthdayCalendar,
+                birthYear: apple.birthdayContactID.flatMap { birthYears[$0] },
+                conferenceLink: ConferenceLinkDetector.detect(url: apple.url, location: apple.location, notes: apple.notes),
+                timeZoneID: apple.timeZoneID)
 }
 
 /// The synthetic `Reminder` (id `apple-<id>`, no recurrence) and its `AppleSource` for one Apple

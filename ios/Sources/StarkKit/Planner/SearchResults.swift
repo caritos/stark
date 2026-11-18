@@ -54,11 +54,7 @@ public enum SearchResults {
         for item in representativeAppleEvents(matching, today: today) {
             let event = Event(id: "apple-\(item.id)", title: item.title, notes: item.notes, start: item.start, end: item.end,
                               isAllDay: item.isAllDay, location: item.location, url: item.url)
-            let source = AppleSource(calendarID: item.calendar.id, calendarTitle: item.calendar.title,
-                                     colorHex: item.calendar.colorHex, isReminder: false,
-                                     isWritable: item.calendar.isWritable,
-                                     isBirthday: item.calendar.isBirthdayCalendar,
-                                     birthYear: item.birthdayContactID.flatMap { apple.birthYears[$0] })
+            let source = appleEventSource(item, birthYears: apple.birthYears)
             results.append(AgendaItem(kind: .event(event), occurrence: item.start, displayDate: item.start, isOverdue: false, appleSource: source))
         }
         for item in apple.reminders {

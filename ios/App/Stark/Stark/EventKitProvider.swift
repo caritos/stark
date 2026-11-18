@@ -123,7 +123,9 @@ nonisolated final class EventKitProvider: AppleItemProvider, @unchecked Sendable
             end: appleEventEnd(start: start, end: event.endDate, isAllDay: event.isAllDay, calendar: calendar),
             isAllDay: event.isAllDay,
             calendar: info(ekCalendar, isReminderList: false),
-            birthdayContactID: event.birthdayContactIdentifier)
+            birthdayContactID: event.birthdayContactIdentifier,
+            // A floating event (no zone) and an all-day one have no zone to show.
+            timeZoneID: event.isAllDay ? nil : event.timeZone?.identifier)
     }
 
     // MARK: - Reminders

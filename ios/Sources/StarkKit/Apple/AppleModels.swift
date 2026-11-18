@@ -48,10 +48,17 @@ public struct AppleSource: Equatable, Sendable {
     public let isBirthday: Bool
     /// The contact's birth year, when known (`AppleSnapshot.birthYears`).
     public let birthYear: Int?
+    /// A video-call link found in the event's URL, location or notes (events only).
+    public let conferenceLink: ConferenceLink?
+    /// `EKEvent.timeZone` identifier; nil for floating and all-day events and reminders.
+    public let timeZoneID: String?
 
     public init(calendarID: String, calendarTitle: String, colorHex: String?, isReminder: Bool,
                 url: String? = nil, isWritable: Bool = true, isRecurringSeries: Bool = false,
-                isBirthday: Bool = false, birthYear: Int? = nil) {
+                isBirthday: Bool = false, birthYear: Int? = nil,
+                conferenceLink: ConferenceLink? = nil, timeZoneID: String? = nil) {
+        self.conferenceLink = conferenceLink
+        self.timeZoneID = timeZoneID
         self.isBirthday = isBirthday
         self.birthYear = birthYear
         self.isRecurringSeries = isRecurringSeries
@@ -76,10 +83,13 @@ public struct AppleCalendarEvent: Equatable, Sendable {
     public let calendar: AppleCalendarInfo
     /// Contacts identifier of a Birthdays-calendar event's person, nil elsewhere.
     public let birthdayContactID: String?
+    /// `EKEvent.timeZone` identifier; nil for a floating or all-day event.
+    public let timeZoneID: String?
 
     public init(id: String, title: String, notes: String?, location: String?, url: String?,
                 start: Date, end: Date?, isAllDay: Bool, calendar: AppleCalendarInfo,
-                birthdayContactID: String? = nil) {
+                birthdayContactID: String? = nil, timeZoneID: String? = nil) {
+        self.timeZoneID = timeZoneID
         self.birthdayContactID = birthdayContactID
         self.id = id
         self.title = title
