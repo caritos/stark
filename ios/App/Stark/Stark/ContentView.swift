@@ -16,6 +16,7 @@ import StarkKit
 struct ContentView: View {
     @EnvironmentObject private var pending: PendingCompletions
     @Environment(AppleOverlayModel.self) private var overlay
+    @Environment(WeatherModel.self) private var weather
     @Environment(DefaultDestinationModel.self) private var destinations
     @Environment(NoticeCenter.self) private var notices
     @Environment(ErrorCenter.self) private var errors
@@ -243,6 +244,8 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 overlay.forgetMissingBirthYears()
+                // A no-op (no location, no network) while Weather is off.
+                Task { await weather.refreshIfNeeded() }
                 Task { await overlay.refresh(today: today) }
                 followCalendarDay()
             } else {

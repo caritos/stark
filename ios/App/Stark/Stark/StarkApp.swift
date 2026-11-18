@@ -22,6 +22,9 @@ struct StarkApp: App {
     @State private var notices = NoticeCenter()
     /// The main screen's error banner (Apple write, plan-read and pending-commit failures).
     @State private var errors: ErrorCenter
+    /// The optional weather forecast (Settings > Weather). OFF by default: no location prompt and no
+    /// network call until the owner turns it on.
+    @State private var weather: WeatherModel
     /// The one EventKit repository, sidecar and router (Apple write path). Every view write goes
     /// through the router.
     private let repository: AppleItemRepository
@@ -57,6 +60,8 @@ struct StarkApp: App {
             await planCache?.refresh()
         }
         self.router = router
+        _weather = State(initialValue: WeatherModel(location: LocationProvider(),
+                                                    calendar: Calendar(identifier: .gregorian)))
         // Through the router to EventKit with the OCCURRENCE's own date (the repository ignores a
         // repeating reminder already past that day, so a double tap never completes the next
         // one); a non-Apple id is refused (`.notApple`). The row stays pending until the write and
@@ -79,6 +84,7 @@ struct StarkApp: App {
                 .environment(planCache)
                 .environment(notices)
                 .environment(errors)
+                .environment(weather)
                 .environment(\.itemRouter, router)
                 #if targetEnvironment(macCatalyst)
                 .frame(minWidth: 480, minHeight: 520)

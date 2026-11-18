@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(\.openURL) private var openURL
     @State private var showFAQ = false
     @State private var showReview = false
+    @Environment(WeatherModel.self) private var weather
     @AppStorage(SigilKeyboardSetting.key) private var sigilKeyboardBar = SigilKeyboardSetting.defaultValue
 
     // Read from the bundle, not hardcoded, so these can never drift from the actual build
@@ -47,6 +48,25 @@ struct SettingsView: View {
                         .foregroundStyle(Colors.text)
                 } header: {
                     Text("Apple")
+                }
+                .listRowBackground(Colors.card)
+
+                Section {
+                    Toggle("Show weather", isOn: Binding(
+                        get: { weather.isEnabled },
+                        set: { on in Task { await weather.setEnabled(on) } }))
+                        .foregroundStyle(Colors.text)
+                } header: {
+                    Text("Weather")
+                } footer: {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        if let status = weather.statusMessage {
+                            Text(status)
+                        }
+                        Text("Off by default. When on, Stark sends an approximate location (rounded to about 11 km) and nothing else to MET Norway to show a forecast in the day headers. It is never stored. Forecast data from MET Norway.")
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(Colors.textSecondary)
                 }
                 .listRowBackground(Colors.card)
 

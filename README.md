@@ -14,9 +14,10 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
 - **Search** titles, notes and locations, plus tag suggestions for `+project`, `@context`, `%label` and `~person`.
 - **Plan your day**: drag tasks onto a timeline as time blocks; a Weekly Review of what got done.
 - **Private.** Events and to-dos live in Apple Calendar and Reminders (Apple syncs them through iCloud if you use it);
-  Stark itself makes no network connection. Items made in Stark before it saved to Apple Calendar and Reminders
+  Stark makes no network connection unless you switch on the optional weather forecast (see Weather). Items made in Stark before it saved to Apple Calendar and Reminders
   were kept in `.ics` files in the app's Documents folder; Stark no longer reads them, and they stay there untouched
   until the app is deleted. No account, no subscription.
+- **Weather** (optional, off by default): Settings > Show weather puts a forecast glyph and high/low in the agenda day headers, from MET Norway's public service. Only an approximate location rounded to about 11 km is sent, nothing else, and it is never stored.
 - **Quick add**: type "Lunch with Sarah at 1pm tomorrow" in Add and tap the suggestion to fill in the date, time,
   repeat and kind (English, on the device, never applied automatically).
 - **Birthdays**: events on Apple's Birthdays calendar show a cake and, if you allow optional read-only Contacts

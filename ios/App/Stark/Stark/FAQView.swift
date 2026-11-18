@@ -3,7 +3,7 @@ import SwiftUI
 
 /// A short, static list of frequently asked questions, embedded in the app itself (opened from
 /// Settings) rather than linking out to the website's /support page — available without a
-/// network connection, like the rest of the app. Add entries here as they come up; there is no
+/// network connection unless the optional weather forecast is switched on. Add entries here as they come up; there is no
 /// mechanism to fetch or update this remotely by design. Keep it in step with web/public/pages/faq.html.
 struct FAQView: View {
     @Environment(\.dismiss) private var dismiss
@@ -23,7 +23,7 @@ struct FAQView: View {
             Apple Calendar and Reminders, where you also choose which calendars and lists show; \
             the default ones always show), and editing, completing or deleting in Stark changes \
             them there. If you use iCloud, Apple syncs them to your other devices; Stark itself \
-            sends nothing anywhere and adds no network connection. iOS asks for access the first \
+            sends no calendar or reminder data anywhere. iOS asks for access the first \
             time you tap Allow Access on Stark's main screen, after Stark says what it is for. \
             Planner blocks for Apple reminders are kept in a small file of Stark's own on this \
             device. The day export (today and \
@@ -59,6 +59,17 @@ struct FAQView: View {
             optional. If you allow it, Stark reads only the birth year of the people in your \
             Birthdays calendar, on this device, to show "Turns N". The year is never stored or \
             sent anywhere by Stark. If you decline, Stark still shows the cake without the age.
+            """
+        ),
+        Entry(
+            question: "Can Stark show the weather?",
+            answer: """
+            Yes. Weather is optional and off by default: turn it on in Settings. Then iOS asks \
+            whether Stark may use your location while you use the app, and the agenda's day \
+            headers show a forecast symbol with the high and low for the next days. Stark sends \
+            an approximate location rounded to about 11 km to MET Norway's public forecast \
+            service and sends nothing else; the position is never stored. Weather is the only \
+            thing Stark ever sends over the network. Turn it off and Stark stops asking.
             """
         ),
         Entry(

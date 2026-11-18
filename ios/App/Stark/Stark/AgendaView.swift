@@ -26,6 +26,7 @@ struct AgendaView: View {
     @Environment(PlanCache.self) private var planCache
     @Environment(NoticeCenter.self) private var notices
     @Environment(ErrorCenter.self) private var errors
+    @Environment(WeatherModel.self) private var weather
     @Environment(\.itemRouter) private var router
     /// The real today, owned by `ContentView` (which advances it when the calendar day changes) so
     /// this view re-renders on the new day instead of reading `Date()` once and going stale.
@@ -241,7 +242,10 @@ struct AgendaView: View {
             .font(Font.title3.monospacedDigit())
         return HStack(spacing: 0) {
             title
-            Spacer(minLength: 0)
+            Spacer(minLength: Spacing.sm)
+            if let forecast = weather.forecast[day] {
+                WeatherChip(weather: forecast)
+            }
             // Plan today or tomorrow (timeboxing): opens the full-screen planner.
             if canPlan {
                 Button { onPlan(day) } label: {
