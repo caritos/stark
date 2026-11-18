@@ -297,6 +297,7 @@ mobile/                       ← Expo Router iOS app — DEPRECATED (2026-09-22
 - **Done**: `cd ios && swift test` 1081 tests; CalendarSetsTests (25) also under Honolulu, New York, Tokyo; `make test-fast` and `make e2e` green; generic iOS and Mac Catalyst Debug builds. Simulator (iPhone 17, its existing calendars): sheet, New Set editor with the default list locked on, "Work" and "Mini" sets saved; applying Mini changed the label, the month grid (Work's red events gone) and Search ("Event" lists only the blue calendar's items); relaunch with the Work set (which omits the default) kept the label "Work"; swipe shows Edit/Delete; deleting the active set left the month unchanged and the label read "Custom".
 - **Not yet verified**: a calendar created while a set is active (needs an EventKit write; Kit-tested only); the refusal message for a set whose calendars are gone; the "still loading" message; saving an edited active set on screen; the error announcements (VoiceOver); iOS 17; a device. Tapping some lower toggle rows through idb was flaky, so Mini also includes the Spike List and Tasks lists and the "Other" calendars.
 - **Deferred**: none new.
+- **Shipped (2026-11-18)**: merged to main (fast-forward), `swift test` 1081 tests in 110 suites and `make test-fast` green on the merged result, TestFlight v2.0.41 (build 43) uploaded with `ios/App/ship.sh` (TestFlight only). Website FAQ deployed afterwards. Known cosmetic: the swipe Delete button renders accent-blue, not red.
 
 ## Quarter-hour pickers log (2026-11-17)
 
