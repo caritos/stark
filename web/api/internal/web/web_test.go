@@ -82,6 +82,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		"Stark no longer reads these old files", "untouched, as a backup", "deleted only when you delete the app",
 		"<h2>CONTACTS</h2>", "contacts access is optional", "reads only the birth year of the people in your birthdays calendar", "never stored or sent anywhere by stark",
 		"the first time stark loads a birthday from a calendar you show",
+		"<h2>WIDGET</h2>", "the widget reads your calendar and reminders on your device", "shared with the widget", "only the ids of the calendars you hide",
 		"unless you choose to share it", "collects no data", "on your device", "iCloud Backup", "support@caritos.com",
 	} {
 		if !strings.Contains(lower, strings.ToLower(want)) {
@@ -200,6 +201,17 @@ func TestFAQExplainsTemplates(t *testing.T) {
 	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
 	for _, want := range []string{
 		"how do templates work", "save as template", "never the date", "stays on this device",
+	} {
+		if !strings.Contains(lower, want) {
+			t.Errorf("faq missing %q", want)
+		}
+	}
+}
+
+func TestFAQExplainsWidget(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"is there a widget", "small and medium", "calendars you hide in stark", "open stark to allow calendar access",
 	} {
 		if !strings.Contains(lower, want) {
 			t.Errorf("faq missing %q", want)

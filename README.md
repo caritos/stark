@@ -25,6 +25,8 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
   repeat and kind (English, on the device, never applied automatically).
 - **Templates**: save an Add form (title, length, repeat, notes, calendar) as a template and fill a new item from it
   in one tap; never the date, stored on the device only.
+- **Widget**: a small and medium Home Screen widget with today and tomorrow's events and due reminders (overdue in red),
+  showing the calendars you show in the app; reads Calendar on the device, nothing is sent.
 - **Birthdays**: events on Apple's Birthdays calendar show a cake and, if you allow optional read-only Contacts
   access, "Turns N" from the contact's birth year (read on the device, never stored or sent).
 

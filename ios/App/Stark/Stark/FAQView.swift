@@ -51,6 +51,17 @@ struct FAQView: View {
             """
         ),
         Entry(
+            question: "Is there a widget?",
+            answer: """
+            Yes. Add the Stark widget from the Home Screen in small and medium sizes. It lists \
+            what is coming up today and tomorrow: events with their time or "All day", and reminders \
+            due, with overdue ones in red. It shows the same calendars you show in Stark, so \
+            calendars you hide in Stark stay hidden. If Stark has no access yet, the widget says \
+            "Open Stark to allow Calendar access". It reads your calendar on the device and makes \
+            no network connection.
+            """
+        ),
+        Entry(
             question: "How does quick add work?",
             answer: """
             In Add, type a phrase such as "Lunch with Sarah at 1pm tomorrow", "Pay rent every \
