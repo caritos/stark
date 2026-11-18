@@ -77,3 +77,19 @@ public enum WeatherRefreshPolicy {
         return age < 0 || age >= maxAge
     }
 }
+
+/// Finds a day's forecast from any date the views hold. `WeatherModel.forecast` is keyed by the
+/// start of the day in a Gregorian calendar in the model's time zone; a view's own `Calendar`
+/// (another calendar system, or a time zone captured earlier) may build a different `Date` for
+/// the same day, so every lookup normalises through that Gregorian start of day first.
+public enum WeatherForecastLookup {
+    public static func key(for date: Date, timeZone: TimeZone) -> Date {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        return cal.startOfDay(for: date)
+    }
+
+    public static func day(_ date: Date, in forecast: [Date: DayWeather], timeZone: TimeZone) -> DayWeather? {
+        forecast[key(for: date, timeZone: timeZone)]
+    }
+}

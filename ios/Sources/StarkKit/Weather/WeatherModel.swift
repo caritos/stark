@@ -110,6 +110,13 @@ public final class WeatherModel {
     public private(set) var isEnabled: Bool
     /// Forecast by start of the local day.
     public private(set) var forecast: [Date: DayWeather] = [:]
+    /// The forecast for the day containing `date`, or nil: nothing while Weather is off, and
+    /// nothing for a day the feed does not cover. Normalises the date (see `WeatherForecastLookup`).
+    public func forecast(on date: Date) -> DayWeather? {
+        guard isEnabled else { return nil }
+        return WeatherForecastLookup.day(date, in: forecast, timeZone: calendar.timeZone)
+    }
+
     /// A one-line reason shown in the Settings footer (only for denied location).
     public private(set) var statusMessage: String?
 

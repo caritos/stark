@@ -126,6 +126,9 @@ func TestFAQExplainsWeather(t *testing.T) {
 			t.Errorf("faq missing %q", want)
 		}
 	}
+	if !strings.Contains(lower, "day, week and month views") {
+		t.Error("faq weather entry does not name the Day, Week and Month views")
+	}
 	if strings.Contains(lower, "sends nothing anywhere") || strings.Contains(lower, "adds no network connection") {
 		t.Error("faq still claims Stark sends nothing anywhere")
 	}
