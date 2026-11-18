@@ -434,3 +434,4 @@ Web app (Go + React): see web/CLAUDE.md.
 ## Add screen: Templates moved down (2026-11-18)
 
 - **Why**: the owner (comparing with Fantastical, where Templates is a quiet section) said the Templates card above the Title was too prominent for how little it is used. **Change**: `AddItemView` puts `templatesSection` (the Templates link and "Save as Template...") as the LAST section, below Notes; nothing else changed. View-only, verified on the simulator (iPhone 17): Title first, Templates card last. Not seen: the bottom card with saved templates present (the link row), AX sizes, a device.
+- **Shipped (2026-11-18)**: TestFlight v2.0.49 (build 51) with `ios/App/ship.sh` (TestFlight only); `swift test` 1234 tests green first. No website change.
