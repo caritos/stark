@@ -10,6 +10,7 @@
 		78C5E9DD305BE94E00AEDF9B /* StarkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 78C5E9DC305BE94E00AEDF9B /* StarkKit */; };
 		78C5E9E7305BE9A000AEDF9B /* StarkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 78C5E9E6305BE9A000AEDF9B /* StarkKit */; };
 		78C5E9E8305BE9A000AEDF9B /* StarkWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 78C5E9E1305BE9A000AEDF9B /* StarkWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		78C5E9F2305BE9A000AEDF9B /* EventKitProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C5E9F3305BE9A000AEDF9B /* EventKitProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,6 +43,7 @@
 		78C5E9EF305BE9A000AEDF9B /* Stark.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Stark.entitlements; sourceTree = "<group>"; };
 		78C5E9F0305BE9A000AEDF9B /* StarkWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarkWidget.entitlements; sourceTree = "<group>"; };
 		78C5E9F1305BE9A000AEDF9B /* StarkWidget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "StarkWidget-Info.plist"; sourceTree = "<group>"; };
+		78C5E9F3305BE9A000AEDF9B /* EventKitProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitProvider.swift; path = Stark/EventKitProvider.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -85,6 +87,7 @@
 				78C5E9EF305BE9A000AEDF9B /* Stark.entitlements */,
 				78C5E9F0305BE9A000AEDF9B /* StarkWidget.entitlements */,
 				78C5E9F1305BE9A000AEDF9B /* StarkWidget-Info.plist */,
+				78C5E9F3305BE9A000AEDF9B /* EventKitProvider.swift */,
 				78C5E9CE305BE80F00AEDF9B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -219,6 +222,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				78C5E9F2305BE9A000AEDF9B /* EventKitProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

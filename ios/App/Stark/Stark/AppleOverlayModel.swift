@@ -241,6 +241,8 @@ final class AppleOverlayModel {
         guard let name = provider.storeChangedNotification else { return }
         changeTask = Task { [weak self] in
             for await _ in NotificationCenter.default.notifications(named: name) {
+                // Calendar or Reminders changed (in Stark or elsewhere): refresh the Home Screen widget.
+                WidgetCenter.shared.reloadAllTimelines()
                 guard let self else { return }
                 guard let request = self.lastRequest else { continue }
                 await self.reload(display: request.display, today: request.today)
