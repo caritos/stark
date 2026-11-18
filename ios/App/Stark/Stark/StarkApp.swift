@@ -60,8 +60,14 @@ struct StarkApp: App {
             await planCache?.refresh()
         }
         self.router = router
+        #if targetEnvironment(macCatalyst)
+        let settingsAppName = "System Settings"
+        #else
+        let settingsAppName = "Settings"
+        #endif
         _weather = State(initialValue: WeatherModel(location: LocationProvider(),
-                                                    calendar: Calendar(identifier: .gregorian)))
+                                                    calendar: Calendar(identifier: .gregorian),
+                                                    settingsAppName: settingsAppName))
         // Through the router to EventKit with the OCCURRENCE's own date (the repository ignores a
         // repeating reminder already past that day, so a double tap never completes the next
         // one); a non-Apple id is refused (`.notApple`). The row stays pending until the write and

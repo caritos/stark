@@ -127,9 +127,9 @@ struct WeatherParseTests {
         #expect(days[0].high == 22)
     }
 
-    @Test func aDayWithFewerThanFourHoursIsSkipped() throws {
+    @Test func onlyTheLastDayNeedsFourHours() throws {
         let cal = calendar("UTC")
-        // The full 18th, then only 3 hours of the 19th.
+        // The full 18th, then only 3 hours of the 19th (the last day): skipped.
         let data = run(start: "2026-11-18T00:00:00Z", count: 27)
         let days = try METNorwayForecast.parse(data, calendar: cal)
         #expect(days.count == 1)
@@ -137,6 +137,25 @@ struct WeatherParseTests {
         // Exactly four hours is kept.
         let four = try METNorwayForecast.parse(run(start: "2026-11-18T00:00:00Z", count: 28), calendar: cal)
         #expect(four.count == 2)
+    }
+
+    @Test func todayIsKeptEvenWithOneHourLeft() throws {
+        let cal = calendar("UTC")
+        // 23:00 on the 18th is today's only entry; the 19th is complete.
+        let data = run(start: "2026-11-18T23:00:00Z", count: 25)
+        let days = try METNorwayForecast.parse(data, calendar: cal)
+        #expect(days.count == 2)
+        #expect(days[0].day == cal.startOfDay(for: iso.date(from: "2026-11-18T23:00:00Z")!))
+    }
+
+    @Test func aMiddleDayWithFewHoursIsKept() throws {
+        let cal = calendar("UTC")
+        var hours: [Hour] = []
+        for h in 0..<24 { hours.append(Hour(time: "2026-11-18T\(String(format: "%02d", h)):00:00Z", temp: 5, symbol: "cloudy")) }
+        for h in [6, 18] { hours.append(Hour(time: "2026-11-19T\(String(format: "%02d", h)):00:00Z", temp: 6, symbol: "cloudy")) }
+        for h in 0..<24 { hours.append(Hour(time: "2026-11-20T\(String(format: "%02d", h)):00:00Z", temp: 7, symbol: "cloudy")) }
+        let days = try METNorwayForecast.parse(fixture(hours), calendar: cal)
+        #expect(days.count == 3)
     }
 
     @Test func symbolIsTheMostFrequentDaytimeOne() throws {
@@ -166,11 +185,12 @@ struct WeatherParseTests {
         #expect(days[0].symbol == .fog)
     }
 
-    @Test func noSymbolsAtAllFallsBackToCloudy() throws {
+    @Test func noSymbolsAtAllGivesNoSymbolNotCloudy() throws {
         let data = run(start: "2026-11-18T00:00:00Z", count: 24, symbol: { _ in nil })
         let days = try METNorwayForecast.parse(data, calendar: calendar("UTC"))
         #expect(days.count == 1)
-        #expect(days[0].symbol == .cloudy)
+        #expect(days[0].symbol == nil)
+        #expect(days[0].high == 23)
     }
 
     @Test func hoursWithoutNext1HoursStillCountForTemperature() throws {
@@ -304,6 +324,18 @@ struct WeatherSupportTests {
         #expect(WeatherFormat.temperature(-10, locale: us) == "14°")
     }
 
+    @Test func theIOSTemperatureSettingWinsOverTheRegion() {
+        // iOS carries the Settings > Language & Region > Temperature choice in the locale.
+        #expect(WeatherFormat.temperature(12, locale: Locale(identifier: "en_US@mu=celsius")) == "12°")
+        #expect(WeatherFormat.temperature(12, locale: Locale(identifier: "de_DE")) == "12°")
+        #expect(WeatherFormat.temperature(12, locale: Locale(identifier: "en_US")) == "54°")
+    }
+
+    @Test func spokenWithoutASymbolStartsWithTheNumbers() {
+        let d = DayWeather(day: Date(timeIntervalSince1970: 0), high: 12.2, low: 5.6, symbol: nil)
+        #expect(WeatherFormat.spoken(d, locale: Locale(identifier: "en_GB")) == "High 12, low 6")
+    }
+
     @Test func negativeZeroNeverShows() {
         let c = Locale(identifier: "en_GB")
         #expect(WeatherFormat.temperature(-0.4, locale: c) == "0°")
@@ -356,5 +388,73 @@ struct WeatherSupportTests {
     @Test func aClockSetBackIsTreatedAsStale() {
         #expect(WeatherRefreshPolicy.needsFetch(enabled: true, lastFetch: now.addingTimeInterval(7200),
                                                 lastCoordinate: here, now: now, coordinate: here))
+    }
+}
+
+
+/// Shaped like the real MET `compact` feed: hourly entries (with `next_1_hours`) for about 60 hours,
+/// then 6-hourly ones that carry only `next_6_hours` / `next_12_hours`; it starts partway through today.
+private func realisticFeed() -> Data {
+    let start = iso.date(from: "2026-11-18T14:00:00Z")!
+    var entries: [String] = []
+    func entry(_ date: Date, _ temp: Double, next: String) -> String {
+        "{\"time\":\"\(iso.string(from: date))\",\"data\":{\"instant\":{\"details\":{\"air_temperature\":\(temp)}}\(next)}}"
+    }
+    for i in 0..<60 {
+        let d = start.addingTimeInterval(Double(i) * 3600)
+        entries.append(entry(d, 10 + Double(i % 5),
+                             next: ",\"next_1_hours\":{\"summary\":{\"symbol_code\":\"cloudy\"}},\"next_6_hours\":{\"summary\":{\"symbol_code\":\"cloudy\"}}"))
+    }
+    var d = start.addingTimeInterval(60 * 3600)
+    while d <= iso.date(from: "2026-11-27T00:00:00Z")! {
+        entries.append(entry(d, 3,
+                             next: ",\"next_6_hours\":{\"summary\":{\"symbol_code\":\"lightrain\"}},\"next_12_hours\":{\"summary\":{\"symbol_code\":\"snow\"}}"))
+        d = d.addingTimeInterval(6 * 3600)
+    }
+    return Data("{\"properties\":{\"timeseries\":[\(entries.joined(separator: ","))]}}".utf8)
+}
+
+@Suite("Weather real feed shape")
+struct WeatherRealFeedTests {
+    @Test func sixHourlyDaysGetASymbolFromNext6Hours() throws {
+        let cal = calendar("UTC")
+        let days = try METNorwayForecast.parse(realisticFeed(), calendar: cal)
+        let day24 = days.first { $0.day == cal.startOfDay(for: iso.date(from: "2026-11-24T00:00:00Z")!) }
+        #expect(day24 != nil)
+        #expect(day24?.symbol == .rain)
+        #expect(day24?.high == 3)
+    }
+
+    @Test func todayStartedPartwayStillHasAForecast() throws {
+        let cal = calendar("UTC")
+        let days = try METNorwayForecast.parse(realisticFeed(), calendar: cal)
+        #expect(days.first?.day == cal.startOfDay(for: iso.date(from: "2026-11-18T14:00:00Z")!))
+        #expect(days.first?.symbol == .cloudy)
+        // 18th to 26th; the 27th at 00:00Z alone is the skipped last day.
+        #expect(days.count == 9)
+    }
+
+    @Test func next12HoursIsTheFallbackWhenThereIsNoNext6Hours() throws {
+        let json = """
+        {"properties":{"timeseries":[
+        {"time":"2026-11-18T06:00:00Z","data":{"instant":{"details":{"air_temperature":1}},"next_12_hours":{"summary":{"symbol_code":"snow"}}}},
+        {"time":"2026-11-18T12:00:00Z","data":{"instant":{"details":{"air_temperature":2}},"next_12_hours":{"summary":{"symbol_code":"snow"}}}},
+        {"time":"2026-11-18T18:00:00Z","data":{"instant":{"details":{"air_temperature":0}}}}
+        ]}}
+        """
+        let days = try METNorwayForecast.parse(Data(json.utf8), calendar: calendar("UTC"))
+        #expect(days.count == 1)
+        #expect(days[0].symbol == .snow)
+    }
+
+    @Test func nightCodesMapToTheSameFamiliesAndOnlyCountWhenNoDayEntries() throws {
+        let cal = calendar("UTC")
+        let night = run(start: "2026-11-18T00:00:00Z", count: 6, symbol: { _ in "partlycloudy_night" })
+        let days = try METNorwayForecast.parse(night, calendar: cal)
+        #expect(days.first?.symbol == .partlyCloudy)
+        let mixed = run(start: "2026-11-18T00:00:00Z", count: 24, symbol: { i in
+            (8..<20).contains(i) ? (i == 10 ? "rain" : nil) : "clearsky_night" })
+        let d2 = try METNorwayForecast.parse(mixed, calendar: cal)
+        #expect(d2.first?.symbol == .rain)
     }
 }

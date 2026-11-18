@@ -30,8 +30,20 @@ public enum WeatherRequest {
 }
 
 public enum WeatherFormat {
-    private static func usesFahrenheit(_ locale: Locale) -> Bool {
-        locale.measurementSystem == .us
+    /// Follows the iOS temperature choice (Settings > General > Language & Region > Temperature,
+    /// which lives in the locale) and otherwise the region: a formatter with the natural scale
+    /// converts 100 C to Fahrenheit exactly when this locale wants Fahrenheit.
+    static func usesFahrenheit(_ locale: Locale) -> Bool {
+        let hundred = Measurement(value: 100, unit: UnitTemperature.celsius)
+        let natural = MeasurementFormatter()
+        natural.locale = locale
+        natural.unitOptions = .naturalScale
+        natural.numberFormatter.maximumFractionDigits = 0
+        let provided = MeasurementFormatter()
+        provided.locale = locale
+        provided.unitOptions = .providedUnit
+        provided.numberFormatter.maximumFractionDigits = 0
+        return natural.string(from: hundred) != provided.string(from: hundred)
     }
 
     private static func rounded(_ celsius: Double, locale: Locale) -> Int {
@@ -44,9 +56,11 @@ public enum WeatherFormat {
         "\(rounded(celsius, locale: locale))°"
     }
 
-    /// "Rain, high 12, low 6".
+    /// "Rain, high 12, low 6"; "High 12, low 6" when the day has no symbol.
     public static func spoken(_ day: DayWeather, locale: Locale) -> String {
-        "\(day.symbol.spokenName), high \(rounded(day.high, locale: locale)), low \(rounded(day.low, locale: locale))"
+        let numbers = "high \(rounded(day.high, locale: locale)), low \(rounded(day.low, locale: locale))"
+        guard let symbol = day.symbol else { return numbers.prefix(1).uppercased() + numbers.dropFirst() }
+        return "\(symbol.spokenName), \(numbers)"
     }
 }
 

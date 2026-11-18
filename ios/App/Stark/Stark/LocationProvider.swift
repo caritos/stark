@@ -4,7 +4,9 @@
 //
 //  One-shot, reduced-accuracy location for the optional weather forecast. It is only ever called
 //  by `WeatherModel` while Weather is switched on, so the system permission prompt appears only
-//  then. The position is handed straight back and never stored or logged here.
+//  then. The position is handed straight back and never stored or logged here. Callers that
+//  arrive while a request is running (for example Weather switched off and on again) all wait
+//  for that one request, and a position that never arrives ends as `.unavailable`.
 //
 
 import CoreLocation
@@ -14,8 +16,12 @@ import StarkKit
 @MainActor
 final class LocationProvider: NSObject, LocationSource, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
-    private var authContinuation: CheckedContinuation<Void, Never>?
-    private var locationContinuation: CheckedContinuation<LocationResult, Never>?
+    private var authWaiters: [CheckedContinuation<Void, Never>] = []
+    private var locationWaiters: [CheckedContinuation<LocationResult, Never>] = []
+    private var timeoutTask: Task<Void, Never>?
+    /// How long a requested position may take once access is granted (the permission prompt itself
+    /// waits for the person as long as it needs).
+    private static let positionTimeout: UInt64 = 20_000_000_000
 
     override init() {
         super.init()
@@ -24,12 +30,11 @@ final class LocationProvider: NSObject, LocationSource, CLLocationManagerDelegat
     }
 
     func currentLocation() async -> LocationResult {
-        // One request at a time; a second caller just gets nothing this time.
-        guard locationContinuation == nil, authContinuation == nil else { return .unavailable }
         if manager.authorizationStatus == .notDetermined {
             await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
-                authContinuation = c
-                manager.requestWhenInUseAuthorization()
+                authWaiters.append(c)
+                // One system prompt, however many callers wait for it.
+                if authWaiters.count == 1 { manager.requestWhenInUseAuthorization() }
             }
         }
         switch manager.authorizationStatus {
@@ -41,17 +46,23 @@ final class LocationProvider: NSObject, LocationSource, CLLocationManagerDelegat
             return .unavailable
         }
         return await withCheckedContinuation { (c: CheckedContinuation<LocationResult, Never>) in
-            locationContinuation = c
+            locationWaiters.append(c)
+            guard locationWaiters.count == 1 else { return }
             manager.requestLocation()
+            timeoutTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: Self.positionTimeout)
+                guard !Task.isCancelled else { return }
+                self?.finish(.unavailable)
+            }
         }
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             guard manager.authorizationStatus != .notDetermined else { return }
-            let c = authContinuation
-            authContinuation = nil
-            c?.resume()
+            let waiters = authWaiters
+            authWaiters = []
+            for c in waiters { c.resume() }
         }
     }
 
@@ -71,8 +82,10 @@ final class LocationProvider: NSObject, LocationSource, CLLocationManagerDelegat
     }
 
     private func finish(_ result: LocationResult) {
-        let c = locationContinuation
-        locationContinuation = nil
-        c?.resume(returning: result)
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        let waiters = locationWaiters
+        locationWaiters = []
+        for c in waiters { c.resume(returning: result) }
     }
 }

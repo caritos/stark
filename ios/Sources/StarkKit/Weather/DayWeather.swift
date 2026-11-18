@@ -6,9 +6,10 @@ public struct DayWeather: Equatable, Sendable {
     public var day: Date
     public var high: Double
     public var low: Double
-    public var symbol: WeatherSymbol
+    /// nil when the feed gave no symbol for the day: the chip then shows temperatures only.
+    public var symbol: WeatherSymbol?
 
-    public init(day: Date, high: Double, low: Double, symbol: WeatherSymbol) {
+    public init(day: Date, high: Double, low: Double, symbol: WeatherSymbol?) {
         self.day = day
         self.high = high
         self.low = low

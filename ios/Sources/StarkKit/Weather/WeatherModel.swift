@@ -24,8 +24,32 @@ public struct WeatherHTTPError: Error, Equatable, Sendable {
 }
 
 /// The one network call Stark makes (opt-in). Sends only the request `WeatherRequest.url` builds.
+/// One ephemeral session (no cookies, no cache, nothing on disk) is reused for the app's lifetime.
 public struct URLSessionWeatherTransport: WeatherTransport {
-    public init() {}
+    private let session: URLSession
+
+    public init() {
+        self.session = URLSession(configuration: Self.makeConfiguration())
+    }
+
+    public init(session: URLSession) {
+        self.session = session
+    }
+
+    /// The only headers ever sent beyond the standard ones: the identifying User-Agent, the JSON
+    /// type, and a fixed language (the phone's language is not sent).
+    public static func makeConfiguration() -> URLSessionConfiguration {
+        let c = URLSessionConfiguration.ephemeral
+        c.httpAdditionalHeaders = ["User-Agent": WeatherRequest.userAgent,
+                                   "Accept": "application/json",
+                                   "Accept-Language": "en"]
+        c.httpCookieStorage = nil
+        c.httpShouldSetCookies = false
+        c.urlCache = nil
+        c.timeoutIntervalForRequest = 15
+        c.timeoutIntervalForResource = 30
+        return c
+    }
 
     public static func request(for url: URL) -> URLRequest {
         var r = URLRequest(url: url, timeoutInterval: 15)
@@ -35,13 +59,40 @@ public struct URLSessionWeatherTransport: WeatherTransport {
     }
 
     public func fetch(_ url: URL) async throws -> Data {
-        // An ephemeral session keeps no cookies or cache on disk.
-        let session = URLSession(configuration: .ephemeral)
         let (data, response) = try await session.data(for: Self.request(for: url))
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw WeatherHTTPError(status: http.statusCode)
         }
         return data
+    }
+}
+
+/// Resumes with the first of two results; a never-finishing operation cannot hold it back.
+private final class FirstResult<T: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<T?, Never>?
+    private var done = false
+
+    static func race(timeout: TimeInterval, _ operation: @escaping @Sendable () async -> T) async -> T? {
+        let box = FirstResult<T>()
+        return await withCheckedContinuation { (c: CheckedContinuation<T?, Never>) in
+            box.continuation = c
+            Task { box.finish(await operation()) }
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0) * 1_000_000_000))
+                box.finish(nil)
+            }
+        }
+    }
+
+    private func finish(_ value: T?) {
+        lock.lock()
+        if done { lock.unlock(); return }
+        done = true
+        let c = continuation
+        continuation = nil
+        lock.unlock()
+        c?.resume(returning: value)
     }
 }
 
@@ -51,8 +102,10 @@ public struct URLSessionWeatherTransport: WeatherTransport {
 @MainActor @Observable
 public final class WeatherModel {
     public static let defaultsKey = "weatherEnabled"
-    public static let deniedMessage =
-        "Weather needs your location. Allow it in iOS Settings > Privacy > Location Services > Stark, or turn Weather off."
+    /// The one-line footer for a denied location; `settingsAppName` is "System Settings" on a Mac.
+    public static func deniedMessage(settingsAppName: String) -> String {
+        "Weather needs your location. Allow it in \(settingsAppName) > Privacy & Security > Location Services > Stark, or turn Weather off."
+    }
 
     public private(set) var isEnabled: Bool
     /// Forecast by start of the local day.
@@ -67,11 +120,18 @@ public final class WeatherModel {
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private var lastFetch: Date?
     @ObservationIgnored private var lastCoordinate: WeatherCoordinate?
+    @ObservationIgnored private let locationTimeout: TimeInterval
+    @ObservationIgnored private let settingsAppName: String
     @ObservationIgnored private var generation = 0
-    @ObservationIgnored private var isRefreshing = false
+    /// The generation a refresh is running for. A second call for the same generation is a
+    /// duplicate; one for a newer generation (off then on) starts its own and the old one is dropped.
+    @ObservationIgnored private var inFlightGeneration: Int?
 
     public init(defaults: UserDefaults = .standard, transport: WeatherTransport = URLSessionWeatherTransport(),
-                location: LocationSource, calendar: Calendar, now: @escaping @Sendable () -> Date = { Date() }) {
+                location: LocationSource, calendar: Calendar, now: @escaping @Sendable () -> Date = { Date() },
+                locationTimeout: TimeInterval = 90, settingsAppName: String = "Settings") {
+        self.locationTimeout = locationTimeout
+        self.settingsAppName = settingsAppName
         self.defaults = defaults
         self.transport = transport
         self.location = location
@@ -97,26 +157,30 @@ public final class WeatherModel {
     }
 
     /// Refetches when the forecast is over an hour old or the place moved by 0.1 degree. A fresh
-    /// cache returns before the location or the network is touched.
+    /// cache returns before the location or the network is touched. Call it at launch and when
+    /// the app becomes active; it does nothing while Weather is off.
     public func refreshIfNeeded() async {
-        guard isEnabled, !isRefreshing else { return }
+        guard isEnabled else { return }
+        let mine = generation
+        guard inFlightGeneration != mine else { return }
         if statusMessage == nil, let lastFetch {
             let age = now().timeIntervalSince(lastFetch)
             if age >= 0, age < WeatherRefreshPolicy.maxAge { return }
         }
-        isRefreshing = true
-        defer { isRefreshing = false }
-        let mine = generation
+        inFlightGeneration = mine
+        defer { if inFlightGeneration == mine { inFlightGeneration = nil } }
 
-        let result = await location.currentLocation()
+        // A prompt nobody answers, or a position that never arrives, must not hold the model.
+        let source = location
+        let result = await FirstResult.race(timeout: locationTimeout) { await source.currentLocation() }
         guard mine == generation, isEnabled else { return }
         switch result {
-        case .denied:
-            statusMessage = Self.deniedMessage
-            forecast = [:]
-        case .unavailable:
+        case .none, .some(.unavailable):
             break
-        case .coordinate(let lat, let lon):
+        case .some(.denied):
+            statusMessage = Self.deniedMessage(settingsAppName: settingsAppName)
+            forecast = [:]
+        case .some(.coordinate(let lat, let lon)):
             statusMessage = nil
             let coordinate = WeatherCoordinate.rounded(latitude: lat, longitude: lon)
             guard WeatherRefreshPolicy.needsFetch(enabled: isEnabled, lastFetch: lastFetch,
@@ -128,7 +192,7 @@ public final class WeatherModel {
                                                                         longitude: coordinate.longitude))
                 let days = try METNorwayForecast.parse(data, calendar: calendar)
                 guard mine == generation, isEnabled else { return }
-                forecast = Dictionary(days.map { ($0.day, $0) }, uniquingKeysWith: { _, last in last })
+                forecast = merged(days, keepingTodaysExtremes: !moved)
                 lastFetch = now()
                 lastCoordinate = coordinate
             } catch {
@@ -141,5 +205,24 @@ public final class WeatherModel {
                 }
             }
         }
+    }
+
+    /// Past days are dropped. The feed only holds today's remaining hours, so today keeps the
+    /// extremes of earlier fetches (in memory only, never persisted) while the place is unchanged.
+    private func merged(_ days: [DayWeather], keepingTodaysExtremes: Bool) -> [Date: DayWeather] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = calendar.timeZone
+        let today = cal.startOfDay(for: now())
+        var result: [Date: DayWeather] = [:]
+        for day in days where day.day >= today {
+            var entry = day
+            if keepingTodaysExtremes, day.day == today, let old = forecast[today] {
+                entry.high = max(old.high, day.high)
+                entry.low = min(old.low, day.low)
+                entry.symbol = day.symbol ?? old.symbol
+            }
+            result[day.day] = entry
+        }
+        return result
     }
 }

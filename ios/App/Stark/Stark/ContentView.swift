@@ -233,6 +233,9 @@ struct ContentView: View {
         .sheet(item: $selectedItem) { item in AgendaItemDetailSheet(item: item, today: today) }
         .fullScreenCover(item: $planRequest) { request in PlannerView(day: request.day, today: today) }
         .task {
+            // Weather at cold launch too (the scene is already active, so `onChange` will not fire).
+            // Concurrent with the load below; a no-op (no location, no network) while Weather is off.
+            Task { await weather.refreshIfNeeded() }
             // Empty (and no EventKit call) until access was granted from `AccessRequiredView`.
             await overlay.reload(for: .agenda, display: AgendaWindow.range(around: agendaAnchor), today: today)
             await destinations.refresh()
