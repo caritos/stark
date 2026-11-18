@@ -58,7 +58,6 @@ struct AddItemView: View {
         NavigationStack {
             Form {
                 destinationSection
-                templatesSection
                 Section {
                 TextField("Title", text: $title)
                     .focused($focusedField, equals: .title)
@@ -130,6 +129,9 @@ struct AddItemView: View {
                     .focused($focusedField, equals: .notes)
                 TagSuggestionRow(text: notes) { notes = TagAutocomplete.applying($0, to: notes) }
                 }
+
+                // Last and quiet: templates are used rarely, so they sit below everything else.
+                templatesSection
             }
             .scrollContentBackground(.hidden)
             .background(Colors.background)

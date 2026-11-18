@@ -430,3 +430,7 @@ Web app (Go + React): see web/CLAUDE.md.
 - **Deferred (review minors)**: the intent writes its memory before the selection (a kill between leaves the memory without the change, harmless); a fallback default calendar is not kept shown until the next launch; no tests for `FocusFilterStore` (UserDefaults, mirror, notification) or `reloadStoredSelection` (app target).
 - **Shipped (2026-11-18)**: merged to main (fast-forward), `swift test` 1220 tests in 121 suites and `make test-fast` green on the merged result, TestFlight v2.0.47 (build 49) uploaded with `ios/App/ship.sh` (TestFlight only). Website FAQ deployed afterwards (its Focus answer describes behaviour not yet seen on a device).
 - **Shipped (2026-11-18)**: merged to main (fast-forward), `swift test` 1234 tests in 122 suites and `make test-fast` green on the merged result, TestFlight v2.0.48 (build 50) uploaded with `ios/App/ship.sh` (TestFlight only). Website FAQ deployed afterwards.
+
+## Add screen: Templates moved down (2026-11-18)
+
+- **Why**: the owner (comparing with Fantastical, where Templates is a quiet section) said the Templates card above the Title was too prominent for how little it is used. **Change**: `AddItemView` puts `templatesSection` (the Templates link and "Save as Template...") as the LAST section, below Notes; nothing else changed. View-only, verified on the simulator (iPhone 17): Title first, Templates card last. Not seen: the bottom card with saved templates present (the link row), AX sizes, a device.
