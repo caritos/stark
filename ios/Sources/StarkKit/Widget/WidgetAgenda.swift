@@ -90,7 +90,16 @@ public enum WidgetAgenda {
             if a.item.title != b.item.title { return a.item.title < b.item.title }
             return a.item.id < b.item.id
         }
-        return Array(ranked.prefix(max(0, limit)).map(\.item))
+        // Old overdue reminders must not crowd out today's items: at most one overdue row in a short
+        // list, two in a longer one, unless nothing else is coming up (then they fill the rows).
+        let rows = max(0, limit)
+        let overdue = ranked.filter { $0.day < 0 }
+        let rest = ranked.filter { $0.day >= 0 }
+        let overdueCap = rows >= 5 ? 2 : 1
+        let restCount = min(rest.count, rows - min(overdueCap, overdue.count))
+        let overdueCount = min(overdue.count, rows - restCount)
+        let shown = overdue.prefix(overdueCount) + rest.prefix(restCount)
+        return shown.map(\.item)
     }
 
     private static func eventItem(_ apple: AppleCalendarEvent, start: Date) -> WidgetItem {

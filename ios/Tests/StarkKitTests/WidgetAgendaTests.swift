@@ -82,6 +82,23 @@ import Testing
         #expect(out[0].isOverdue && out[1].isOverdue && !out[2].isOverdue)
     }
 
+    @Test func manyOverdueRemindersLeaveRoomForTodaysItems() {
+        let old = (1...9).map { reminder("o\($0)", due: date($0, 9, month: 1), hasTime: false) }
+        let today = [event("e1", date(15, 11), date(15, 12)), event("e2", date(15, 13), date(15, 14)),
+                     event("e3", date(15, 15), date(15, 16))]
+        // Five rows: at most two overdue, the rest is today.
+        let five = items(events: today, reminders: old, limit: 5)
+        #expect(five.map(\.id) == ["apple-o1", "apple-o2", "apple-e1", "apple-e2", "apple-e3"])
+        // Three rows: at most one overdue.
+        let three = items(events: today, reminders: old, limit: 3)
+        #expect(three.map(\.id) == ["apple-o1", "apple-e1", "apple-e2"])
+    }
+
+    @Test func overdueFillsTheRowsWhenNothingElseIsComingUp() {
+        let old = (1...9).map { reminder("o\($0)", due: date($0, 9, month: 1), hasTime: false) }
+        #expect(items(reminders: old, limit: 3).map(\.id) == ["apple-o1", "apple-o2", "apple-o3"])
+    }
+
     @Test func reminderDueEarlierTodayIsNotOverdue() {
         let out = items(reminders: [reminder("r", due: date(15, 8))])
         #expect(out.count == 1 && !out[0].isOverdue && out[0].isReminder)
