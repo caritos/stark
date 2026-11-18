@@ -223,6 +223,7 @@ func TestFAQExplainsWidget(t *testing.T) {
 	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
 	for _, want := range []string{
 		"is there a widget", "small and medium", "calendars you hide in stark", "open stark to allow calendar access",
+		"lock screen", "how many items are left today",
 	} {
 		if !strings.Contains(lower, want) {
 			t.Errorf("faq missing %q", want)

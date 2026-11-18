@@ -57,7 +57,9 @@ struct FAQView: View {
             what is coming up today and tomorrow: events with their time or "All day", and reminders \
             due, with overdue ones in red. It shows the same calendars you show in Stark, so \
             calendars you hide in Stark stay hidden. If Stark has no access yet, the widget says \
-            "Open Stark to allow Calendar access". It reads your calendar on the device and makes \
+            "Open Stark to allow Calendar access". On the Lock Screen it comes in three sizes: a \
+            rectangle with the next three items, one line with the next item, and a circle with how \
+            many items are left today. It reads your calendar on the device and makes \
             no network connection.
             """
         ),
