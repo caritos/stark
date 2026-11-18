@@ -68,7 +68,7 @@ struct FAQView: View {
             answer: """
             When an event's URL, location or notes hold a video-call link, Stark shows a Join \
             button for Zoom, Google Meet, Microsoft Teams, Webex and FaceTime links on the event, \
-            and a small video icon on its row. The link is opened only when you tap it; Stark \
+            and a small video icon on its row in the list and in Search, for timed events. The link is opened only when you tap it; Stark \
             never loads or checks the link. Only https links from those services count. There is \
             also a time zone card for events in another time zone, showing the time there and \
             your time. All-day events and events with no time zone show no card. Both are \

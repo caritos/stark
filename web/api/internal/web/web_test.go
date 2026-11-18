@@ -124,6 +124,7 @@ func TestFAQExplainsJoinLinksAndTimeZones(t *testing.T) {
 		"stark never loads or checks the link",
 		"time zone card for events in another time zone",
 		"all-day events and events with no time zone show no card",
+		"a small video icon on its row in the list and in search, for timed events",
 	} {
 		if !strings.Contains(lower, want) {
 			t.Errorf("faq missing %q", want)
