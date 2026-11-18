@@ -535,3 +535,52 @@ struct WeatherRequestBuildTests {
         #expect(r.httpMethod == "GET")
     }
 }
+
+@Suite("WeatherModel forecast(on:)")
+@MainActor
+struct WeatherModelLookupTests {
+    private let noon18: Date = ISO8601DateFormatter().date(from: "2026-11-18T12:00:00Z")!
+
+    @Test func nilWhileDisabledFoundWhenEnabledNilAfterDisable() async {
+        let (m, _, _, _) = make()
+        #expect(m.forecast(on: noon18) == nil)
+        await m.setEnabled(true)
+        #expect(m.forecast(on: noon18) != nil)
+        await m.setEnabled(false)
+        #expect(m.forecast(on: noon18) == nil)
+        #expect(m.forecast.isEmpty)
+    }
+
+    @Test func aDayWithoutForecastIsNil() async {
+        let (m, _, _, _) = make()
+        await m.setEnabled(true)
+        #expect(m.forecast(on: noon18.addingTimeInterval(3 * 86_400)) == nil)
+    }
+
+    @Test func timeZoneChangedAfterLaunchStillFindsTheShownDay() async {
+        let suite = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        let transport = FakeTransport()
+        transport.response = .success(sample)
+        var tokyo = Calendar(identifier: .gregorian)
+        tokyo.timeZone = TimeZone(identifier: "Asia/Tokyo")!
+        let zoneBox = ZoneBox(TimeZone(identifier: "Asia/Tokyo")!)
+        let m = WeatherModel(defaults: defaults, transport: transport, location: FakeLocation(),
+                             calendar: tokyo, now: { t0 }, viewTimeZone: { zoneBox.zone })
+        await m.setEnabled(true)
+        guard let shownDay = m.forecast.keys.first else { Issue.record("no forecast"); return }
+        // The phone moves to Honolulu, where the same calendar day label has another instant.
+        zoneBox.zone = TimeZone(identifier: "Pacific/Honolulu")!
+        var honolulu = Calendar(identifier: .gregorian)
+        honolulu.timeZone = zoneBox.zone
+        let c = tokyo.dateComponents([.year, .month, .day], from: shownDay)
+        let honoluluNoon = honolulu.date(from: DateComponents(year: c.year, month: c.month, day: c.day, hour: 12))!
+        #expect(m.forecast(on: honoluluNoon) != nil)
+    }
+}
+
+private final class ZoneBox: @unchecked Sendable {
+    var zone: TimeZone
+    init(_ z: TimeZone) { zone = z }
+}

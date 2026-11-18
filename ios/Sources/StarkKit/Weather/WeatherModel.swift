@@ -114,7 +114,7 @@ public final class WeatherModel {
     /// nothing for a day the feed does not cover. Normalises the date (see `WeatherForecastLookup`).
     public func forecast(on date: Date) -> DayWeather? {
         guard isEnabled else { return nil }
-        return WeatherForecastLookup.day(date, in: forecast, timeZone: calendar.timeZone)
+        return WeatherForecastLookup.day(date, in: forecast, viewZone: viewTimeZone(), keyZone: calendar.timeZone)
     }
 
     /// A one-line reason shown in the Settings footer (only for denied location).
@@ -124,6 +124,8 @@ public final class WeatherModel {
     @ObservationIgnored private let transport: WeatherTransport
     @ObservationIgnored private let location: LocationSource
     @ObservationIgnored private let calendar: Calendar
+    /// The phone's zone now (the one the views draw days in); read at every lookup.
+    @ObservationIgnored private let viewTimeZone: @Sendable () -> TimeZone
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private var lastFetch: Date?
     @ObservationIgnored private var lastCoordinate: WeatherCoordinate?
@@ -136,7 +138,9 @@ public final class WeatherModel {
 
     public init(defaults: UserDefaults = .standard, transport: WeatherTransport = URLSessionWeatherTransport(),
                 location: LocationSource, calendar: Calendar, now: @escaping @Sendable () -> Date = { Date() },
-                locationTimeout: TimeInterval = 90, settingsAppName: String = "Settings") {
+                locationTimeout: TimeInterval = 90, settingsAppName: String = "Settings",
+                viewTimeZone: @escaping @Sendable () -> TimeZone = { TimeZone.autoupdatingCurrent }) {
+        self.viewTimeZone = viewTimeZone
         self.locationTimeout = locationTimeout
         self.settingsAppName = settingsAppName
         self.defaults = defaults

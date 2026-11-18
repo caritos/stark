@@ -10,48 +10,54 @@ struct WeatherDayKeyTests {
         return c
     }
 
-    private func forecast(on y: Int, _ m: Int, _ d: Int, tz: String) -> [Date: DayWeather] {
+    private func zone(_ id: String) -> TimeZone { TimeZone(identifier: id)! }
+
+    /// A forecast for 2026-11-20 keyed the way the model keys it (start of day in `tz`).
+    private func forecast(tz: String) -> [Date: DayWeather] {
         let cal = gregorian(tz)
-        let day = cal.startOfDay(for: cal.date(from: DateComponents(year: y, month: m, day: d, hour: 12))!)
+        let day = cal.startOfDay(for: cal.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 12))!)
         return [day: DayWeather(day: day, high: 20, low: 10, symbol: nil)]
     }
 
     @Test(arguments: ["Pacific/Honolulu", "America/New_York", "Asia/Tokyo", "Pacific/Kiritimati"])
-    func noonAndMidnightAndLateEveningFindTheDay(tz: String) {
-        let f = forecast(on: 2026, 11, 20, tz: tz)
+    func anyTimeOfTheDayFindsTheDayInTheSameZone(tz: String) {
+        let f = forecast(tz: tz)
         let cal = gregorian(tz)
-        let zone = TimeZone(identifier: tz)!
         for (h, mi) in [(0, 0), (12, 0), (23, 59)] {
             let d = cal.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: h, minute: mi))!
-            #expect(WeatherForecastLookup.day(d, in: f, timeZone: zone) != nil)
+            #expect(WeatherForecastLookup.day(d, in: f, viewZone: zone(tz), keyZone: zone(tz)) != nil)
         }
         let next = cal.date(from: DateComponents(year: 2026, month: 11, day: 21, hour: 0))!
-        #expect(WeatherForecastLookup.day(next, in: f, timeZone: zone) == nil)
+        #expect(WeatherForecastLookup.day(next, in: f, viewZone: zone(tz), keyZone: zone(tz)) == nil)
     }
 
-    @Test(arguments: [Calendar.Identifier.buddhist, .hebrew, .islamic, .japanese])
-    func otherCalendarsLandOnTheSameDay(id: Calendar.Identifier) {
-        let tz = "Asia/Tokyo"
-        let zone = TimeZone(identifier: tz)!
-        let f = forecast(on: 2026, 11, 20, tz: tz)
-        var other = Calendar(identifier: id)
-        other.timeZone = zone
-        // The day the view's own calendar computes for the same instant.
-        let instant = gregorian(tz).date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 15))!
-        let startInOther = other.startOfDay(for: instant)
-        #expect(WeatherForecastLookup.day(startInOther, in: f, timeZone: zone) != nil)
-        let nextInOther = other.date(byAdding: .day, value: 1, to: startInOther)!
-        #expect(WeatherForecastLookup.day(nextInOther, in: f, timeZone: zone) == nil)
-        // A date rebuilt from the other calendar's own year/month/day components.
-        let c = other.dateComponents([.year, .month, .day], from: instant)
-        let rebuilt = other.date(from: c)!
-        #expect(WeatherForecastLookup.day(rebuilt, in: f, timeZone: zone) != nil)
+    /// Launch in Tokyo, move to Honolulu: Honolulu's Nov 20 noon is Nov 21 07:00 in Tokyo, so a
+    /// lookup in the model's zone would land on the wrong day. The lookup goes by the day the
+    /// phone shows now (the view's zone), then maps that calendar day onto the stored key.
+    @Test func aZoneChangeAfterLaunchStillLandsOnTheDayShown() {
+        let f = forecast(tz: "Asia/Tokyo")
+        let honolulu = gregorian("Pacific/Honolulu")
+        let noon = honolulu.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 12))!
+        #expect(WeatherForecastLookup.day(noon, in: f, viewZone: zone("Pacific/Honolulu"), keyZone: zone("Asia/Tokyo"))?.high == 20)
+        // Honolulu's Nov 21 has no forecast, not Nov 20's.
+        let nextNoon = honolulu.date(from: DateComponents(year: 2026, month: 11, day: 21, hour: 12))!
+        #expect(WeatherForecastLookup.day(nextNoon, in: f, viewZone: zone("Pacific/Honolulu"), keyZone: zone("Asia/Tokyo")) == nil)
+        // The old behaviour (model zone for both) is the day after.
+        #expect(WeatherForecastLookup.day(noon, in: f, viewZone: zone("Asia/Tokyo"), keyZone: zone("Asia/Tokyo")) == nil)
     }
 
-    @Test func aDateInTheModelsZoneIsFound() {
-        let f = forecast(on: 2026, 11, 20, tz: "America/New_York")
-        let ny = gregorian("America/New_York")
-        let noon = ny.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 12))!
-        #expect(WeatherForecastLookup.day(noon, in: f, timeZone: TimeZone(identifier: "America/New_York")!) != nil)
+    @Test func eastToWestAndBackBothWork() {
+        let f = forecast(tz: "Pacific/Honolulu")
+        let tokyo = gregorian("Asia/Tokyo")
+        let noon = tokyo.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 12))!
+        #expect(WeatherForecastLookup.day(noon, in: f, viewZone: zone("Asia/Tokyo"), keyZone: zone("Pacific/Honolulu")) != nil)
+    }
+
+    @Test func spokenLabelAppendsTheForecastAfterTheCellLabel() {
+        let day = DayWeather(day: Date(), high: 12, low: 6, symbol: .rain)
+        let locale = Locale(identifier: "en_GB")
+        #expect(WeatherFormat.label("Friday, Nov 20", weather: day, locale: locale)
+                == "Friday, Nov 20, Weather forecast, \(WeatherFormat.spoken(day, locale: locale))")
+        #expect(WeatherFormat.label("Friday, Nov 20", weather: nil, locale: locale) == "Friday, Nov 20")
     }
 }

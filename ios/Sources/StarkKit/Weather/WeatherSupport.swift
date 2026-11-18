@@ -79,17 +79,33 @@ public enum WeatherRefreshPolicy {
 }
 
 /// Finds a day's forecast from any date the views hold. `WeatherModel.forecast` is keyed by the
-/// start of the day in a Gregorian calendar in the model's time zone; a view's own `Calendar`
-/// (another calendar system, or a time zone captured earlier) may build a different `Date` for
-/// the same day, so every lookup normalises through that Gregorian start of day first.
+/// start of the day in a Gregorian calendar in the zone the model captured at launch (`keyZone`).
+/// The phone's zone may have changed since (`viewZone`, the zone the views draw days in), so the
+/// lookup reads the calendar day (year, month, day) the date has in `viewZone` and maps that
+/// day onto the stored key. What is guaranteed: a day label the phone shows now finds the forecast
+/// stored under the same calendar day, in any calendar system the view uses, because only the
+/// Gregorian year, month and day of the date in `viewZone` are used. After a zone change the stored
+/// forecast was still grouped by the launch zone's days until the next refresh.
 public enum WeatherForecastLookup {
-    public static func key(for date: Date, timeZone: TimeZone) -> Date {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = timeZone
-        return cal.startOfDay(for: date)
+    public static func day(_ date: Date, in forecast: [Date: DayWeather], viewZone: TimeZone,
+                           keyZone: TimeZone) -> DayWeather? {
+        var view = Calendar(identifier: .gregorian)
+        view.timeZone = viewZone
+        let c = view.dateComponents([.year, .month, .day], from: date)
+        var keyCal = Calendar(identifier: .gregorian)
+        keyCal.timeZone = keyZone
+        guard let noon = keyCal.date(from: DateComponents(year: c.year, month: c.month, day: c.day, hour: 12)) else {
+            return nil
+        }
+        return forecast[keyCal.startOfDay(for: noon)]
     }
+}
 
-    public static func day(_ date: Date, in forecast: [Date: DayWeather], timeZone: TimeZone) -> DayWeather? {
-        forecast[key(for: date, timeZone: timeZone)]
+extension WeatherFormat {
+    /// A cell's own VoiceOver label with the day's forecast appended ("..., Weather forecast, Rain,
+    /// high 12, low 6"). A button's label replaces its children's, so the forecast has to be here.
+    public static func label(_ base: String, weather: DayWeather?, locale: Locale) -> String {
+        guard let weather else { return base }
+        return "\(base), Weather forecast, \(spoken(weather, locale: locale))"
     }
 }
