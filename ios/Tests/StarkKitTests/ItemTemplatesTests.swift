@@ -142,3 +142,18 @@ private func snap(_ kind: TemplateKind = .event, title: String = "Dentist", dura
         #expect(!json.contains("until") && !json.contains("count"))
     }
 }
+
+@Suite struct TemplateDurationTests {
+    @Test func minutesBetweenStartAndEnd() {
+        let s = Date(timeIntervalSince1970: 1_800_000_000)
+        #expect(TemplateSnapshot.durationMinutes(start: s, end: s.addingTimeInterval(90 * 60), allDay: false) == 90)
+    }
+    @Test func allDayHasNoDuration() {
+        let s = Date(timeIntervalSince1970: 1_800_000_000)
+        #expect(TemplateSnapshot.durationMinutes(start: s, end: s.addingTimeInterval(3600), allDay: true) == nil)
+    }
+    @Test func endBeforeStartClampsToZero() {
+        let s = Date(timeIntervalSince1970: 1_800_000_000)
+        #expect(TemplateSnapshot.durationMinutes(start: s, end: s.addingTimeInterval(-600), allDay: false) == 0)
+    }
+}

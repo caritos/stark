@@ -18,6 +18,7 @@ struct StarkApp: App {
     @State private var destinations: DefaultDestinationModel
     /// Saved calendar sets (the bottom bar's calendars button); a view over `overlay.selection`.
     @State private var calendarSets: CalendarSetsModel
+    @State private var templates = TemplatesModel()
     /// Apple reminders' plan blocks for the agenda (read through the router).
     @State private var planCache: PlanCache
     /// The main screen's notice strip, shared so sheets and the agenda can post to it.
@@ -93,6 +94,7 @@ struct StarkApp: App {
                 .environment(overlay)
                 .environment(destinations)
                 .environment(calendarSets)
+                .environment(templates)
                 .environment(planCache)
                 .environment(notices)
                 .environment(errors)

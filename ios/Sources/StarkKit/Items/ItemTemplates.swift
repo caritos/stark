@@ -46,6 +46,13 @@ public struct TemplateSnapshot: Equatable, Sendable {
     }
 }
 
+extension TemplateSnapshot {
+    /// End minus start in whole minutes, never negative; nil for an all-day item.
+    public static func durationMinutes(start: Date, end: Date, allDay: Bool) -> Int? {
+        allDay ? nil : max(Int((end.timeIntervalSince(start) / 60).rounded()), 0)
+    }
+}
+
 /// A saved starting point for a new item. Never holds a date.
 public struct ItemTemplate: Equatable, Codable, Sendable, Identifiable {
     public var id: UUID

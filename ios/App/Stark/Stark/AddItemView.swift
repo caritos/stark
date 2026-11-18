@@ -12,6 +12,7 @@ struct AddItemView: View {
     @Environment(DefaultDestinationModel.self) private var destinations
     @Environment(AppleOverlayModel.self) private var overlay
     @Environment(NoticeCenter.self) private var notices
+    @Environment(TemplatesModel.self) private var templates
     /// Closes Add and opens Stark's Settings (access, default calendar and list).
     private let onOpenSettings: () -> Void
 
@@ -35,6 +36,10 @@ struct AddItemView: View {
     @State private var pickedListID: String?
     @State private var errorMessage: String?
     @State private var isSaving = false
+    @State private var askingTemplateName = false
+    @State private var templateName = ""
+    /// Shown under the Templates rows after a save (the notice strip is behind this sheet).
+    @State private var savedTemplateName: String?
 
     /// Which text field has focus, so the keyboard's sigil buttons know which one to append to
     /// (and stay hidden for the URL field, which must not get tags).
@@ -53,6 +58,7 @@ struct AddItemView: View {
         NavigationStack {
             Form {
                 destinationSection
+                templatesSection
                 Section {
                 TextField("Title", text: $title)
                     .focused($focusedField, equals: .title)
@@ -157,6 +163,74 @@ struct AddItemView: View {
             }
         }
         .tint(Colors.accent)
+        .alert("Save as Template", isPresented: $askingTemplateName) {
+            TextField("Name", text: $templateName)
+            Button("Save") { saveTemplate() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Saves the title, length, repeat and notes. Never the date.")
+        }
+    }
+
+    // MARK: Templates
+
+    @ViewBuilder
+    private var templatesSection: some View {
+        Section {
+            if !templates.templates(for: kind.templateKind).isEmpty {
+                NavigationLink {
+                    TemplatesListView(kind: kind.templateKind) { applyTemplate($0) }
+                } label: {
+                    Text("Templates")
+                }
+                .accessibilityHint("Fills the form from a saved template.")
+            }
+            Button("Save as Template...") {
+                templateName = ""
+                askingTemplateName = true
+            }
+            .disabled(FormFields.trimmedOrNil(title) == nil)
+            .accessibilityHint(FormFields.trimmedOrNil(title) == nil
+                               ? "Type a title first." : "Saves this form as a template.")
+        } footer: {
+            if let savedTemplateName { Text("Saved template \"\(savedTemplateName)\".") }
+        }
+    }
+
+    /// Fills the form from a template. Never changes the start (date and time stay as shown) and
+    /// never saves; `end` is computed from the current start, so the Starts picker's handler is
+    /// not involved.
+    private func applyTemplate(_ template: ItemTemplate) {
+        let offered = Set(choices.map(\.id))
+        let values = TemplateFormValues(template, start: date, offeredDestinationIDs: offered)
+        title = values.title
+        appliedTitle = values.title
+        notes = values.notes ?? ""
+        url = values.url ?? ""
+        priority = values.priority
+        recurrence = values.recurrence
+        repeatEnd = .never
+        allDay = values.allDay
+        endDate = values.end
+        if let id = values.destinationID {
+            if isEvent { pickedCalendarID = id } else { pickedListID = id }
+        }
+        focusedField = nil
+    }
+
+    private func saveTemplate() {
+        let snapshot = TemplateSnapshot(
+            kind: kind.templateKind, title: title,
+            durationMinutes: TemplateSnapshot.durationMinutes(start: date, end: endDate, allDay: allDay),
+            allDay: allDay, notes: notes, url: url, priority: priority,
+            recurrence: recurrence, destinationID: selectedDestination)
+        if let message = templates.add(name: templateName, from: snapshot) {
+            errorMessage = message
+        } else {
+            errorMessage = nil
+            savedTemplateName = templateName.trimmingCharacters(in: .whitespacesAndNewlines)
+            UIAccessibility.post(notification: .announcement, argument: "Template saved")
+        }
     }
 
     /// Applies a quick-add suggestion (the owner tapped it). The end is set so that the Starts
