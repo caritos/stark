@@ -29,6 +29,8 @@ struct StarkApp: App {
     /// The optional weather forecast (Settings > Weather). OFF by default: no location prompt and no
     /// network call until the owner turns it on.
     @State private var weather: WeatherModel
+    /// Tells the main screen a reminder was just completed (a win moment for the rating prompt).
+    @State private var reviewAsk = ReviewAskSignal()
     /// The one EventKit repository, sidecar and router (Apple write path). Every view write goes
     /// through the router.
     private let repository: AppleItemRepository
@@ -36,6 +38,8 @@ struct StarkApp: App {
     private let router: ItemRouter
 
     init() {
+        // Counts this cold launch toward the rating prompt (never asks here: not at launch).
+        ReviewPromptStore().recordLaunch()
         let errors = ErrorCenter()
         _errors = State(initialValue: errors)
         // One EKEventStore for the whole app: the provider creates it lazily and the repository
@@ -80,9 +84,14 @@ struct StarkApp: App {
         // repeating reminder already past that day, so a double tap never completes the next
         // one); a non-Apple id is refused (`.notApple`). The row stays pending until the write and
         // the overlay reload have landed; a failure shows in the main error banner.
+        let reviewAsk = ReviewAskSignal()
+        _reviewAsk = State(initialValue: reviewAsk)
         _pending = StateObject(wrappedValue: PendingCompletions(asyncCommit: { id, occurrence in
             do {
                 try await router.complete(id: id, on: occurrence)
+                // The undo window has passed and the write landed: a win moment.
+                ReviewPromptStore().recordCompletion()
+                reviewAsk.completionLanded()
             } catch {
                 errors.show(error.routerMessage)
             }
@@ -101,6 +110,7 @@ struct StarkApp: App {
                 .environment(notices)
                 .environment(errors)
                 .environment(weather)
+                .environment(reviewAsk)
                 .environment(\.itemRouter, router)
                 #if targetEnvironment(macCatalyst)
                 .frame(minWidth: 480, minHeight: 520)

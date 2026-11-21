@@ -7,6 +7,7 @@
 
 import SwiftUI
 import StarkKit
+import StoreKit
 
 /// One screen: the calendar grid on top (one week row when collapsed, the month grid otherwise),
 /// a drag bar that switches between the week, month and year modes, and the day-grouped agenda
@@ -21,6 +22,8 @@ struct ContentView: View {
     @Environment(NoticeCenter.self) private var notices
     @Environment(ErrorCenter.self) private var errors
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
+    @Environment(ReviewAskSignal.self) private var reviewAsk
     @State private var showAdd = false
     @State private var showSearch = false
     @State private var showSettings = false
@@ -247,6 +250,10 @@ struct ContentView: View {
         .onChange(of: overlay.access) { _, access in
             if access == .granted { Task { await destinations.refresh() } }
         }
+        // A reminder was just completed: ask for a rating if the policy says so (system prompt only).
+        .onChange(of: reviewAsk.completions) {
+            askForReviewIfDue()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 // A Focus filter may have switched the calendars while Stark was away.
@@ -265,6 +272,18 @@ struct ContentView: View {
         // Midnight, or the clock / timezone changed, while the app is in the foreground.
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
             followCalendarDay()
+        }
+    }
+
+    /// Asks Apple for the rating dialog a moment after a completed reminder, only while Stark is
+    /// in the foreground. The policy and the "already asked" record live in `ReviewPromptStore`;
+    /// Apple decides whether it really shows. No custom UI, no "do you like it?" first.
+    private func askForReviewIfDue() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard scenePhase == .active else { return }
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+            if ReviewPromptStore().claimPrompt(version: version) { requestReview() }
         }
     }
 
