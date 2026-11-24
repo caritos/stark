@@ -36,6 +36,8 @@ struct StarkApp: App {
     private let repository: AppleItemRepository
     private let sidecar: ItemSidecar
     private let router: ItemRouter
+    /// Applies the Apple Watch's complete/add commands (the watch cannot write to EventKit).
+    private let watchLink: WatchLinkReceiver
 
     init() {
         // Counts this cold launch toward the rating prompt (never asks here: not at launch).
@@ -72,6 +74,21 @@ struct StarkApp: App {
             WidgetCenter.shared.reloadAllTimelines()
         }
         self.router = router
+        // Activated at launch (not when a screen appears) so a watch command that launches Stark in
+        // the background finds a delegate. Adds go to the phone's default calendar/list, resolved
+        // fresh per command (a background launch has not refreshed the destinations yet).
+        let watchLink = WatchLinkReceiver(
+            repository: repository,
+            destinations: { @MainActor [weak destinations] in
+                guard let destinations else { return (nil, nil) }
+                await destinations.refresh()
+                return (destinations.calendarChoices.first { $0.id == destinations.calendarID },
+                        destinations.listChoices.first { $0.id == destinations.listID })
+            },
+            accessGranted: { provider.accessState() == .granted },
+            afterWrite: { @MainActor [weak router] in await router?.onDidWrite?() })
+        watchLink.activate()
+        self.watchLink = watchLink
         #if targetEnvironment(macCatalyst)
         let settingsAppName = "System Settings"
         #else
