@@ -4,7 +4,7 @@ import Foundation
 /// Points at one Apple Calendar event or Reminders reminder. `identifier` is EventKit's
 /// `calendarItemIdentifier`; `externalID` is the cross-device id when the store has one.
 public struct AppleItemRef: Equatable, Hashable, Sendable {
-    public enum Kind: Equatable, Hashable, Sendable { case event, reminder }
+    public enum Kind: Equatable, Hashable, Sendable, Codable { case event, reminder }
 
     public let kind: Kind
     public let identifier: String
