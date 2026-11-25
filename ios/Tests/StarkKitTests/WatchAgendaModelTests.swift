@@ -98,6 +98,89 @@ private func model(_ store: MemoryStore, now: @escaping @Sendable () -> Date = {
     }
 }
 
+@MainActor
+private func completionModel(_ transport: FakeWatchTransport, rows: [WatchSnapshotRow])
+    -> (WatchAgendaModel, MemoryStore) {
+    let store = MemoryStore(WatchSnapshot(generatedAt: t0, state: .items, rows: rows))
+    let m = WatchAgendaModel(store: store, outbox: WatchOutbox(transport: transport, pending: InMemoryPendingStore()),
+                             now: { t0 })
+    return (m, store)
+}
+
+private func event(_ title: String) -> WatchSnapshotRow {
+    WatchSnapshotRow(item: WidgetItem(id: "apple-ev", title: title, isReminder: false, isAllDay: false,
+                                      start: t0, end: nil, colorHex: nil, isOverdue: false),
+                     reminderIdentifier: nil, externalID: nil, occurrence: nil)
+}
+
+@MainActor
+@Suite struct WatchCompleteTests {
+    @Test func completingSubmitsOneCompleteCommandBuiltFromTheRow() async {
+        let transport = FakeWatchTransport(reachable: true)
+        let (m, _) = completionModel(transport, rows: [row("a")])
+        await m.complete(row("a"))
+        #expect(transport.sent.map(\.command) == [.complete(identifier: "a", externalID: nil, occurrence: t0)])
+    }
+
+    @Test func theRowLeavesTheListAtOnce() async {
+        let transport = FakeWatchTransport(reachable: true)
+        let (m, _) = completionModel(transport, rows: [row("a"), row("b")])
+        await m.complete(row("a"))
+        #expect(m.state == .items([row("b")]))
+    }
+
+    @Test func aSecondTapWhileInFlightIsIgnored() async {
+        let transport = FakeWatchTransport(reachable: false)
+        let (m, _) = completionModel(transport, rows: [row("a")])
+        await m.complete(row("a"))
+        await m.complete(row("a"))
+        #expect(transport.queued.count == 1)
+    }
+
+    @Test func aFailedReplyPutsTheRowBackAndSetsLastError() async {
+        let transport = FakeWatchTransport(reachable: true, result: .success(.failed("Reminder not found")))
+        let (m, _) = completionModel(transport, rows: [row("a")])
+        await m.complete(row("a"))
+        #expect(m.state == .items([row("a")]))
+        #expect(m.outbox.statuses.values.contains(.failed("Reminder not found")))
+        #expect(m.lastError == "Reminder not found")
+    }
+
+    @Test func anUnreachablePhoneKeepsTheRowMarkedWaiting() async {
+        let transport = FakeWatchTransport(reachable: false)
+        let (m, _) = completionModel(transport, rows: [row("a")])
+        await m.complete(row("a"))
+        #expect(m.waiting(row("a")))
+        #expect(m.waitingRows == [row("a")])
+        #expect(m.state == .empty)
+    }
+
+    @Test func completingAnEventDoesNothing() async {
+        let transport = FakeWatchTransport(reachable: true)
+        let (m, _) = completionModel(transport, rows: [event("Meet")])
+        await m.complete(event("Meet"))
+        #expect(transport.sent.isEmpty && transport.queued.isEmpty)
+        #expect(m.state == .items([event("Meet")]))
+    }
+
+    @Test func aNewSnapshotDoesNotBringBackARowWaitingToComplete() async {
+        let transport = FakeWatchTransport(reachable: false)
+        let (m, _) = completionModel(transport, rows: [row("a"), row("b")])
+        await m.complete(row("a"))
+        m.receive(WatchSnapshot(generatedAt: t0.addingTimeInterval(30), state: .items, rows: [row("a"), row("b")]))
+        #expect(m.state == .items([row("b")]))
+    }
+
+    @Test func aLateFailureBringsTheRowBack() async throws {
+        let transport = FakeWatchTransport(reachable: false)
+        let (m, _) = completionModel(transport, rows: [row("a")])
+        await m.complete(row("a"))
+        let id = try #require(transport.queued.first?.id)
+        m.outbox.receive(WatchReplyEnvelope(id: id, reply: .failed("nope")))
+        #expect(m.state == .items([row("a")]))
+    }
+}
+
 private final class NowBox: @unchecked Sendable {
     private let lock = NSLock()
     private var _value: Date

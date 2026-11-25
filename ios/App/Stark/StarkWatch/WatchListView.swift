@@ -7,6 +7,7 @@
 
 import StarkKit
 import SwiftUI
+import WatchKit
 
 struct WatchListView: View {
     let model: WatchAgendaModel
@@ -27,7 +28,13 @@ struct WatchListView: View {
                     Message(text)
                 case .items(let rows):
                     // A repeating event's today and tomorrow rows share one id, so key on position too.
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in WatchRowView(row: row) }
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in WatchRowView(row: row, model: model) }
+                }
+                ForEach(Array(model.waitingRows.enumerated()), id: \.offset) { _, row in
+                    WatchRowView(row: row, model: model)
+                }
+                if let error = model.lastError {
+                    Text(error).font(.caption2).foregroundStyle(.red)
                 }
                 FooterView(model: model)
             }
@@ -46,13 +53,27 @@ private struct Message: View {
 
 struct WatchRowView: View {
     let row: WatchSnapshotRow
+    let model: WatchAgendaModel
 
     var body: some View {
         let item = row.item
+        let waiting = model.waiting(row)
         HStack(spacing: 8) {
             if item.isReminder {
-                Image(systemName: "circle")
-                    .foregroundStyle(item.isOverdue ? Color.red : Color.secondary)
+                Button {
+                    Task {
+                        await model.complete(row)
+                        // Failure shows the row again with the message; success is a click.
+                        WKInterfaceDevice.current().play(model.lastError == nil ? .success : .failure)
+                    }
+                } label: {
+                    Image(systemName: waiting ? "clock" : "circle")
+                        .foregroundStyle(item.isOverdue ? Color.red : Color.secondary)
+                        .frame(minWidth: 32, minHeight: 32)
+                }
+                .buttonStyle(.plain)
+                .disabled(waiting)
+                .accessibilityLabel("Complete \(item.title)")
             } else {
                 Circle().fill(dotColor).frame(width: 8, height: 8)
             }
@@ -62,9 +83,11 @@ struct WatchRowView: View {
                     Text(time).font(.caption2)
                         .foregroundStyle(item.isOverdue ? Color.red : Color.secondary)
                 }
+                if waiting {
+                    Text("Waiting for iPhone").font(.caption2).foregroundStyle(.orange)
+                }
             }
         }
-        .accessibilityElement(children: .combine)
     }
 
     private var dotColor: Color {
