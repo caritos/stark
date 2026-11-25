@@ -11,6 +11,8 @@ import WatchKit
 
 struct WatchListView: View {
     let model: WatchAgendaModel
+    let addModel: WatchAddModel
+    @State private var adding = false
 
     var body: some View {
         NavigationStack {
@@ -39,6 +41,13 @@ struct WatchListView: View {
                 FooterView(model: model)
             }
             .navigationTitle("Up Next")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { adding = true } label: { Image(systemName: "plus") }
+                        .accessibilityLabel("Add")
+                }
+            }
+            .sheet(isPresented: $adding) { WatchAddView(model: addModel) }
         }
     }
 }

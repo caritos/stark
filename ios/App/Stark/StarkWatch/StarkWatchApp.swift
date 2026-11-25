@@ -12,6 +12,7 @@ import SwiftUI
 @main
 struct StarkWatchApp: App {
     @State private var model: WatchAgendaModel
+    @State private var addModel: WatchAddModel
     private let transport: WCSessionTransport
     @Environment(\.scenePhase) private var scenePhase
 
@@ -23,12 +24,13 @@ struct StarkWatchApp: App {
             onSnapshot: { snapshot in Task { @MainActor in model.receive(snapshot) } },
             onReply: { reply in Task { @MainActor in outbox.receive(reply) } })
         self.transport = transport
+        _addModel = State(initialValue: WatchAddModel(outbox: outbox))
         _model = State(initialValue: model)
     }
 
     var body: some Scene {
         WindowGroup {
-            WatchListView(model: model)
+            WatchListView(model: model, addModel: addModel)
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
