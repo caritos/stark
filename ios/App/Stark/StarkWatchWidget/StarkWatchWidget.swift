@@ -23,7 +23,7 @@ struct ComplicationProvider: TimelineProvider {
         let now = Date()
         let line = WidgetLockLine(time: "9:00 AM", title: "Standup")
         return ComplicationEntry(date: now, content: WatchComplicationContent(
-            message: nil, lines: [line], inline: line, count: 1, items: []))
+            message: nil, lines: [line], inline: line, count: 1))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ComplicationEntry) -> Void) {
@@ -73,7 +73,7 @@ struct ComplicationView: View {
         } else if let line = content.inline {
             Text(line.text).privacySensitive()
         } else {
-            Text("Nothing coming up")
+            Text(WatchComplication.nothingMessage)
         }
     }
 
@@ -122,7 +122,7 @@ struct ComplicationView: View {
     }
 
     /// A message that is a problem to fix ("Open Stark"), not the calm "Nothing coming up" (shown as 0).
-    private var isProblem: Bool { content.message != nil && content.message != "Nothing coming up" }
+    private var isProblem: Bool { content.isProblem }
 
     @ViewBuilder private var corner: some View {
         if isProblem {

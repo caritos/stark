@@ -9,18 +9,19 @@ public struct WatchComplicationContent: Equatable, Sendable {
     public let lines: [WidgetLockLine]
     /// The line the inline family shows.
     public let inline: WidgetLockLine?
-    /// Items left today (tomorrow's excluded), for the circular and corner families.
+    /// Items left today (tomorrow's excluded), for the circular and corner families. Counted from the
+    /// snapshot's rows, which the phone caps (so it can be lower than the iOS widget's
+    /// `remainingToday`, which has no row limit).
     public let count: Int
-    /// The rows behind `lines`, for accessibility labels.
-    public let items: [WidgetItem]
+    /// True for a message the owner should act on ("Open Stark on iPhone", no access, failed); false
+    /// for the calm "Nothing coming up" and for a list.
+    public var isProblem: Bool { message != nil && message != WatchComplication.nothingMessage }
 
-    public init(message: String?, lines: [WidgetLockLine], inline: WidgetLockLine?, count: Int,
-                items: [WidgetItem]) {
+    public init(message: String?, lines: [WidgetLockLine], inline: WidgetLockLine?, count: Int) {
         self.message = message
         self.lines = lines
         self.inline = inline
         self.count = count
-        self.items = items
     }
 }
 
@@ -28,6 +29,7 @@ public enum WatchComplication {
     /// A snapshot older than this is not trusted (same rule as `WatchAgendaModel.stale(after:)`).
     public static let staleAfter: TimeInterval = 3 * 3600
     public static let openMessage = "Open Stark on iPhone"
+    public static let nothingMessage = "Nothing coming up"
     public static let maxEntries = 12
 
     public static func countText(_ count: Int) -> String { WidgetRowText.countText(count) }
@@ -38,7 +40,7 @@ public enum WatchComplication {
                                calendar: Calendar = Calendar(identifier: .gregorian),
                                locale: Locale = .autoupdatingCurrent) -> WatchComplicationContent {
         func message(_ text: String) -> WatchComplicationContent {
-            WatchComplicationContent(message: text, lines: [], inline: nil, count: 0, items: [])
+            WatchComplicationContent(message: text, lines: [], inline: nil, count: 0)
         }
         guard let snapshot, now.timeIntervalSince(snapshot.generatedAt) <= staleAfter else {
             return message(openMessage)
@@ -46,19 +48,18 @@ public enum WatchComplication {
         switch snapshot.state {
         case .accessNeeded(let text): return message(text.isEmpty ? "Allow Calendar access on iPhone" : text)
         case .noSources: return message("No calendars are syncing")
-        case .empty: return message("Nothing coming up")
+        case .empty: return message(nothingMessage)
         case .failed: return message("Couldn't read calendar. Open Stark on iPhone")
         case .items: break
         }
         let live = snapshot.rows.compactMap { current($0.item, at: now, calendar: calendar) }
-        guard !live.isEmpty else { return message("Nothing coming up") }
+        guard !live.isEmpty else { return message(nothingMessage) }
         let lines = live.prefix(3).map { WidgetRowText.lockLine($0, calendar: calendar, locale: locale) }
         let inline = WidgetAgenda.inlineItem(from: live).map {
             WidgetRowText.lockLine($0, calendar: calendar, locale: locale)
         }
         return WatchComplicationContent(message: nil, lines: Array(lines), inline: inline,
-                                        count: live.filter { !$0.isTomorrow }.count,
-                                        items: Array(live.prefix(3)))
+                                        count: live.filter { !$0.isTomorrow }.count)
     }
 
     /// The row as it reads at `date`, or nil when it is over.
@@ -91,7 +92,9 @@ public enum WatchComplication {
                                   calendar: Calendar = Calendar(identifier: .gregorian)) -> [Date] {
         guard let snapshot else { return [now] }
         let cutoff = snapshot.generatedAt.addingTimeInterval(staleAfter)
-        guard cutoff > now, snapshot.state == .items else { return [now] }
+        guard cutoff > now else { return [now] }
+        // Whatever the state, the stale message must take over on time.
+        guard snapshot.state == .items else { return [now, cutoff] }
         var dates = [now]
         while dates.count < maxEntries, let last = dates.last {
             let shown = snapshot.rows.compactMap { current($0.item, at: last, calendar: calendar) }

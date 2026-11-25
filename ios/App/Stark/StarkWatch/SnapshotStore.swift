@@ -20,9 +20,22 @@ nonisolated struct UserDefaultsSnapshotStore: WatchSnapshotStore, @unchecked Sen
     /// The watch-side App Group shared by the watch app and its widget extension (not the iPhone's).
     static let appGroup = "group.com.caritos.todo-txt.watch"
 
-    /// Falls back to the app's own defaults if the group container is unavailable (an unsigned or
-    /// unregistered build), so the list still works; the complications then show "Open Stark".
-    init(defaults: UserDefaults = UserDefaults(suiteName: appGroup) ?? .standard) { self.defaults = defaults }
+    /// The group's defaults when its container can be opened. `UserDefaults(suiteName:)` returns an
+    /// object even for a group that is unregistered or missing from the entitlements (then app and
+    /// extension would each get a private suite and the complications would never see a snapshot),
+    /// so the container is checked first. When it cannot be opened this logs an error and uses the
+    /// app's own defaults: the list still works, the complications stay on "Open Stark on iPhone".
+    /// Glue only (needs the signed entitlement), so not unit-tested.
+    static func groupDefaults() -> UserDefaults {
+        guard FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) != nil,
+              let defaults = UserDefaults(suiteName: appGroup) else {
+            log.error("App Group \(appGroup, privacy: .public) has no container: complications will not see snapshots")
+            return .standard
+        }
+        return defaults
+    }
+
+    init(defaults: UserDefaults = UserDefaultsSnapshotStore.groupDefaults()) { self.defaults = defaults }
 
     func load() -> WatchSnapshot? {
         guard let data = defaults.data(forKey: key) else { return nil }

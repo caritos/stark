@@ -97,12 +97,56 @@ import Testing
         #expect(content(ended).message == "Nothing coming up")
     }
 
-    @Test func afterMidnightTomorrowBecomesToday() {
+    @Test func afterMidnightTomorrowBecomesToday() throws {
         let rows = [item("Early", start: date(16, 9), end: date(16, 10), tomorrow: true)]
         let s = snapshot(rows: rows, at: date(15, 23))
         let c = content(s, at: date(16, 0, 30))
         #expect(c.count == 1)
-        #expect(c.lines.first?.time?.contains("Tmrw") == false)
+        let time = try #require(c.lines.first?.time)
+        #expect(!time.contains("Tmrw"))
+    }
+
+    @Test func aDateOnlyReminderDueTodayIsOverdueAfterMidnight() throws {
+        let rows = [item("Pay", start: date(15), allDay: true, reminder: true)]
+        let s = snapshot(rows: rows, at: date(15, 23))
+        let c = content(s, at: date(16, 0, 30))
+        #expect(c.message == nil)
+        #expect(c.count == 1)
+        let time = try #require(c.lines.first?.time) // an overdue reminder keeps its missed date
+        #expect(!time.contains("Tmrw"))
+    }
+
+    @Test func aMultiDayAllDayEventContinuesPastMidnight() {
+        let rows = [item("Trip", start: date(14), end: date(16), allDay: true)]
+        let s = snapshot(rows: rows, at: date(15, 23))
+        let c = content(s, at: date(16, 0, 30))
+        #expect(c.lines.map(\.title) == ["Trip"])
+        #expect(c.count == 1)
+        let later = snapshot(rows: rows, at: date(16, 23))
+        #expect(content(later, at: date(17, 0, 30)).message == "Nothing coming up")
+    }
+
+    @Test func onlyNothingComingUpIsNotAProblem() {
+        #expect(!content(snapshot(.empty)).isProblem)
+        #expect(!content(snapshot(rows: [item("A", start: date(15, 11), end: date(15, 12))])).isProblem)
+        #expect(content(nil).isProblem)
+        #expect(content(snapshot(.noSources)).isProblem)
+        #expect(content(snapshot(.failed(""))).isProblem)
+        #expect(content(snapshot(.accessNeeded(""))).isProblem)
+    }
+
+    @Test func staleCutoffIsAnEntryForEveryState() {
+        let cutoff = date(15, 13)
+        for state in [WatchSnapshot.State.accessNeeded("x"), .noSources, .empty, .failed("x")] {
+            let dates = WatchComplication.entryDates(snapshot: snapshot(state), now: now, calendar: Self.cal)
+            #expect(dates == [now, cutoff])
+        }
+        // An items snapshot with no rows steps hourly and still ends at the cutoff.
+        let none = WatchComplication.entryDates(snapshot: snapshot(rows: []), now: now, calendar: Self.cal)
+        #expect(none == [now, date(15, 11), date(15, 12), cutoff])
+        // Already stale: just now.
+        let old = snapshot(.empty, at: date(15, 1))
+        #expect(WatchComplication.entryDates(snapshot: old, now: now, calendar: Self.cal) == [now])
     }
 
     @Test func yesterdaysAllDayEventLeavesAtMidnight() {
@@ -130,7 +174,7 @@ import Testing
     @Test func entryDatesAreCapped() {
         let rows = (0..<20).map { item("E\($0)", start: date(15, 10, 1 + $0), end: date(15, 10, 1 + $0)) }
         let dates = WatchComplication.entryDates(snapshot: snapshot(rows: rows), now: now, calendar: Self.cal)
-        #expect(dates.count <= 12)
+        #expect(dates.count == 12)
     }
 
     @Test func reloadIsAtLeastHourly() {
