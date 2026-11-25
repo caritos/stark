@@ -64,6 +64,9 @@ import Testing
         #expect(snap.rows.count == 20)
         let starts = snap.rows.map(\.item.start)
         #expect(starts == starts.sorted())
+        // The 20 oldest of the 30: day 1 holds 2, days 2 and 3 hold 3 each, days 4+ hold 2 each, so the cut ends at day 9.
+        #expect(starts.first == date(1))
+        #expect(starts.last == date(9))
     }
 
     @Test func aReminderRowCarriesItsIdentifierExternalIDAndOccurrence() async {

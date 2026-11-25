@@ -14,7 +14,9 @@ public enum WatchSnapshotBuilder {
         guard !provider.calendars().isEmpty else { return snapshot(.noSources) }
 
         let start = calendar.startOfDay(for: now)
-        guard let end = calendar.date(byAdding: .day, value: 2, to: start) else { return snapshot(.empty) }
+        guard let end = calendar.date(byAdding: .day, value: 2, to: start) else {
+            return snapshot(.failed("Couldn't work out the date range."))
+        }
         let fetched: AppleSnapshot
         do {
             // Completed reminders are not listed, so the completed window is empty.

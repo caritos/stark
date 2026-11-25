@@ -14,17 +14,19 @@
 
 import EventKit
 import Foundation
+import OSLog
 import StarkKit
 import WatchConnectivity
 
 nonisolated final class WatchSnapshotPusher: WatchSnapshotPublisher, @unchecked Sendable {
+    private static let log = Logger(subsystem: "com.caritos.todo-txt", category: "WatchSnapshot")
     private let provider: AppleItemProvider
-    private let lock = NSLock()
-    private var scheduled = false
     private var observer: NSObjectProtocol?
+    private var coalescer: BuildCoalescer!
 
     init(provider: AppleItemProvider) {
         self.provider = provider
+        coalescer = BuildCoalescer { [weak self] in await self?.pushNow() }
     }
 
     /// Call once at launch: pushes now and again on every Calendar/Reminders store change.
@@ -38,21 +40,10 @@ nonisolated final class WatchSnapshotPusher: WatchSnapshotPublisher, @unchecked 
         request()
     }
 
-    /// Builds and pushes a snapshot soon (coalesced to one build per second).
+    /// Builds and pushes a snapshot soon: coalesced, and builds never overlap (`BuildCoalescer`).
     func request() {
         guard WCSession.isSupported() else { return }
-        lock.lock()
-        if scheduled { lock.unlock(); return }
-        scheduled = true
-        lock.unlock()
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(1))
-            guard let self else { return }
-            self.lock.lock()
-            self.scheduled = false
-            self.lock.unlock()
-            await self.pushNow()
-        }
+        coalescer.request()
     }
 
     private func pushNow() async {
@@ -70,7 +61,12 @@ nonisolated final class WatchSnapshotPusher: WatchSnapshotPublisher, @unchecked 
     }
 
     func publish(_ snapshot: WatchSnapshot) {
-        guard canPush, let data = try? WatchLinkCoding.encode(snapshot) else { return }
-        try? WCSession.default.updateApplicationContext([WatchLinkCoding.snapshotKey: data])
+        guard canPush else { return }
+        do {
+            let data = try WatchLinkCoding.encode(snapshot)
+            try WCSession.default.updateApplicationContext([WatchLinkCoding.snapshotKey: data])
+        } catch {
+            Self.log.error("Couldn't push the watch snapshot: \(String(describing: error), privacy: .public)")
+        }
     }
 }

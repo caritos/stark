@@ -66,7 +66,7 @@ nonisolated final class WCSessionTransport: WatchTransport, @unchecked Sendable 
 
 /// Activates `WCSession` and applies the watch's envelopes.
 nonisolated final class WatchLinkReceiver: NSObject, WCSessionDelegate, @unchecked Sendable {
-    static let noAccessMessage = "Open Stark on your iPhone and allow Calendar and Reminders access."
+    static let noAccessMessage = WatchSnapshotBuilder.accessMessage
 
     private let handler: WatchCommandHandler
     private let transport: WatchTransport
