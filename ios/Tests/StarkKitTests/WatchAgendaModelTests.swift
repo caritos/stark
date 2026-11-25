@@ -181,6 +181,129 @@ private func event(_ title: String) -> WatchSnapshotRow {
     }
 }
 
+/// A transport whose live send suspends until `release` is called.
+private final class SuspendingTransport: WatchTransport, @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<WatchReply, Never>?
+    private var _sends = 0
+    var sends: Int { lock.withLock { _sends } }
+    var isReachable: Bool { true }
+    func send(_ envelope: WatchEnvelope) async throws -> WatchReply {
+        await withCheckedContinuation { c in lock.withLock { _sends += 1; continuation = c } }
+    }
+    func release(_ reply: WatchReply) { lock.withLock { let c = continuation; continuation = nil; return c }?.resume(returning: reply) }
+    func queue(_ envelope: WatchEnvelope) {}
+    func reply(_ reply: WatchReplyEnvelope) {}
+}
+
+private func snap(_ rows: [WatchSnapshotRow], _ dt: TimeInterval) -> WatchSnapshot {
+    WatchSnapshot(generatedAt: t0.addingTimeInterval(dt), state: .items, rows: rows)
+}
+
+@MainActor
+@Suite struct WatchCompleteFixTests {
+    @Test func outcomeIsPerCall() async {
+        let live = FakeWatchTransport(reachable: true)
+        let (m, _) = completionModel(live, rows: [row("a")])
+        #expect(await m.complete(row("a")) == .sent)
+        let off = FakeWatchTransport(reachable: false)
+        let (m2, _) = completionModel(off, rows: [row("a"), event("e")])
+        #expect(await m2.complete(row("a")) == .queued)
+        #expect(await m2.complete(row("a")) == .ignored)
+        #expect(await m2.complete(event("e")) == .ignored)
+        let bad = FakeWatchTransport(reachable: true, result: .success(.failed("boom")))
+        let (m3, _) = completionModel(bad, rows: [row("a")])
+        #expect(await m3.complete(row("a")) == .failed("boom"))
+    }
+
+    @Test func anUnrelatedEarlierFailureDoesNotMakeALaterCompletionFail() async {
+        let transport = FakeWatchTransport(reachable: true, result: .success(.failed("boom")))
+        let (m, _) = completionModel(transport, rows: [row("a"), row("b")])
+        #expect(await m.complete(row("a")) == .failed("boom"))
+        transport.result = .success(.done(notice: "ok", warning: nil))
+        #expect(await m.complete(row("b")) == .sent)
+    }
+
+    @Test func aFailedRowThatLeavesTheSnapshotClearsTheError() async {
+        let transport = FakeWatchTransport(reachable: true, result: .success(.failed("boom")))
+        let (m, _) = completionModel(transport, rows: [row("a"), row("b")])
+        _ = await m.complete(row("a"))
+        #expect(m.lastError == "boom")
+        m.receive(snap([row("b")], 30))
+        #expect(m.lastError == nil)
+    }
+
+    @Test func aSecondTapDuringASuspendedLiveSendIsIgnored() async {
+        let transport = SuspendingTransport()
+        let (m, _) = completionModel(FakeWatchTransport(reachable: true), rows: [])
+        let model = WatchAgendaModel(store: MemoryStore(snap([row("a")], 0)),
+                                     outbox: WatchOutbox(transport: transport, pending: InMemoryPendingStore()), now: { t0 })
+        _ = m
+        let first = Task { await model.complete(row("a")) }
+        while transport.sends == 0 { await Task.yield() }
+        #expect(await model.complete(row("a")) == .ignored)
+        transport.release(.done(notice: "ok", warning: nil))
+        #expect(await first.value == .sent)
+        #expect(transport.sends == 1)
+    }
+
+    @Test func aSnapshotBeforeTheDoneReplyKeepsTheRowHidden() async {
+        let transport = SuspendingTransport()
+        let model = WatchAgendaModel(store: MemoryStore(snap([row("a")], 0)),
+                                     outbox: WatchOutbox(transport: transport, pending: InMemoryPendingStore()), now: { t0 })
+        let first = Task { await model.complete(row("a")) }
+        while transport.sends == 0 { await Task.yield() }
+        model.receive(snap([row("a")], 30))
+        #expect(model.state == .empty)
+        transport.release(.done(notice: "ok", warning: nil))
+        _ = await first.value
+        #expect(model.state == .empty)
+    }
+
+    @Test func doneThenASnapshotDroppingTheRowThenListingItAgainShowsIt() async {
+        let transport = FakeWatchTransport(reachable: true)
+        let (m, _) = completionModel(transport, rows: [row("a"), row("b")])
+        _ = await m.complete(row("a"))
+        m.receive(snap([row("b")], 30))
+        m.receive(snap([row("a"), row("b")], 60))
+        #expect(m.state == .items([row("a"), row("b")]))
+    }
+
+    @Test func aReopenedRowListedByEverySnapshotIsNotHiddenForever() async {
+        let transport = FakeWatchTransport(reachable: true)
+        let (m, _) = completionModel(transport, rows: [row("a"), row("b")])
+        _ = await m.complete(row("a"))
+        m.receive(snap([row("a"), row("b")], 30))  // stale generation
+        m.receive(snap([row("a"), row("b")], 60))
+        #expect(m.state == .items([row("a"), row("b")]))
+    }
+
+    @Test func theNextOccurrenceOfARepeatingReminderShowsAfterCompletion() async {
+        let transport = FakeWatchTransport(reachable: true)
+        let (m, _) = completionModel(transport, rows: [row("a")])
+        _ = await m.complete(row("a"))
+        let next = WatchSnapshotRow(item: row("a").item, reminderIdentifier: "a", externalID: nil,
+                                    occurrence: t0.addingTimeInterval(86_400))
+        m.receive(snap([next], 30))
+        #expect(m.state == .items([next]))
+    }
+
+    @Test func waitingSurvivesARelaunch() async {
+        let transport = FakeWatchTransport(reachable: false)
+        let pending = InMemoryPendingStore()
+        let store = MemoryStore(snap([row("a"), row("b")], 0))
+        let first = WatchAgendaModel(store: store, outbox: WatchOutbox(transport: transport, pending: pending), now: { t0 })
+        _ = await first.complete(row("a"))
+        let again = FakeWatchTransport(reachable: false)
+        let relaunched = WatchAgendaModel(store: store, outbox: WatchOutbox(transport: again, pending: pending), now: { t0 })
+        #expect(relaunched.state == .items([row("b")]))
+        #expect(relaunched.waitingRows == [row("a")])
+        #expect(relaunched.waiting(row("a")))
+        #expect(await relaunched.complete(row("a")) == .ignored)
+        #expect(again.queued.isEmpty && again.sent.isEmpty)
+    }
+}
+
 private final class NowBox: @unchecked Sendable {
     private let lock = NSLock()
     private var _value: Date

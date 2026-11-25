@@ -23,7 +23,7 @@ struct WatchListView: View {
                 case .noSources:
                     Message("Nothing is syncing yet")
                 case .empty:
-                    Message("Nothing coming up")
+                    if model.waitingRows.isEmpty { Message("Nothing coming up") }
                 case .failed(let text):
                     Message(text)
                 case .items(let rows):
@@ -62,9 +62,12 @@ struct WatchRowView: View {
             if item.isReminder {
                 Button {
                     Task {
-                        await model.complete(row)
                         // Failure shows the row again with the message; success is a click.
-                        WKInterfaceDevice.current().play(model.lastError == nil ? .success : .failure)
+                        switch await model.complete(row) {
+                        case .sent, .queued: WKInterfaceDevice.current().play(.success)
+                        case .failed: WKInterfaceDevice.current().play(.failure)
+                        case .ignored: break
+                        }
                     }
                 } label: {
                     Image(systemName: waiting ? "clock" : "circle")
@@ -88,12 +91,20 @@ struct WatchRowView: View {
                 }
             }
         }
+        .modifier(CombineIfEvent(isEvent: !item.isReminder))
     }
 
     private var dotColor: Color {
         guard let rgb = row.item.colorRGB else { return .blue }
         return Color(red: Double((rgb >> 16) & 0xFF) / 255, green: Double((rgb >> 8) & 0xFF) / 255,
                      blue: Double(rgb & 0xFF) / 255)
+    }
+}
+
+private struct CombineIfEvent: ViewModifier {
+    let isEvent: Bool
+    func body(content: Content) -> some View {
+        if isEvent { content.accessibilityElement(children: .combine) } else { content }
     }
 }
 

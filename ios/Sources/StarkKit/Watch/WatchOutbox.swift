@@ -54,6 +54,9 @@ public final class WatchOutbox {
     public private(set) var statuses: [UUID: Status] = [:]
     public private(set) var lastError: String?
 
+    /// The envelopes still waiting for the phone (also those reloaded after a relaunch).
+    public var waitingEnvelopes: [WatchEnvelope] { Array(waiting.keys) }
+
     @ObservationIgnored private let transport: WatchTransport
     @ObservationIgnored private let pendingStore: WatchPendingStore
     @ObservationIgnored private let now: @Sendable () -> Date

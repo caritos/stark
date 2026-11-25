@@ -10,6 +10,11 @@ public protocol WatchSnapshotStore: Sendable {
 /// What the watch's Up Next list shows: the iPhone's latest snapshot, nothing read from EventKit.
 @MainActor @Observable
 public final class WatchAgendaModel {
+    /// What one `complete` call did: sent and confirmed, queued for the iPhone, refused, or ignored.
+    public enum CompleteOutcome: Equatable, Sendable {
+        case sent, queued, failed(String), ignored
+    }
+
     public enum State: Equatable {
         case waitingForPhone, accessNeeded(String), noSources, empty, items([WatchSnapshotRow]), failed(String)
     }
@@ -32,7 +37,12 @@ public final class WatchAgendaModel {
     }
 
     private struct Key: Hashable { let identifier: String; let occurrence: Date }
-    private struct InFlight { let row: WatchSnapshotRow; var envelope: UUID? }
+    private struct InFlight {
+        var row: WatchSnapshotRow?
+        var envelope: UUID?
+        /// Snapshots received that still list the row after its completion was confirmed.
+        var staleListings = 0
+    }
     private var inFlight: [Key: InFlight] = [:]
 
     @ObservationIgnored private let store: WatchSnapshotStore
@@ -50,6 +60,13 @@ public final class WatchAgendaModel {
         } else {
             base = .waitingForPhone
         }
+        // Completions still waiting from before a relaunch keep their rows hidden and marked waiting.
+        let rows = store.load()?.rows ?? []
+        for envelope in outbox.waitingEnvelopes {
+            guard case .complete(let identifier, _, let occurrence) = envelope.command else { continue }
+            let key = Key(identifier: identifier, occurrence: occurrence)
+            inFlight[key] = InFlight(row: rows.first { Self.key($0) == key }, envelope: envelope.id)
+        }
     }
 
     /// Saves the snapshot and shows it. One older than the one shown is ignored (a live message
@@ -59,11 +76,24 @@ public final class WatchAgendaModel {
         store.save(snapshot)
         base = Self.state(for: snapshot)
         updatedAt = snapshot.generatedAt
-        // A finished completion is forgotten once a snapshot no longer lists the row.
         let listed = Set(snapshot.rows.compactMap(Self.key))
-        for (key, entry) in inFlight {
-            guard let id = entry.envelope, !listed.contains(key) else { continue }
-            if case .done = outbox.statuses[id] { inFlight[key] = nil }
+        for (key, var entry) in inFlight {
+            if entry.row == nil, let r = snapshot.rows.first(where: { Self.key($0) == key }) {
+                entry.row = r
+                inFlight[key] = entry
+            }
+            guard let id = entry.envelope else { continue }
+            switch outbox.statuses[id] {
+            case .done:
+                // Forgotten once a snapshot no longer lists the row, or after two that still do
+                // (a reopened reminder must not stay hidden).
+                if !listed.contains(key) { inFlight[key] = nil; continue }
+                entry.staleListings += 1
+                inFlight[key] = entry.staleListings >= 2 ? nil : entry
+            case .failed:
+                if !listed.contains(key) { inFlight[key] = nil }
+            default: break
+            }
         }
     }
 
@@ -94,12 +124,22 @@ public final class WatchAgendaModel {
 
     /// Completes a reminder through the iPhone: the row leaves the list at once and comes back if
     /// the phone reports a failure. Events and a row already being completed are ignored.
-    public func complete(_ row: WatchSnapshotRow) async {
+    @discardableResult
+    public func complete(_ row: WatchSnapshotRow) async -> CompleteOutcome {
         guard let key = Self.key(row), let identifier = row.reminderIdentifier,
-              let occurrence = row.occurrence, !isCompleting(row) else { return }
+              let occurrence = row.occurrence, !isCompleting(row) else { return .ignored }
         inFlight[key] = InFlight(row: row, envelope: nil)
-        let id = await outbox.submit(.complete(identifier: identifier, externalID: row.externalID, occurrence: occurrence))
-        if id == nil { inFlight[key] = nil } else { inFlight[key]?.envelope = id }
+        guard let id = await outbox.submit(.complete(identifier: identifier, externalID: row.externalID,
+                                                     occurrence: occurrence)) else {
+            inFlight[key] = nil
+            return .failed(outbox.lastError ?? "Couldn't send")
+        }
+        inFlight[key]?.envelope = id
+        switch outbox.statuses[id] {
+        case .failed(let message): return .failed(message)
+        case .done: return .sent
+        default: return .queued
+        }
     }
 
     /// True when nothing was received yet or the snapshot is older than `after`.
