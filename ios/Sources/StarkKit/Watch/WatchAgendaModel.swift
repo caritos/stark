@@ -35,8 +35,10 @@ public final class WatchAgendaModel {
         }
     }
 
-    /// Saves the snapshot and shows it.
+    /// Saves the snapshot and shows it. One older than the one shown is ignored (a live message
+    /// and the application context can arrive out of order); an equal time is accepted.
     public func receive(_ snapshot: WatchSnapshot) {
+        if let updatedAt, snapshot.generatedAt < updatedAt { return }
         store.save(snapshot)
         state = Self.state(for: snapshot)
         updatedAt = snapshot.generatedAt

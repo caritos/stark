@@ -26,7 +26,8 @@ struct WatchListView: View {
                 case .failed(let text):
                     Message(text)
                 case .items(let rows):
-                    ForEach(rows, id: \.item.id) { WatchRowView(row: $0) }
+                    // A repeating event's today and tomorrow rows share one id, so key on position too.
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in WatchRowView(row: row) }
                 }
                 FooterView(model: model)
             }
@@ -78,14 +79,17 @@ private struct FooterView: View {
 
     var body: some View {
         if let updated = model.updatedAt {
-            VStack(alignment: .leading, spacing: 2) {
+            // Re-checks staleness every minute even when nothing else changes.
+            TimelineView(.periodic(from: .now, by: 60)) { _ in
+                VStack(alignment: .leading, spacing: 2) {
                 if model.stale() {
                     Text("Out of date, open Stark on your iPhone").foregroundStyle(.orange)
                 }
                 Text("Updated \(updated.formatted(date: .omitted, time: .shortened))")
                     .foregroundStyle(.secondary)
             }
-            .font(.caption2)
+                .font(.caption2)
+            }
         }
     }
 }

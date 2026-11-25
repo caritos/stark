@@ -60,6 +60,20 @@ private func model(_ store: MemoryStore, now: @escaping @Sendable () -> Date = {
         #expect(store.load() == next)
     }
 
+    @Test func anOlderSnapshotDoesNotReplaceANewerOne() {
+        let newer = WatchSnapshot(generatedAt: t0, state: .items, rows: [row("new")])
+        let store = MemoryStore()
+        let m = model(store)
+        m.receive(newer)
+        m.receive(WatchSnapshot(generatedAt: t0.addingTimeInterval(-60), state: .items, rows: [row("old")]))
+        #expect(m.state == .items([row("new")]))
+        #expect(m.updatedAt == t0)
+        #expect(store.load() == newer)
+        let same = WatchSnapshot(generatedAt: t0, state: .items, rows: [row("same")])
+        m.receive(same)
+        #expect(m.state == .items([row("same")]))
+    }
+
     @Test func eachSnapshotStateMapsToItsModelState() {
         let m = model(MemoryStore())
         let cases: [(WatchSnapshot.State, WatchAgendaModel.State)] = [

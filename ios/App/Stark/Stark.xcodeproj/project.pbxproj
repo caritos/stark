@@ -12,7 +12,7 @@
 		78C5E9E8305BE9A000AEDF9B /* StarkWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 78C5E9E1305BE9A000AEDF9B /* StarkWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		78C5E9F2305BE9A000AEDF9B /* EventKitProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C5E9F3305BE9A000AEDF9B /* EventKitProvider.swift */; };
 		5A7D00000000000000000001 /* StarkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A7D0000000000000000000F /* StarkKit */; };
-		5A7D00000000000000000002 /* StarkWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 5A7D00000000000000000005 /* StarkWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5A7D00000000000000000002 /* StarkWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 5A7D00000000000000000005 /* StarkWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -312,6 +312,7 @@
 		};
 		5A7D0000000000000000000B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
+			platformFilter = ios;
 			target = 5A7D0000000000000000000A /* StarkWatch */;
 			targetProxy = 5A7D00000000000000000003 /* PBXContainerItemProxy */;
 		};
