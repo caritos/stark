@@ -20,7 +20,8 @@ private final class SuspendingAddTransport: WatchTransport, @unchecked Sendable 
 
 @MainActor
 private func addModel(_ transport: WatchTransport) -> WatchAddModel {
-    WatchAddModel(outbox: WatchOutbox(transport: transport, pending: InMemoryPendingStore()), now: { t0 })
+    let outbox = WatchOutbox(transport: transport, pending: InMemoryPendingStore())
+    return WatchAddModel(outbox: outbox, pendingAdds: WatchPendingAdds(outbox: outbox), now: { t0 })
 }
 
 @MainActor
@@ -131,7 +132,7 @@ private func addModel(_ transport: WatchTransport) -> WatchAddModel {
     @Test func aFullQueueFailsVisiblyAndKeepsTheDraft() async {
         let t = FakeWatchTransport(reachable: false)
         let outbox = WatchOutbox(transport: t, pending: InMemoryPendingStore(), maxWaiting: 0)
-        let m = WatchAddModel(outbox: outbox, now: { t0 })
+        let m = WatchAddModel(outbox: outbox, pendingAdds: WatchPendingAdds(outbox: outbox), now: { t0 })
         m.dictated("Call mom")
         await m.confirm()
         #expect(m.phase == .failed(WatchOutbox.fullMessage))
@@ -145,5 +146,44 @@ private func addModel(_ transport: WatchTransport) -> WatchAddModel {
         m.cancel()
         #expect(m.phase == .idle)
         #expect(t.sent.isEmpty && t.queued.isEmpty)
+    }
+
+    @Test func retryUsesANewEnvelopeIdWithTheSameDraft() async {
+        let t = FakeWatchTransport(reachable: true, result: .success(.failed("boom")))
+        let m = addModel(t)
+        m.dictated("Call mom")
+        guard case .confirming(let draft) = m.phase else { return }
+        await m.confirm()
+        await m.confirm()
+        #expect(t.sent.count == 2)
+        #expect(t.sent[0].id != t.sent[1].id)
+        #expect(t.sent[1].command == .add(draft))
+    }
+
+    @Test func cancelWhileWaitingThenALateReplyKeepsThePhaseIdle() async throws {
+        let t = FakeWatchTransport(reachable: false)
+        let m = addModel(t)
+        m.dictated("Call mom")
+        await m.confirm()
+        m.cancel()
+        let id = try #require(t.queued.first?.id)
+        m.outbox.receive(WatchReplyEnvelope(id: id, reply: .done(notice: "Added", warning: nil)))
+        #expect(m.phase == .idle)
+    }
+
+    @Test func dismissingDuringSubmittingGoesIdleAfterTheSendAndHandsOver() async {
+        let t = SuspendingAddTransport()
+        let outbox = WatchOutbox(transport: t, pending: InMemoryPendingStore())
+        let pending = WatchPendingAdds(outbox: outbox)
+        let m = WatchAddModel(outbox: outbox, pendingAdds: pending, now: { t0 })
+        m.dictated("Call mom")
+        let first = Task { await m.confirm() }
+        while t.sends == 0 { await Task.yield() }
+        m.cancel()
+        t.release(.failed("No calendar"))
+        await first.value
+        #expect(m.phase == .idle)
+        #expect(pending.entries.count == 1)
+        #expect(pending.entries.first?.state == .failed("No calendar"))
     }
 }

@@ -25,13 +25,17 @@ public final class WatchAddModel {
 
     private var stage: Stage = .idle
 
+    /// Set by `cancel` while a send is in flight: the add goes idle once the send returns.
+    @ObservationIgnored private var dismissedWhileSubmitting = false
     @ObservationIgnored public let outbox: WatchOutbox
+    @ObservationIgnored public let pendingAdds: WatchPendingAdds
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private let calendar: Calendar
 
-    public init(outbox: WatchOutbox, now: @escaping @Sendable () -> Date = Date.init,
-                calendar: Calendar = .current) {
+    public init(outbox: WatchOutbox, pendingAdds: WatchPendingAdds,
+                now: @escaping @Sendable () -> Date = Date.init, calendar: Calendar = .current) {
         self.outbox = outbox
+        self.pendingAdds = pendingAdds
         self.now = now
         self.calendar = calendar
     }
@@ -47,8 +51,10 @@ public final class WatchAddModel {
             case .sending: return .sending
             case .waiting, nil: return .waiting
             case .done(let reply):
-                if case .done(let notice, let warning) = reply { return .saved(notice: notice, warning: warning) }
-                return .failed("Couldn't add")
+                switch reply {
+                case .done(let notice, let warning): return .saved(notice: notice, warning: warning)
+                case .failed(let message): return .failed(message)
+                }
             case .failed(let message): return .failed(message)
             }
         }
@@ -77,17 +83,33 @@ public final class WatchAddModel {
         case (.tracking(let d, _), .failed): draft = d
         default: return
         }
+        if case .tracking(_, let oldID) = stage { pendingAdds.dismiss(oldID) }  // the retry replaces it
         stage = .submitting(draft)
-        if let id = await outbox.submit(.add(draft)) {
+        dismissedWhileSubmitting = false
+        let id = await outbox.submit(.add(draft))
+        if dismissedWhileSubmitting {
+            dismissedWhileSubmitting = false
+            if let id { pendingAdds.track(id, draft: draft) }
+            stage = .idle
+        } else if let id {
             stage = .tracking(draft, id)
         } else {
             stage = .refused(draft, outbox.lastError ?? "Couldn't send")
         }
     }
 
-    /// Back to idle; sends nothing. An envelope already sent stays with the outbox.
+    /// Back to idle. An unsent draft is dropped and nothing is sent (so a swipe-dismiss of the sheet
+    /// while confirming loses the draft). An add already submitted and not done is handed to
+    /// `pendingAdds`, which keeps showing it.
     public func cancel() {
-        if case .submitting = stage { return }
+        switch stage {
+        case .submitting:
+            dismissedWhileSubmitting = true
+            return
+        case .tracking(let draft, let id):
+            if case .done(.done) = outbox.statuses[id] {} else { pendingAdds.track(id, draft: draft) }
+        default: break
+        }
         stage = .idle
     }
 }

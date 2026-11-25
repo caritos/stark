@@ -17,6 +17,9 @@ struct WatchListView: View {
     var body: some View {
         NavigationStack {
             List {
+                ForEach(addModel.pendingAdds.entries) { entry in
+                    PendingAddRow(entry: entry, pending: addModel.pendingAdds)
+                }
                 switch model.state {
                 case .waitingForPhone:
                     Message("Open Stark on your iPhone")
@@ -49,6 +52,29 @@ struct WatchListView: View {
             }
             .sheet(isPresented: $adding) { WatchAddView(model: addModel) }
         }
+    }
+}
+
+private struct PendingAddRow: View {
+    let entry: WatchPendingAdds.Entry
+    let pending: WatchPendingAdds
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(entry.draft.title).lineLimit(2)
+            switch entry.state {
+            case .waiting:
+                Text("Adding, waiting for iPhone").font(.caption2).foregroundStyle(.orange)
+            case .failed(let message):
+                Text("Not added: \(message)").font(.caption2).foregroundStyle(.red)
+                HStack {
+                    Button("Retry") { Task { await pending.retry(entry.id) } }
+                    Button("Dismiss", role: .cancel) { pending.dismiss(entry.id) }
+                }
+                .font(.caption2)
+            }
+        }
+        .accessibilityElement(children: .contain)
     }
 }
 

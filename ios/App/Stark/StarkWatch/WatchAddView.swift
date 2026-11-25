@@ -27,6 +27,7 @@ struct WatchAddView: View {
                     }
                 case .confirming(let draft):
                     VStack(spacing: 8) {
+                        Text(draft.kind == .event ? "Event" : "Reminder").font(.caption2).foregroundStyle(.secondary)
                         Text(draft.title).font(.headline).lineLimit(3)
                         Text(draft.summary).font(.caption).foregroundStyle(.secondary)
                         Button("Add") { Task { await model.confirm() } }

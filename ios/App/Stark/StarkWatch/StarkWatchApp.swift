@@ -24,7 +24,7 @@ struct StarkWatchApp: App {
             onSnapshot: { snapshot in Task { @MainActor in model.receive(snapshot) } },
             onReply: { reply in Task { @MainActor in outbox.receive(reply) } })
         self.transport = transport
-        _addModel = State(initialValue: WatchAddModel(outbox: outbox))
+        _addModel = State(initialValue: WatchAddModel(outbox: outbox, pendingAdds: WatchPendingAdds(outbox: outbox)))
         _model = State(initialValue: model)
     }
 
