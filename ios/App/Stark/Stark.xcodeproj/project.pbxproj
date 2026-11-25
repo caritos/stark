@@ -13,6 +13,9 @@
 		78C5E9F2305BE9A000AEDF9B /* EventKitProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C5E9F3305BE9A000AEDF9B /* EventKitProvider.swift */; };
 		5A7D00000000000000000001 /* StarkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A7D0000000000000000000F /* StarkKit */; };
 		5A7D00000000000000000002 /* StarkWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 5A7D00000000000000000005 /* StarkWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5A7E00000000000000000001 /* StarkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A7E00000000000000000002 /* StarkKit */; };
+		5A7E00000000000000000003 /* StarkWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 5A7E00000000000000000004 /* StarkWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		5A7E00000000000000000005 /* SnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7E00000000000000000006 /* SnapshotStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +32,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 5A7D0000000000000000000A;
 			remoteInfo = StarkWatch;
+		};
+		5A7E00000000000000000007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 78C5E9C5305BE80F00AEDF9B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A7E00000000000000000008;
+			remoteInfo = StarkWatchWidget;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -55,6 +65,17 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5A7E00000000000000000009 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5A7E00000000000000000003 /* StarkWatchWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -65,6 +86,11 @@
 		78C5E9F1305BE9A000AEDF9B /* StarkWidget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "StarkWidget-Info.plist"; sourceTree = "<group>"; };
 		78C5E9F3305BE9A000AEDF9B /* EventKitProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EventKitProvider.swift; path = Stark/EventKitProvider.swift; sourceTree = "<group>"; };
 		5A7D00000000000000000005 /* StarkWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StarkWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A7E00000000000000000004 /* StarkWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StarkWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A7E00000000000000000006 /* SnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SnapshotStore.swift; path = StarkWatch/SnapshotStore.swift; sourceTree = "<group>"; };
+		5A7E0000000000000000000A /* StarkWatchWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarkWatchWidget.entitlements; sourceTree = "<group>"; };
+		5A7E0000000000000000000B /* StarkWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StarkWatch.entitlements; sourceTree = "<group>"; };
+		5A7E0000000000000000000C /* StarkWatchWidget-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "StarkWatchWidget-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -81,6 +107,11 @@
 		5A7D00000000000000000006 /* StarkWatch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = StarkWatch;
+			sourceTree = "<group>";
+		};
+		5A7E0000000000000000000D /* StarkWatchWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = StarkWatchWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -110,6 +141,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5A7E0000000000000000000E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A7E00000000000000000001 /* StarkKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -123,6 +162,11 @@
 				78C5E9F1305BE9A000AEDF9B /* StarkWidget-Info.plist */,
 				78C5E9F3305BE9A000AEDF9B /* EventKitProvider.swift */,
 				5A7D00000000000000000006 /* StarkWatch */,
+				5A7E0000000000000000000D /* StarkWatchWidget */,
+				5A7E00000000000000000006 /* SnapshotStore.swift */,
+				5A7E0000000000000000000A /* StarkWatchWidget.entitlements */,
+				5A7E0000000000000000000B /* StarkWatch.entitlements */,
+				5A7E0000000000000000000C /* StarkWatchWidget-Info.plist */,
 				78C5E9CE305BE80F00AEDF9B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -133,6 +177,7 @@
 				78C5E9CD305BE80F00AEDF9B /* Stark.app */,
 				78C5E9E1305BE9A000AEDF9B /* StarkWidget.appex */,
 				5A7D00000000000000000005 /* StarkWatch.app */,
+				5A7E00000000000000000004 /* StarkWatchWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -197,10 +242,12 @@
 				5A7D00000000000000000009 /* Sources */,
 				5A7D00000000000000000007 /* Frameworks */,
 				5A7D00000000000000000008 /* Resources */,
+				5A7E00000000000000000009 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				5A7E0000000000000000000F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				5A7D00000000000000000006 /* StarkWatch */,
@@ -212,6 +259,29 @@
 			productName = StarkWatch;
 			productReference = 5A7D00000000000000000005 /* StarkWatch.app */;
 			productType = "com.apple.product-type.application";
+		};
+		5A7E00000000000000000008 /* StarkWatchWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A7E00000000000000000010 /* Build configuration list for PBXNativeTarget "StarkWatchWidget" */;
+			buildPhases = (
+				5A7E00000000000000000011 /* Sources */,
+				5A7E0000000000000000000E /* Frameworks */,
+				5A7E00000000000000000012 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5A7E0000000000000000000D /* StarkWatchWidget */,
+			);
+			name = StarkWatchWidget;
+			packageProductDependencies = (
+				5A7E00000000000000000002 /* StarkKit */,
+			);
+			productName = StarkWatchWidget;
+			productReference = 5A7E00000000000000000004 /* StarkWatchWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -251,6 +321,7 @@
 				78C5E9CC305BE80F00AEDF9B /* Stark */,
 				78C5E9E0305BE9A000AEDF9B /* StarkWidget */,
 				5A7D0000000000000000000A /* StarkWatch */,
+				5A7E00000000000000000008 /* StarkWatchWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -271,6 +342,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		5A7D00000000000000000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A7E00000000000000000012 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -302,6 +380,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5A7E00000000000000000011 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A7E00000000000000000005 /* SnapshotStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -315,6 +401,11 @@
 			platformFilter = ios;
 			target = 5A7D0000000000000000000A /* StarkWatch */;
 			targetProxy = 5A7D00000000000000000003 /* PBXContainerItemProxy */;
+		};
+		5A7E0000000000000000000F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A7E00000000000000000008 /* StarkWatchWidget */;
+			targetProxy = 5A7E00000000000000000007 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -605,6 +696,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = StarkWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 51;
 				DEVELOPMENT_TEAM = 3U8L77G9QV;
@@ -634,6 +726,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = StarkWatch.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 51;
 				DEVELOPMENT_TEAM = 3U8L77G9QV;
@@ -653,6 +746,66 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		5A7E00000000000000000013 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = StarkWatchWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 51;
+				DEVELOPMENT_TEAM = 3U8L77G9QV;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "StarkWatchWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Stark;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.49;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.caritos.todo-txt.watchkitapp.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		5A7E00000000000000000014 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = StarkWatchWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 51;
+				DEVELOPMENT_TEAM = 3U8L77G9QV;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "StarkWatchWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Stark;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.49;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.caritos.todo-txt.watchkitapp.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
@@ -698,6 +851,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		5A7E00000000000000000010 /* Build configuration list for PBXNativeTarget "StarkWatchWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A7E00000000000000000013 /* Debug */,
+				5A7E00000000000000000014 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -717,6 +879,10 @@
 			productName = StarkKit;
 		};
 		5A7D0000000000000000000F /* StarkKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StarkKit;
+		};
+		5A7E00000000000000000002 /* StarkKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StarkKit;
 		};

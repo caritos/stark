@@ -18,6 +18,10 @@ public extension WidgetAgenda {
 public struct WidgetLockLine: Equatable, Sendable {
     public let time: String?
     public let title: String
+    public init(time: String?, title: String) {
+        self.time = time
+        self.title = title
+    }
     public var text: String { [time, title].compactMap { $0 }.joined(separator: " ") }
 }
 
