@@ -23,7 +23,8 @@ struct FAQView: View {
             Apple Calendar and Reminders, where you also choose which calendars and lists show; \
             the default ones always show), and editing, completing or deleting in Stark changes \
             them there. If you use iCloud, Apple syncs them to your other devices; Stark itself \
-            sends no calendar or reminder data anywhere. iOS asks for access the first \
+            sends none of it to us or anyone else (the Apple Watch app gets a copy of today's and \
+            tomorrow's items on your own watch). iOS asks for access the first \
             time you tap Allow Access on Stark's main screen, after Stark says what it is for. \
             Planner blocks for Apple reminders are kept in a small file of Stark's own on this \
             device. The day export (today and \
@@ -55,10 +56,11 @@ struct FAQView: View {
             answer: """
             Yes, on TestFlight for now. It lets you glance at Up Next (today's and tomorrow's events \
             and due reminders) and in complications, complete a reminder, and add an item by voice. \
-            Your iPhone sends the watch a copy of the list over the system's phone-to-watch link, \
+            Your iPhone sends the watch a copy of the list over the system's phone-to-watch link (by Bluetooth, Wi-Fi or Apple's relay), \
             with the calendars you show in Stark; the watch does not read your calendar itself, so \
             completing and adding go through your iPhone. If the iPhone is out of reach a request \
-            says "Waiting for iPhone" and is sent later. Dictation uses the system's speech \
+            says "Waiting for iPhone" and is sent later. The list is as fresh as your iPhone's last \
+            update; after about three hours it says "Out of date, open Stark on your iPhone". Dictation uses the system's speech \
             recognition, which Apple may process. Stark adds no other network connection.
             """
         ),
@@ -138,7 +140,7 @@ struct FAQView: View {
             headers show a forecast symbol with the high and low for the next days; the Day, Week and Month views show it too (a symbol and the high in Week, the symbol alone in Month). Stark sends \
             an approximate location rounded to about 11 km to MET Norway's public forecast \
             service and sends nothing else; the position is never stored. Weather is the only \
-            thing Stark ever sends over the network. Turn it off and Stark stops asking.
+            network request Stark itself makes. Turn it off and Stark stops asking.
             """
         ),
         Entry(

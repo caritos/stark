@@ -8,8 +8,8 @@
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Stark shows your Apple Calendar events and Reminders in its agenda and saves the items you add, edit, complete or delete in Stark back to Calendar and Reminders. This happens on this device through Apple's own storage; Stark sends none of your calendar or reminder data anywhere.</string>
+	<string>Stark shows your Apple Calendar events and Reminders in its agenda and saves the items you add, edit, complete or delete in Stark back to Calendar and Reminders. This happens on this device through Apple's own storage; Stark sends none of your calendar or reminder data to us or anyone else. If you use the Apple Watch app, a copy of today's and tomorrow's items goes to your own watch.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
-	<string>Stark shows your Apple Calendar events and Reminders in its agenda and saves the items you add, edit, complete or delete in Stark back to Calendar and Reminders. This happens on this device through Apple's own storage; Stark sends none of your calendar or reminder data anywhere.</string>
+	<string>Stark shows your Apple Calendar events and Reminders in its agenda and saves the items you add, edit, complete or delete in Stark back to Calendar and Reminders. This happens on this device through Apple's own storage; Stark sends none of your calendar or reminder data to us or anyone else. If you use the Apple Watch app, a copy of today's and tomorrow's items goes to your own watch.</string>
 </dict>
 </plist>

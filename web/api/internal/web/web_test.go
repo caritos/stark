@@ -147,7 +147,7 @@ func TestFAQExplainsWeather(t *testing.T) {
 	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
 	for _, want := range []string{
 		"weather is optional and off by default", "turn it on in settings", "approximate location rounded to about 11 km",
-		"met norway", "sends nothing else", "never stored", "weather is the only thing stark ever sends over the network",
+		"met norway", "sends nothing else", "never stored", "weather is the only network request stark itself makes",
 	} {
 		if !strings.Contains(lower, want) {
 			t.Errorf("faq missing %q", want)
@@ -240,7 +240,7 @@ func TestFAQExplainsWatchApp(t *testing.T) {
 			t.Errorf("faq missing %q", want)
 		}
 	}
-	for _, stale := range []string{"the watch reads your calendar", "nothing is sent when you dictate", "available on the app store", "in the app store release", "weather is the only thing stark ever sends over the network", "everything else is read from and written to your device"} {
+	for _, stale := range []string{"the watch reads your calendar", "nothing is sent when you dictate", "available on the app store", "in the app store release", "weather is the only thing stark ever sends over the network", "everything else is read from and written to your device."} {
 		if strings.Contains(lower, stale) {
 			t.Errorf("faq still says %q", stale)
 		}

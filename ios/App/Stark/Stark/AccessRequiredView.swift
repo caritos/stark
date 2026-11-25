@@ -72,7 +72,7 @@ struct AccessRequiredView: View {
 
     /// Plain words: what it is for, what stays on the phone, and what to do now.
     private var explanation: String {
-        let purpose = "Stark shows and keeps your events and to-dos in Apple Calendar and Reminders, so they stay in sync with Apple's apps on your devices. Stark sends none of your calendar or reminder data anywhere."
+        let purpose = "Stark shows and keeps your events and to-dos in Apple Calendar and Reminders, so they stay in sync with Apple's apps on your devices. Stark sends none of your calendar or reminder data to us or anyone else. If you use the Apple Watch app, a copy of today's and tomorrow's items goes to your own watch."
         switch overlay.access {
         case .notAsked:
             return purpose + " Tap Allow Access, then allow full access to both."

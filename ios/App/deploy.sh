@@ -42,6 +42,8 @@ APP_PATH=$(xcodebuild -project Stark.xcodeproj \
   -showBuildSettings 2>/dev/null \
   | awk -F' = ' '/ BUILT_PRODUCTS_DIR =/{bpd=$2} / FULL_PRODUCT_NAME =/{fpn=$2} END{print bpd"/"fpn}')
 
+# Note: this Debug device build signs the two watch targets (watchkitapp and watchkitapp.widget)
+# through Xcode's account, so their App IDs must be registered first.
 # The Stark scheme embeds the watch app; installing the iOS app lets iOS offer it to a paired
 # watch. Stop if the build lost it.
 if [ ! -d "$APP_PATH/Watch/StarkWatch.app" ]; then
