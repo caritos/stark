@@ -32,6 +32,17 @@ MARKETING_VERSION=$(sed -n 's/.*MARKETING_VERSION = \(.*\);/\1/p' "$PBXPROJ" | h
 CURRENT_BUILD=$(sed -n 's/.*CURRENT_PROJECT_VERSION = \(.*\);/\1/p' "$PBXPROJ" | head -1)
 NEXT_BUILD=$((CURRENT_BUILD + 1))
 
+# The app, its widget and the watch app and its widget all carry the same version and build
+# number (the xcodebuild overrides below and the sed at the end rewrite every occurrence). Refuse
+# to ship if they have drifted apart: a watch app whose version differs from its iOS app is
+# rejected by App Store Connect.
+for KEY in MARKETING_VERSION CURRENT_PROJECT_VERSION; do
+  if [ "$(sed -n "s/.*$KEY = \(.*\);/\1/p" "$PBXPROJ" | sort -u | wc -l | tr -d ' ')" != "1" ]; then
+    echo "error: $KEY differs between targets in $PBXPROJ (app, widget, watch app, watch widget must match)" >&2
+    exit 1
+  fi
+done
+
 # MARKETING_VERSION is MAJOR.MINOR.PATCH - bump PATCH on every ship, same as
 # the build-number counter below. App Store Connect rejects an upload whose
 # version isn't strictly greater than the current live one.
@@ -64,6 +75,20 @@ xcodebuild archive \
   -authenticationKeyIssuerID "$API_ISSUER_ID" \
   MARKETING_VERSION="$NEXT_MARKETING_VERSION" \
   CURRENT_PROJECT_VERSION="$NEXT_BUILD"
+
+# The Stark scheme embeds StarkWatch.app (and its widget extension) in the iOS app; the archive
+# must really contain it, or the TestFlight build would have no watch app. Signing of the two
+# watch bundle ids (com.caritos.todo-txt.watchkitapp and .watchkitapp.widget) is automatic, like
+# the iOS widget's: -allowProvisioningUpdates and the API key above create the profiles.
+WATCH_APP="$ARCHIVE_PATH/Products/Applications/Stark.app/Watch/StarkWatch.app"
+if [ ! -d "$WATCH_APP" ]; then
+  echo "error: the archive has no Watch/StarkWatch.app inside Stark.app" >&2
+  exit 1
+fi
+if [ ! -d "$WATCH_APP/PlugIns/StarkWatchWidget.appex" ]; then
+  echo "error: StarkWatch.app has no PlugIns/StarkWatchWidget.appex" >&2
+  exit 1
+fi
 
 echo "==> Exporting and uploading to App Store Connect..."
 xcodebuild -exportArchive \

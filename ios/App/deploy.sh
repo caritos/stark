@@ -42,6 +42,13 @@ APP_PATH=$(xcodebuild -project Stark.xcodeproj \
   -showBuildSettings 2>/dev/null \
   | awk -F' = ' '/ BUILT_PRODUCTS_DIR =/{bpd=$2} / FULL_PRODUCT_NAME =/{fpn=$2} END{print bpd"/"fpn}')
 
+# The Stark scheme embeds the watch app; installing the iOS app lets iOS offer it to a paired
+# watch. Stop if the build lost it.
+if [ ! -d "$APP_PATH/Watch/StarkWatch.app" ]; then
+  echo "error: $APP_PATH has no Watch/StarkWatch.app (the watch app is not embedded)" >&2
+  exit 1
+fi
+
 echo "==> Installing on device..."
 xcrun devicectl device install app --device "$DEVICE_ID" "$APP_PATH"
 
