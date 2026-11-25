@@ -44,7 +44,9 @@ struct StarkApp: App {
 
     init() {
         // Counts this cold launch toward the rating prompt (never asks here: not at launch).
-        ReviewPromptStore().recordLaunch()
+        // A launch the system started in the background (a message from the watch) is not the owner
+        // opening the app, so it is not counted.
+        if UIApplication.shared.applicationState != .background { ReviewPromptStore().recordLaunch() }
         let errors = ErrorCenter()
         _errors = State(initialValue: errors)
         // One EKEventStore for the whole app: the provider creates it lazily and the repository

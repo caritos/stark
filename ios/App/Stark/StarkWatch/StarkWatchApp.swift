@@ -8,6 +8,7 @@
 
 import StarkKit
 import SwiftUI
+import WatchConnectivity
 
 @main
 struct StarkWatchApp: App {
@@ -36,6 +37,16 @@ struct StarkWatchApp: App {
             guard phase == .active else { return }
             transport.requestSnapshot()
             model.outbox.expireOld()
+        }
+        // The phone's updateApplicationContext wakes a suspended watch app with a WatchConnectivity
+        // refresh task. Hold it until the session has handed over everything pending, so
+        // didReceiveApplicationContext (snapshot save + complication reload) really runs before
+        // watchOS suspends the app. The session is already activated in the transport's init path.
+        .backgroundTask(.watchConnectivity) {
+            for _ in 0..<60 {
+                if !WCSession.default.hasContentPending { break }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
         }
     }
 }
