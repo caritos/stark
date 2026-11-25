@@ -38,6 +38,9 @@ struct StarkApp: App {
     private let router: ItemRouter
     /// Applies the Apple Watch's complete/add commands (the watch cannot write to EventKit).
     private let watchLink: WatchLinkReceiver
+    /// Pushes the watch's Up Next snapshot (the watch reads nothing from EventKit).
+    private let watchSnapshots: WatchSnapshotPusher
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         // Counts this cold launch toward the rating prompt (never asks here: not at launch).
@@ -67,11 +70,14 @@ struct StarkApp: App {
         let planCache = PlanCache(router: router)
         planCache.onLoadFailure = { [weak errors] message in errors?.show(message) }
         _planCache = State(initialValue: planCache)
+        let watchSnapshots = WatchSnapshotPusher(provider: provider)
+        self.watchSnapshots = watchSnapshots
         // EKEventStoreChanged is not reliable after a save (write spike f): reload after every write.
         router.onDidWrite = { [weak overlay, weak planCache] in
             await overlay?.refreshAfterWrite()
             await planCache?.refresh()
             WidgetCenter.shared.reloadAllTimelines()
+            watchSnapshots.request()
         }
         self.router = router
         // Activated at launch (not when a screen appears) so a watch command that launches Stark in
@@ -86,8 +92,10 @@ struct StarkApp: App {
                         destinations.listChoices.first { $0.id == destinations.listID })
             },
             accessGranted: { provider.accessState() == .granted },
-            afterWrite: { @MainActor [weak router] in await router?.onDidWrite?() })
+            afterWrite: { @MainActor [weak router] in await router?.onDidWrite?() },
+            snapshotWanted: { watchSnapshots.request() })
         watchLink.activate()
+        watchSnapshots.start()
         self.watchLink = watchLink
         #if targetEnvironment(macCatalyst)
         let settingsAppName = "System Settings"
@@ -129,6 +137,9 @@ struct StarkApp: App {
                 .environment(weather)
                 .environment(reviewAsk)
                 .environment(\.itemRouter, router)
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { watchSnapshots.request() }
+                }
                 #if targetEnvironment(macCatalyst)
                 .frame(minWidth: 480, minHeight: 520)
                 #endif

@@ -2,7 +2,7 @@
 import Foundation
 
 /// One row of the Home Screen widget. Plain values; the widget view only draws them.
-public struct WidgetItem: Equatable, Identifiable, Sendable {
+public struct WidgetItem: Codable, Equatable, Identifiable, Sendable {
     /// `apple-<id>`, the same id the agenda uses for the item.
     public let id: String
     public let title: String

@@ -72,21 +72,25 @@ nonisolated final class WatchLinkReceiver: NSObject, WCSessionDelegate, @uncheck
     private let transport: WatchTransport
     private let accessGranted: @Sendable () -> Bool
     private let afterWrite: @Sendable () async -> Void
+    private let snapshotWanted: @Sendable () -> Void
 
     /// - Parameters:
     ///   - destinations: the phone's default calendar and list (Settings), resolved fresh.
     ///   - accessGranted: Calendar and Reminders access; without it nothing is attempted.
     ///   - afterWrite: reloads what shows Apple data (overlay, plans, widgets) after a write.
+    ///   - snapshotWanted: the session activated or the watch asked for a fresh Up Next snapshot.
     init(repository: ItemRepository,
          destinations: @escaping @Sendable () async -> (calendar: AppleCalendarInfo?, list: AppleCalendarInfo?),
          accessGranted: @escaping @Sendable () -> Bool,
          afterWrite: @escaping @Sendable () async -> Void,
+         snapshotWanted: @escaping @Sendable () -> Void = {},
          transport: WatchTransport = WCSessionTransport()) {
         handler = WatchCommandHandler(repository: repository, destinations: destinations,
                                       applied: UserDefaultsAppliedIDStore())
         self.transport = transport
         self.accessGranted = accessGranted
         self.afterWrite = afterWrite
+        self.snapshotWanted = snapshotWanted
         super.init()
     }
 
@@ -100,7 +104,9 @@ nonisolated final class WatchLinkReceiver: NSObject, WCSessionDelegate, @uncheck
     // MARK: WCSessionDelegate (called on a background queue)
 
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState,
-                 error: Error?) {}
+                 error: Error?) {
+        if activationState == .activated { snapshotWanted() }
+    }
 
     func sessionDidBecomeInactive(_ session: WCSession) {}
 
@@ -111,6 +117,11 @@ nonisolated final class WatchLinkReceiver: NSObject, WCSessionDelegate, @uncheck
     func session(_ session: WCSession, didReceiveMessage message: [String: Any],
                  replyHandler: @escaping ([String: Any]) -> Void) {
         let answer = ReplyHandlerBox(replyHandler)
+        if message[WatchLinkCoding.requestSnapshotKey] != nil {
+            snapshotWanted()
+            answer.call([:])
+            return
+        }
         guard let envelope = WatchLinkCoding.envelope(in: message) else {
             answer.call([:])
             return
@@ -135,6 +146,7 @@ nonisolated final class WatchLinkReceiver: NSObject, WCSessionDelegate, @uncheck
     }
 
     private func receiveQueued(_ payload: [String: Any]) {
+        if payload[WatchLinkCoding.requestSnapshotKey] != nil { snapshotWanted() }
         guard let envelope = WatchLinkCoding.envelope(in: payload) else { return }
         Task {
             let reply = await self.process(envelope)

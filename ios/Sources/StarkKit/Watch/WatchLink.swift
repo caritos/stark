@@ -64,6 +64,11 @@ public enum WatchLinkCoding {
     /// `[replyKey: Data]` carries a `WatchReplyEnvelope` (phone to watch).
     public static let replyKey = "stark.reply"
 
+    /// `[snapshotKey: Data]` carries a `WatchSnapshot` (phone to watch, application context).
+    public static let snapshotKey = "stark.snapshot"
+    /// `[requestSnapshotKey: true]` asks the phone to push a fresh snapshot (watch to phone).
+    public static let requestSnapshotKey = "stark.requestSnapshot"
+
     public static func encode<T: Encodable>(_ value: T) throws -> Data {
         try JSONEncoder().encode(value)
     }
@@ -82,5 +87,11 @@ public enum WatchLinkCoding {
     public static func reply(in message: [String: Any]) -> WatchReplyEnvelope? {
         guard let data = message[replyKey] as? Data else { return nil }
         return try? decode(WatchReplyEnvelope.self, from: data)
+    }
+
+    /// The snapshot in a received WatchConnectivity dictionary, or nil when it carries none.
+    public static func snapshot(in message: [String: Any]) -> WatchSnapshot? {
+        guard let data = message[snapshotKey] as? Data else { return nil }
+        return try? decode(WatchSnapshot.self, from: data)
     }
 }
