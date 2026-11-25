@@ -17,12 +17,17 @@ public final class WatchPendingAdds {
     }
 
     private var tracked: [(id: UUID, draft: WatchAddDraft)] = []
+    /// Entries whose retry is being sent (a second tap on the same entry is ignored).
+    @ObservationIgnored private var retrying: Set<UUID> = []
     @ObservationIgnored public let outbox: WatchOutbox
 
     /// Seeds from the outbox's still-waiting `add` envelopes, so a relaunch shows them.
     public init(outbox: WatchOutbox) {
         self.outbox = outbox
-        for envelope in outbox.waitingEnvelopes {
+        let waiting = outbox.waitingEnvelopes.sorted {
+            ($0.sentAt, $0.id.uuidString) < ($1.sentAt, $1.id.uuidString)
+        }
+        for envelope in waiting {
             if case .add(let draft) = envelope.command { tracked.append((envelope.id, draft)) }
         }
     }
@@ -41,8 +46,14 @@ public final class WatchPendingAdds {
 
     /// Starts showing a submitted add (a no-op for an id already shown).
     public func track(_ id: UUID, draft: WatchAddDraft) {
+        prune()
         guard !tracked.contains(where: { $0.id == id }) else { return }
         tracked.append((id, draft))
+    }
+
+    /// Forgets entries the phone confirmed.
+    private func prune() {
+        tracked.removeAll { if case .done(.done) = outbox.statuses[$0.id] { true } else { false } }
     }
 
     public func dismiss(_ id: UUID) { tracked.removeAll { $0.id == id } }
@@ -51,10 +62,13 @@ public final class WatchPendingAdds {
     /// was "Not delivered" (7 days) the phone may still add the old one later, so a duplicate is
     /// possible. When the outbox refuses (queue full) the failed entry stays.
     public func retry(_ id: UUID) async {
-        guard let index = tracked.firstIndex(where: { $0.id == id }),
+        guard !retrying.contains(id), let index = tracked.firstIndex(where: { $0.id == id }),
               case .failed = entries.first(where: { $0.id == id })?.state else { return }
         let draft = tracked[index].draft
-        guard let newID = await outbox.submit(.add(draft)) else { return }
+        retrying.insert(id)
+        defer { retrying.remove(id) }
+        guard let newID = await outbox.submit(.add(draft)) else { return }  // refused: the entry stays failed
+        prune()
         if let i = tracked.firstIndex(where: { $0.id == id }) { tracked[i] = (newID, draft) }
     }
 }
