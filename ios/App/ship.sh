@@ -80,15 +80,9 @@ xcodebuild archive \
 # must really contain it, or the TestFlight build would have no watch app. Signing of the two
 # watch bundle ids (com.caritos.todo-txt.watchkitapp and .watchkitapp.widget) is automatic, like
 # the iOS widget's: -allowProvisioningUpdates and the API key above create the profiles.
-WATCH_APP="$ARCHIVE_PATH/Products/Applications/Stark.app/Watch/StarkWatch.app"
-if [ ! -d "$WATCH_APP" ]; then
-  echo "error: the archive has no Watch/StarkWatch.app inside Stark.app" >&2
-  exit 1
-fi
-if [ ! -d "$WATCH_APP/PlugIns/StarkWatchWidget.appex" ]; then
-  echo "error: StarkWatch.app has no PlugIns/StarkWatchWidget.appex" >&2
-  exit 1
-fi
+# check-archive.sh also verifies the signed watch app and widget carry the watch App Group and
+# the Info.plist keys (WKApplication, WKCompanionAppBundleIdentifier, no WKWatchOnly, NSExtension).
+"$SCRIPT_DIR/check-archive.sh" "$ARCHIVE_PATH"
 
 echo "==> Exporting and uploading to App Store Connect..."
 xcodebuild -exportArchive \
