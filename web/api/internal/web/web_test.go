@@ -73,7 +73,13 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		"saves what you add, edit, complete or delete in Stark to Apple Calendar and Reminders",
 		"<h2>WEATHER</h2>", "weather is optional and off by default", "the only time stark makes a network connection",
 		"rounded to about 11 km", "met norway", "sends nothing else", "never stored",
-		"the only thing that ever leaves your phone is the optional weather request",
+		"the only network connection stark makes is the optional weather request",
+		"<h2>APPLE WATCH</h2>", "sends the watch a copy of today's and tomorrow's event and reminder titles and times",
+		"over the system's phone-to-watch link", "the watch keeps that copy on the watch",
+		"the watch does not read your calendar or reminders itself and does not ask for access to them",
+		"completing a reminder or adding an item on the watch sends the request back to your iphone",
+		"dictation uses the system's speech recognition, which apple may process",
+		"nothing else leaves your devices",
 		"small file of Stark's own on this device",
 		"a record of which of Stark's older items the one-time import copied into Apple",
 		"the share button in Weekly Review exports that week's summary",
@@ -90,7 +96,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		}
 	}
 	// Statements that stopped being true with the write path.
-	for _, stale := range []string{"unless you turn it on", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen", "Stark itself makes no network connection", "Stark does not ask for access to your photos, location", "&mdash; Location data", "nothing is sent to us or any third party.", "<strong>Stark collects no data about you.</strong>"} {
+	for _, stale := range []string{"unless you turn it on", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen", "Stark itself makes no network connection", "Stark does not ask for access to your photos, location", "&mdash; Location data", "nothing is sent to us or any third party.", "<strong>Stark collects no data about you.</strong>", "the only thing that ever leaves your phone is the optional weather request", "the watch reads your calendar", "nothing is sent when you dictate"} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
 		}
@@ -215,6 +221,24 @@ func TestFAQExplainsTemplates(t *testing.T) {
 	} {
 		if !strings.Contains(lower, want) {
 			t.Errorf("faq missing %q", want)
+		}
+	}
+}
+
+func TestFAQExplainsWatchApp(t *testing.T) {
+	lower := strings.Join(strings.Fields(strings.ToLower(get(Handler(), http.MethodGet, "/faq").Body.String())), " ")
+	for _, want := range []string{
+		"is there an apple watch app", "glance at up next", "complications", "complete a reminder", "add an item by voice",
+		"your iphone sends the watch a copy", "completing and adding go through your iphone",
+		"waiting for iphone", "out of date, open stark on your iphone", "speech recognition", "testflight",
+	} {
+		if !strings.Contains(lower, want) {
+			t.Errorf("faq missing %q", want)
+		}
+	}
+	for _, stale := range []string{"the watch reads your calendar", "nothing is sent when you dictate"} {
+		if strings.Contains(lower, stale) {
+			t.Errorf("faq still says %q", stale)
 		}
 	}
 }
