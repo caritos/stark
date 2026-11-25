@@ -18,7 +18,7 @@
   </header>
   <main>
     <h2>THE SHORT VERSION</h2>
-    <p><strong>Stark collects no data about you; the only thing that ever leaves your phone is the optional weather request.</strong> Your reminders and events are kept on your device, in your own Apple Calendar and Reminders, which Apple syncs through iCloud if you use it. Weather is the only time Stark makes a network connection: it is optional, off by default, and described under WEATHER. Nothing is ever sent to us.</p>
+    <p><strong>Stark collects no data about you; the only network connection Stark makes is the optional weather request.</strong> Your reminders and events are kept on your device, in your own Apple Calendar and Reminders, which Apple syncs through iCloud if you use it. Weather is the only time Stark makes a network connection: it is optional, off by default, and described under WEATHER. Nothing is ever sent to us. If you use the Apple Watch app, see APPLE WATCH for what moves between your iPhone and your watch.</p>
 
     <h2>APPLE CALENDAR AND REMINDERS</h2>
     <p>Stark keeps your events and to-dos in Apple Calendar and Reminders. It needs full access to both, and before iOS asks, Stark shows a screen that says what the access is for. You can withdraw access in iOS Settings at any time; Stark then shows that screen again and cannot add items.</p>
@@ -31,6 +31,10 @@
 
     <h2>WIDGET</h2>
     <p>The widget reads your calendar and reminders on your device, the same way the app does, to show what is coming up. It is optional and makes no network connection. To show the same calendars as the app, Stark keeps one small list in an App Group shared with the widget: only the ids of the calendars you hide in Stark, no titles, events or reminders. It stays on your device.</p>
+
+    <h2>APPLE WATCH</h2>
+    <p>The Apple Watch app is optional. Your iPhone sends the watch a copy of today's and tomorrow's event and reminder titles and times (and overdue reminders) over the system's phone-to-watch link, and the watch keeps that copy on the watch to show the Up Next list and the complications. The iPhone builds the copy with the same calendars you show in Stark. The watch does not read your calendar or reminders itself and does not ask for access to them.</p>
+    <p>Completing a reminder or adding an item on the watch sends the request back to your iPhone, which saves it to Apple Reminders or to your default calendar or list. If the iPhone is out of reach, the request waits on the watch and is sent later. When you add an item by dictation, the dictation uses the system's speech recognition, which Apple may process; Stark does not receive the audio. Nothing else leaves your devices, Stark makes no network connection for the watch, and nothing is sent to us.</p>
 
     <h2>WEATHER</h2>
     <p>Weather is optional and off by default. Until you turn it on in Settings, Stark makes no network connection and does not ask for your location. When you turn it on, iOS asks whether Stark may use your location while you use the app. Stark asks for an approximate location only, rounded to about 11 km (0.1 degree), and sends just that position to MET Norway's public forecast service (api.met.no) over https, to show a forecast in the agenda's day headers. Stark sends nothing else: no identifiers, no account, no calendar or reminder data. The position is never stored or logged by Stark, and the forecast is kept only in memory on your device. Turn Weather off and Stark stops asking. MET Norway receives the request like any website would, including your IP address, and handles it under its own terms; we receive nothing. Forecast data from MET Norway.</p>

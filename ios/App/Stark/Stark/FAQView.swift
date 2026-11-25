@@ -51,6 +51,18 @@ struct FAQView: View {
             """
         ),
         Entry(
+            question: "Is there an Apple Watch app?",
+            answer: """
+            Yes, on TestFlight for now. It lets you glance at Up Next (today's and tomorrow's events \
+            and due reminders) and in complications, complete a reminder, and add an item by voice. \
+            Your iPhone sends the watch a copy of the list over the system's phone-to-watch link, \
+            with the calendars you show in Stark; the watch does not read your calendar itself, so \
+            completing and adding go through your iPhone. If the iPhone is out of reach a request \
+            says "Waiting for iPhone" and is sent later. Dictation uses the system's speech \
+            recognition, which Apple may process. Stark adds no other network connection.
+            """
+        ),
+        Entry(
             question: "Is there a widget?",
             answer: """
             Yes. Add the Stark widget from the Home Screen in small and medium sizes. It lists \

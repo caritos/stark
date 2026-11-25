@@ -29,6 +29,7 @@ with a week / month / year calendar above it. Website: [stark.caritos.com](https
   in one tap; never the date, stored on the device only.
 - **Widget**: a small and medium Home Screen widget (plus Lock Screen rectangle, line and circle with the count left today) with today and tomorrow's events and due reminders (overdue in red),
   showing the calendars you show in the app; reads Calendar on the device, nothing is sent.
+- **Apple Watch** (TestFlight): an Up Next list and complications (rectangular, inline, circular, corner) from a copy of today's and tomorrow's titles and times that the iPhone sends over the system's phone-to-watch link; tick a reminder or add one by dictation, both done by the iPhone. The watch reads no Calendar or Reminders and asks for no permission.
 - **Birthdays**: events on Apple's Birthdays calendar show a cake and, if you allow optional read-only Contacts
   access, "Turns N" from the contact's birth year (read on the device, never stored or sent).
 
