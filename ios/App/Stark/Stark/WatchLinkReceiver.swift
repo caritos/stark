@@ -127,12 +127,13 @@ nonisolated final class WatchLinkReceiver: NSObject, WCSessionDelegate, @uncheck
             return
         }
         Task {
-            let reply = await self.process(envelope)
-            guard let data = try? WatchLinkCoding.encode(WatchReplyEnvelope(id: envelope.id, reply: reply)) else {
-                answer.call([:])
-                return
+            await self.process(envelope) { reply in
+                guard let data = try? WatchLinkCoding.encode(WatchReplyEnvelope(id: envelope.id, reply: reply)) else {
+                    answer.call([:])
+                    return
+                }
+                answer.call([WatchLinkCoding.replyKey: data])
             }
-            answer.call([WatchLinkCoding.replyKey: data])
         }
     }
 
@@ -149,18 +150,25 @@ nonisolated final class WatchLinkReceiver: NSObject, WCSessionDelegate, @uncheck
         if payload[WatchLinkCoding.requestSnapshotKey] != nil { snapshotWanted() }
         guard let envelope = WatchLinkCoding.envelope(in: payload) else { return }
         Task {
-            let reply = await self.process(envelope)
-            self.transport.reply(WatchReplyEnvelope(id: envelope.id, reply: reply))
+            await self.process(envelope) { reply in
+                self.transport.reply(WatchReplyEnvelope(id: envelope.id, reply: reply))
+            }
         }
     }
 
-    private func process(_ envelope: WatchEnvelope) async -> WatchReply {
+    /// Applies the command, hands the answer to the watch at once, and only then reloads (the
+    /// reloads can take seconds; the watch must not wait on them). The background task is held
+    /// until the reloads finish.
+    private func process(_ envelope: WatchEnvelope, deliver: (WatchReply) -> Void) async {
         let background = await BackgroundTask.begin()
         defer { Task { @MainActor in background.end() } }
-        guard accessGranted() else { return .failed(Self.noAccessMessage) }
-        let reply = await handler.handle(envelope)
-        if case .done = reply { await afterWrite() }
-        return reply
+        await WatchReplyFirst.run(
+            produce: { [self] in
+                guard accessGranted() else { return .failed(Self.noAccessMessage) }
+                return await handler.handle(envelope)
+            },
+            deliver: deliver,
+            afterWrite: { [afterWrite] in await afterWrite() })
     }
 }
 
