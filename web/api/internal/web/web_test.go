@@ -2,6 +2,8 @@ package web
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"net/http/httptest"
 	"regexp"
 	"strconv"
@@ -79,7 +81,8 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		"the watch does not read your calendar or reminders itself and does not ask for access to them",
 		"completing a reminder or adding an item on the watch sends the request back to your iphone",
 		"dictation uses the system's speech recognition, which apple may process",
-		"nothing else leaves your devices",
+		"nothing else leaves your devices", "to us or anyone else", "see apple watch", "by bluetooth, wi-fi or apple's relay",
+		"your own apple watch", "reminder or event content or metadata, except the copy",
 		"small file of Stark's own on this device",
 		"a record of which of Stark's older items the one-time import copied into Apple",
 		"the share button in Weekly Review exports that week's summary",
@@ -96,7 +99,7 @@ func TestPrivacyDatedAndMentionsData(t *testing.T) {
 		}
 	}
 	// Statements that stopped being true with the write path.
-	for _, stale := range []string{"unless you turn it on", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen", "Stark itself makes no network connection", "Stark does not ask for access to your photos, location", "&mdash; Location data", "nothing is sent to us or any third party.", "<strong>Stark collects no data about you.</strong>", "the only thing that ever leaves your phone is the optional weather request", "the watch reads your calendar", "nothing is sent when you dictate"} {
+	for _, stale := range []string{"unless you turn it on", "temporary copy of your Stark data", "Stark cannot edit, complete or delete Apple items", "read-only.", "sending the same request again adds nothing", "Your reminders and events stay on your device", "still shows them and lets you change them", "does not ask for access to your contacts", "asks only for access to your calendars and reminders", "birthday event is on screen", "Stark itself makes no network connection", "Stark does not ask for access to your photos, location", "&mdash; Location data", "nothing is sent to us or any third party.", "<strong>Stark collects no data about you.</strong>", "the only thing that ever leaves your phone is the optional weather request", "the watch reads your calendar", "nothing is sent when you dictate", "Stark does not send your calendar or reminder data anywhere unless", "Stark does <strong>not</strong> collect, transmit, or store any of the following"} {
 		if strings.Contains(lower, strings.ToLower(stale)) {
 			t.Errorf("privacy still says %q", stale)
 		}
@@ -231,12 +234,13 @@ func TestFAQExplainsWatchApp(t *testing.T) {
 		"is there an apple watch app", "glance at up next", "complications", "complete a reminder", "add an item by voice",
 		"your iphone sends the watch a copy", "completing and adding go through your iphone",
 		"waiting for iphone", "out of date, open stark on your iphone", "speech recognition", "testflight",
+		"the only network request stark itself makes", "does stark work offline", "the watch copy",
 	} {
 		if !strings.Contains(lower, want) {
 			t.Errorf("faq missing %q", want)
 		}
 	}
-	for _, stale := range []string{"the watch reads your calendar", "nothing is sent when you dictate"} {
+	for _, stale := range []string{"the watch reads your calendar", "nothing is sent when you dictate", "available on the app store", "in the app store release", "weather is the only thing stark ever sends over the network", "everything else is read from and written to your device"} {
 		if strings.Contains(lower, stale) {
 			t.Errorf("faq still says %q", stale)
 		}
@@ -660,5 +664,46 @@ func TestAppPathsAreThe404Page(t *testing.T) {
 		if loc := rec.Header().Get("Location"); loc != "" {
 			t.Errorf("GET %s: Location %q, want none", p, loc)
 		}
+	}
+}
+
+// The unqualified "Stark sends none of your calendar or reminder data anywhere" stopped being true
+// with the Apple Watch app (the iPhone sends the watch a copy). Every place that says it, in the
+// app's strings too, must say "to us or anyone else" and name the watch copy.
+func TestDataClaimsAreQualifiedForTheWatchEverywhere(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..")
+	files := []string{
+		"ios/App/Stark/Info.plist", "ios/App/Stark/StarkWidget-Info.plist",
+		"ios/App/Stark/Stark/AccessRequiredView.swift", "ios/App/Stark/Stark/AppleSettingsView.swift",
+		"ios/App/Stark/Stark/FAQView.swift", "web/public/pages/faq.html", "web/public/pages/privacy.html",
+	}
+	stale := []string{
+		"sends none of your calendar or reminder data anywhere.",
+		"sends no calendar or reminder data anywhere.",
+		"or send them anywhere.",
+		"thing stark ever sends over the network",
+		"thing stark ever sends over the network",
+	}
+	for _, f := range files {
+		b, err := os.ReadFile(filepath.Join(root, f))
+		if err != nil {
+			t.Fatalf("%s: %v", f, err)
+		}
+		lower := strings.Join(strings.Fields(strings.ToLower(string(b))), " ")
+		for _, bad := range stale {
+			if strings.Contains(lower, bad) {
+				t.Errorf("%s still says %q", f, bad)
+			}
+		}
+	}
+	for _, f := range []string{"ios/App/Stark/Info.plist", "ios/App/Stark/StarkWidget-Info.plist", "ios/App/Stark/Stark/AccessRequiredView.swift", "ios/App/Stark/Stark/AppleSettingsView.swift"} {
+		b, _ := os.ReadFile(filepath.Join(root, f))
+		if !strings.Contains(string(b), "to us or anyone else") {
+			t.Errorf("%s does not qualify the data claim with \"to us or anyone else\"", f)
+		}
+	}
+	ff, _ := os.ReadFile(filepath.Join(root, "ios/App/Stark/Stark/FAQView.swift"))
+	if !strings.Contains(string(ff), "Out of date, open Stark on your iPhone") {
+		t.Error("in-app FAQ watch entry lacks the Out of date wording")
 	}
 }
