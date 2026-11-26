@@ -19,6 +19,12 @@ fail() { echo "error: $*" >&2; exit 1; }
 [ -d "$WATCH_APP" ] || fail "the archive has no Watch/StarkWatch.app inside Stark.app"
 [ -d "$WIDGET" ] || fail "StarkWatch.app has no PlugIns/StarkWatchWidget.appex"
 
+# Every bundle reads UserDefaults, so each needs its own privacy manifest.
+for bundle in "$ARCHIVE/Products/Applications/Stark.app" \
+  "$ARCHIVE/Products/Applications/Stark.app/PlugIns/StarkWidget.appex" "$WATCH_APP" "$WIDGET"; do
+  [ -f "$bundle/PrivacyInfo.xcprivacy" ] || fail "$(basename "$bundle") has no PrivacyInfo.xcprivacy"
+done
+
 # Entitlements: the signed bundle must carry the watch App Group.
 for bundle in "$WATCH_APP" "$WIDGET"; do
   name="$(basename "$bundle")"

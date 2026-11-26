@@ -27,11 +27,16 @@ ent() { # bundle [group]
 }
 plist() { plutil -create xml1 "$1"; }
 
+G() { echo "$1/Products/Applications/Stark.app/PlugIns/StarkWidget.appex"; }
+
 make_good() { # dir
   local a="$1"
   local w="$a/Products/Applications/Stark.app/Watch/StarkWatch.app"
   local x="$w/PlugIns/StarkWatchWidget.appex"
-  mkdir -p "$x"
+  mkdir -p "$x" "$(G "$a")"
+  for b in "$a/Products/Applications/Stark.app" "$(G "$a")" "$w" "$x"; do
+    plist "$b/PrivacyInfo.xcprivacy"
+  done
   plist "$w/Info.plist"
   plutil -insert WKApplication -bool true "$w/Info.plist"
   plutil -insert WKCompanionAppBundleIdentifier -string com.caritos.todo-txt "$w/Info.plist"
@@ -79,5 +84,17 @@ expect "missing appex fails" 1 "$A" "StarkWatchWidget.appex"
 
 A="$TMP/nowatch.xcarchive"; make_good "$A"; rm -rf "$(W "$A")"
 expect "missing watch app fails" 1 "$A" "StarkWatch.app"
+
+for which in app:Stark.app widget:StarkWidget.appex watch:StarkWatch.app watchwidget:StarkWatchWidget.appex; do
+  A="$TMP/noprivacy-${which%:*}.xcarchive"; make_good "$A"
+  case "${which%:*}" in
+    app) b="$A/Products/Applications/Stark.app" ;;
+    widget) b="$(G "$A")" ;;
+    watch) b="$(W "$A")" ;;
+    *) b="$(X "$A")" ;;
+  esac
+  rm "$b/PrivacyInfo.xcprivacy"
+  expect "${which#*:} without a privacy manifest fails" 1 "$A" "${which#*:} has no PrivacyInfo"
+done
 
 [ $fails = 0 ] && echo "all passed" || { echo "$fails failed"; exit 1; }
