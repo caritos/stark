@@ -2,7 +2,7 @@
 //  WatchAddView.swift
 //  StarkWatch
 //
-//  Thin views over `WatchAddModel`: send at once, then the result. The list's + button
+//  Thin views over `WatchAddModel`: send at once; a clean save closes by itself. The list's + button
 //  opens the system input itself; the text field here is the fallback.
 //  Dictation uses the system's speech recognition (Apple may process it).
 //
@@ -34,14 +34,20 @@ struct WatchAddView: View {
                         Text("It will be added when your iPhone answers.").font(.caption2)
                         Button("Done") { model.cancel(); dismiss() }
                     }
-                case .saved(let notice, let warning):
+                case .saved(_, nil):  // a clean save needs no answer: closes by itself
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.largeTitle).foregroundStyle(.green)
+                        .accessibilityLabel("Added")
+                        .task {
+                            WKInterfaceDevice.current().play(.success)
+                            // Long enough to be seen, and for the sheet to finish presenting.
+                            try? await Task.sleep(for: .seconds(1))
+                            dismiss()
+                        }
+                case .saved(let notice, let warning?):  // e.g. a calendar that does not sync
                     VStack(spacing: 8) {
                         Text(notice ?? "Added").font(.headline)
-                        if let draft = model.draft {  // what was heard, so a mistake is noticed
-                            Text(draft.title).lineLimit(3)
-                            Text(draft.summary).font(.caption).foregroundStyle(.secondary)
-                        }
-                        if let warning { Text(warning).font(.caption2).foregroundStyle(.orange) }
+                        Text(warning).font(.caption2).foregroundStyle(.orange)
                         Button("Done") { model.cancel(); dismiss() }
                     }
                     .onAppear { WKInterfaceDevice.current().play(.success) }
