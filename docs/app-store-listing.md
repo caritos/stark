@@ -1,6 +1,7 @@
 # App Store listing draft, version 3.0.0 (written 2026-11-26)
 
-Not yet entered in App Store Connect. Never submit for review from a session.
+Entered in App Store Connect and saved 2026-11-26 (3.0.0 draft, English U.S.; name and subtitle on App Information). Not submitted. Never submit for review from a session.
+Replaced values: name "Stark: To Do List & Calendar", subtitle "Reminders & Events, One Agenda", keywords "todo,tasks,planner,schedule,organizer,birthday,recurring,private,offline,widget,daily,week,month"; the other texts were the live 2.0.0 listing.
 
 ## Name (30/30)
 Stark: Calendar & Week Planner
@@ -54,7 +55,7 @@ Stark now works directly with Apple Calendar and Reminders. Your items live ther
 - Quick add, templates and calendar sets
 - Join buttons for video calls, time zone cards and optional weather
 
-Upgrading from 2.0? Items kept only inside Stark are no longer shown. Contact support@caritos.com before updating if you need them.
+Upgrading from 2.0? Items kept only inside Stark 2.0 are not shown in this version and are not moved to Apple's apps. Check before you update.
 
 ## Keyword evidence and limits
 Public iTunes Search API, US, top 10, 2026-11-26 (not the App Store's own ranking, and no popularity or difficulty data).
