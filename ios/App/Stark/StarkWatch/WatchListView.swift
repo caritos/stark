@@ -46,11 +46,29 @@ struct WatchListView: View {
             .navigationTitle("Up Next")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { adding = true } label: { Image(systemName: "plus") }
+                    Button { dictate() } label: { Image(systemName: "plus") }
                         .accessibilityLabel("Add")
                 }
             }
             .sheet(isPresented: $adding) { WatchAddView(model: addModel) }
+        }
+    }
+
+    /// Opens the system input straight in dictation (WatchKit does that only for nil suggestions in
+    /// plain mode; SwiftUI's `TextField` cannot). With no controller to present from, or an add still
+    /// in flight, the sheet opens instead.
+    private func dictate() {
+        let busy = addModel.phase == .sending || addModel.phase == .waiting
+        guard !busy, let controller = WKApplication.shared().visibleInterfaceController else {
+            adding = true
+            return
+        }
+        controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
+            guard let text = results?.first as? String else { return }  // cancelled
+            Task { @MainActor in
+                addModel.dictated(text)
+                adding = addModel.phase != .idle  // nothing but spaces: no sheet
+            }
         }
     }
 }

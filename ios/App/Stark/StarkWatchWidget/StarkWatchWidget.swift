@@ -33,6 +33,7 @@ struct ComplicationProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ComplicationEntry>) -> Void) {
         let list = entries()
+        // The midnight entries lie far ahead, so they do not delay the reload below.
         // Reload within the hour at the latest: a newer snapshot also reloads us when the watch app saves it.
         let reload = WatchComplication.reloadDate(after: Date(), entryDates: list.map(\.date))
         completion(Timeline(entries: list, policy: .after(reload)))
@@ -42,7 +43,8 @@ struct ComplicationProvider: TimelineProvider {
         let now = Date()
         let snapshot = store.load()
         let calendar = Calendar.current
-        return WatchComplication.entryDates(snapshot: snapshot, now: now, calendar: calendar).map {
+        let dates = WatchComplication.entryDates(snapshot: snapshot, now: now, calendar: calendar)
+        return WatchDateFace.timelineDates(dates, now: now, calendar: calendar).map {
             ComplicationEntry(date: $0, content: WatchComplication.content(snapshot: snapshot, now: $0,
                                                                            calendar: calendar))
         }
@@ -100,39 +102,28 @@ struct ComplicationView: View {
         }
     }
 
-    @ViewBuilder private var circular: some View {
+    // The round and corner styles show today's date, which needs nothing from the iPhone.
+    private var face: WatchDateFace { WatchDateFace(date: entry.date) }
+
+    private var circular: some View {
         ZStack {
             AccessoryWidgetBackground()
-            if isProblem {
-                Image(systemName: "calendar.badge.exclamationmark")
-                    .font(.title3)
-                    .accessibilityLabel(content.message ?? "")
-            } else {
-                VStack(spacing: 0) {
-                    Image(systemName: "calendar").font(.caption2).widgetAccentable()
-                    Text(WatchComplication.countText(content.count))
-                        .font(.title3.weight(.semibold))
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(content.message ?? WidgetRowText.countAccessibilityLabel(content.count))
+            VStack(spacing: -2) {
+                Text(face.weekday).font(.caption2.weight(.semibold)).widgetAccentable()
+                Text(face.day).font(.title2.weight(.semibold))
             }
+            .minimumScaleFactor(0.6)
+            .lineLimit(1)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(face.accessibilityLabel)
         }
     }
 
-    /// A message that is a problem to fix ("Open Stark"), not the calm "Nothing coming up" (shown as 0).
-    private var isProblem: Bool { content.isProblem }
-
-    @ViewBuilder private var corner: some View {
-        if isProblem {
-            Image(systemName: "calendar.badge.exclamationmark")
-                .widgetLabel(content.message ?? "")
-        } else {
-            Text(WatchComplication.countText(content.count))
-                .font(.title3.weight(.semibold))
-                .widgetLabel(content.message ?? WidgetRowText.countAccessibilityLabel(content.count))
-        }
+    private var corner: some View {
+        Text(face.day)
+            .font(.title2.weight(.semibold))
+            .widgetLabel(face.weekday)
+            .accessibilityLabel(face.accessibilityLabel)
     }
 }
 
@@ -142,7 +133,7 @@ struct StarkWatchWidget: Widget {
             ComplicationView(entry: entry)
         }
         .configurationDisplayName("Up Next")
-        .description("Your next events and reminders.")
+        .description("Your next events and reminders, or today's date.")
         .supportedFamilies([.accessoryRectangular, .accessoryInline, .accessoryCircular, .accessoryCorner])
     }
 }

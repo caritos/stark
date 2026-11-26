@@ -2,7 +2,8 @@
 //  WatchAddView.swift
 //  StarkWatch
 //
-//  Thin views over `WatchAddModel`: dictate or type, confirm the summary, then the result.
+//  Thin views over `WatchAddModel`: confirm the summary, then the result. The list's + button
+//  opens dictation itself; the text field here is the fallback.
 //  Dictation uses the system's speech recognition (Apple may process it).
 //
 
@@ -32,6 +33,7 @@ struct WatchAddView: View {
                         Text(draft.summary).font(.caption).foregroundStyle(.secondary)
                         Button("Add") { Task { await model.confirm() } }
                         Button("Cancel", role: .cancel) { model.cancel(); dismiss() }
+                        Text("Dictation is processed by Apple.").font(.caption2).foregroundStyle(.secondary)
                     }
                 case .sending:
                     ProgressView("Sending")
