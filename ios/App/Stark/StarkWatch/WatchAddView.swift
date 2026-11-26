@@ -3,7 +3,7 @@
 //  StarkWatch
 //
 //  Thin views over `WatchAddModel`: confirm the summary, then the result. The list's + button
-//  opens dictation itself; the text field here is the fallback.
+//  opens the system input itself; the text field here is the fallback.
 //  Dictation uses the system's speech recognition (Apple may process it).
 //
 

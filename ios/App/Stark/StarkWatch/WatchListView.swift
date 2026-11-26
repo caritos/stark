@@ -54,8 +54,8 @@ struct WatchListView: View {
         }
     }
 
-    /// Opens the system input straight in dictation (WatchKit does that only for nil suggestions in
-    /// plain mode; SwiftUI's `TextField` cannot). With no controller to present from, or an add still
+    /// Opens the system text input with no sheet in between. Meant to start in dictation (nil
+    /// suggestions, plain mode), but on the owner's Series 12 it opens the keyboard (2026-11-26). With no controller to present from, or an add still
     /// in flight, the sheet opens instead.
     private func dictate() {
         let busy = addModel.phase == .sending || addModel.phase == .waiting
