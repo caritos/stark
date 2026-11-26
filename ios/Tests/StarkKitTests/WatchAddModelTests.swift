@@ -43,6 +43,26 @@ private func addModel(_ transport: WatchTransport) -> WatchAddModel {
         #expect(t.sent.isEmpty)
     }
 
+    @Test func addSendsTheDraftWithNoConfirmStep() async throws {
+        let t = FakeWatchTransport(reachable: true, result: .success(.done(notice: "Added", warning: nil)))
+        let m = addModel(t)
+        let send = try #require(m.add("Call mom"))
+        #expect(m.draft?.title == "Call mom")
+        await send.value
+        #expect(t.sent.count == 1)
+        #expect(try #require(t.sent.first).command == .add(try #require(m.draft)))
+        #expect(m.phase == .saved(notice: "Added", warning: nil))
+    }
+
+    @Test func addOfNothingSendsNothing() {
+        let t = FakeWatchTransport(reachable: true)
+        let m = addModel(t)
+        #expect(m.add("  ") == nil)
+        #expect(m.phase == .idle)
+        #expect(m.draft == nil)
+        #expect(t.sent.isEmpty && t.queued.isEmpty)
+    }
+
     @Test func confirmSendsOneAddCommandWithTheDraft() async throws {
         let t = FakeWatchTransport(reachable: true)
         let m = addModel(t)

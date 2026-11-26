@@ -2,7 +2,7 @@
 //  WatchAddView.swift
 //  StarkWatch
 //
-//  Thin views over `WatchAddModel`: confirm the summary, then the result. The list's + button
+//  Thin views over `WatchAddModel`: send at once, then the result. The list's + button
 //  opens the system input itself; the text field here is the fallback.
 //  Dictation uses the system's speech recognition (Apple may process it).
 //
@@ -23,19 +23,10 @@ struct WatchAddView: View {
                 case .idle:
                     VStack(spacing: 8) {
                         TextField("Say or type", text: $text)
-                            .onSubmit { model.dictated(text); text = "" }
+                            .onSubmit { model.add(text); text = "" }
                         Text("Dictation is processed by Apple.").font(.caption2).foregroundStyle(.secondary)
                     }
-                case .confirming(let draft):
-                    VStack(spacing: 8) {
-                        Text(draft.kind == .event ? "Event" : "Reminder").font(.caption2).foregroundStyle(.secondary)
-                        Text(draft.title).font(.headline).lineLimit(3)
-                        Text(draft.summary).font(.caption).foregroundStyle(.secondary)
-                        Button("Add") { Task { await model.confirm() } }
-                        Button("Cancel", role: .cancel) { model.cancel(); dismiss() }
-                        Text("Dictation is processed by Apple.").font(.caption2).foregroundStyle(.secondary)
-                    }
-                case .sending:
+                case .confirming, .sending:  // .confirming lasts only until the send starts
                     ProgressView("Sending")
                 case .waiting:
                     VStack(spacing: 8) {
@@ -46,6 +37,10 @@ struct WatchAddView: View {
                 case .saved(let notice, let warning):
                     VStack(spacing: 8) {
                         Text(notice ?? "Added").font(.headline)
+                        if let draft = model.draft {  // what was heard, so a mistake is noticed
+                            Text(draft.title).lineLimit(3)
+                            Text(draft.summary).font(.caption).foregroundStyle(.secondary)
+                        }
                         if let warning { Text(warning).font(.caption2).foregroundStyle(.orange) }
                         Button("Done") { model.cancel(); dismiss() }
                     }

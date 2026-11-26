@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// The watch's add flow: a dictated phrase becomes a draft the owner confirms, then one `add`
+/// The watch's add flow: an entered phrase becomes a draft, and one `add`
 /// envelope goes to the iPhone, which does the write. The phase after sending is derived from the
 /// outbox's status for that envelope, so a reply that arrives later (a phone that was out of reach)
 /// moves `.waiting` to `.saved` or `.failed` with no extra call.
@@ -58,6 +58,23 @@ public final class WatchAddModel {
             case .failed(let message): return .failed(message)
             }
         }
+    }
+
+    /// The draft being sent or already sent, to show what was saved.
+    public var draft: WatchAddDraft? {
+        switch stage {
+        case .idle: return nil
+        case .confirming(let d), .submitting(let d), .tracking(let d, _), .refused(let d, _): return d
+        }
+    }
+
+    /// Saves the phrase at once, with no confirm step (owner call 2026-11-26). The draft is set
+    /// before this returns; nil when there is nothing to send (empty, or an add still in flight).
+    @discardableResult
+    public func add(_ text: String) -> Task<Void, Never>? {
+        dictated(text)
+        guard case .confirming = phase else { return nil }
+        return Task { await confirm() }
     }
 
     /// idle -> confirming. Stays idle for empty text; ignored while an add is in flight or waiting.

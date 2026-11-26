@@ -66,8 +66,7 @@ struct WatchListView: View {
         controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
             guard let text = results?.first as? String else { return }  // cancelled
             Task { @MainActor in
-                addModel.dictated(text)
-                adding = addModel.phase != .idle  // nothing but spaces: no sheet
+                adding = addModel.add(text) != nil  // nothing but spaces: no sheet
             }
         }
     }
