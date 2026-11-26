@@ -60,7 +60,10 @@ Public iTunes Search API, US, top 10, 2026-11-26 (not the App Store's own rankin
 Weak competition (apps under 1,000 ratings): year calendar 7/9, timeboxing 7/9, week planner 5/9, time blocking 4/9, calendar widget 4/9, agenda widget 4/10.
 Crowded (median ratings over 20,000): daily planner, schedule planner, calendar planner, to do list calendar, reminders calendar.
 
-## State of the 3.0 draft (2026-11-26, read back after reload)
+## SUBMITTED 2026-11-26 (Waiting for Review, build 59), at the owner's request
+Age rating answers added: Social Media, Social Media Disabled Under 13, Shared Location, Dating and Relationships all No (4+). China mainland removed from availability.
+
+## State of the 3.0 draft before submission (2026-11-26, read back after reload)
 Build 59 (3.0) attached; listing text, name, subtitle, keywords, Apple Watch screenshots and new App Review notes saved. Release option: "Automatically release this version". NOT submitted.
 
 ## Before submitting
