@@ -1,6 +1,6 @@
-# App Store listing draft, version 3.0.0 (written 2026-11-26)
+# App Store listing draft, version 3.0 (written 2026-11-26)
 
-Entered in App Store Connect and saved 2026-11-26 (3.0.0 draft, English U.S.; name and subtitle on App Information). Not submitted. Never submit for review from a session.
+Entered in App Store Connect and saved 2026-11-26 (3.0 draft, English U.S.; name and subtitle on App Information). Not submitted. Never submit for review from a session.
 Replaced values: name "Stark: To Do List & Calendar", subtitle "Reminders & Events, One Agenda", keywords "todo,tasks,planner,schedule,organizer,birthday,recurring,private,offline,widget,daily,week,month"; the other texts were the live 2.0.0 listing.
 
 ## Name (30/30)
@@ -61,8 +61,8 @@ Weak competition (apps under 1,000 ratings): year calendar 7/9, timeboxing 7/9, 
 Crowded (median ratings over 20,000): daily planner, schedule planner, calendar planner, to do list calendar, reminders calendar.
 
 ## Before submitting
-- Ship a build with marketing version 3.0.0 (`NEXT_MARKETING_VERSION=3.0.0`); TestFlight builds are 2.0.x.
+- Ship a build with marketing version 3.0 (`NEXT_MARKETING_VERSION=3.0`); TestFlight builds are 2.0.x.
 - Settled 2026-11-26: no importer and no upgrade warning for 2.0.0's in-app items; the owner is the only user.
 - Apple Watch screenshots, and `PrivacyInfo.xcprivacy` for the watch targets.
-- Existing 3.0.0 draft screenshots (2026-11-22) have no widget or watch frame.
+- Existing 3.0 draft screenshots (2026-11-22) have no widget or watch frame.
 - App privacy answers: Coarse Location (done 2026-11-18); re-check.
