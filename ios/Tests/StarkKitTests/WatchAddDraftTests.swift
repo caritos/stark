@@ -25,10 +25,50 @@ struct WatchAddDraftTests {
         return WatchAddDraft.make(dictation: text, now: now(c), calendar: c)
     }
 
+    @Test("a dated phrase is a reminder unless it says event or appointment", arguments: zones)
+    func datedPhraseIsAReminder(zone: String) throws {
+        let c = Self.calendar(zone)
+        let milk = try #require(Self.make("Buy milk today", zone))
+        #expect(milk.kind == .reminder)
+        #expect(milk.title == "Buy milk")
+        #expect(milk.start == Self.date(c, 2026, 11, 18))
+        #expect(milk.isAllDay)
+        let call = try #require(Self.make("Call mom tomorrow at 5pm", zone))
+        #expect(call.kind == .reminder)
+        #expect(call.start == Self.date(c, 2026, 11, 19, 17, 0))
+        #expect(!call.isAllDay)
+        #expect(call.end == nil)
+        let friday = try #require(Self.make("Buy milk Friday", zone))
+        #expect(friday.title == "Buy milk")
+        #expect(friday.start == Self.date(c, 2026, 11, 20))
+    }
+
+    @Test("saying event or appointment makes an event", arguments: zones)
+    func eventWords(zone: String) throws {
+        let c = Self.calendar(zone)
+        let lunch = try #require(Self.make("Event lunch with Sarah at 1pm tomorrow", zone))
+        #expect(lunch.kind == .event)
+        #expect(lunch.title == "lunch with Sarah")
+        let dentist = try #require(Self.make("Dentist appointment tomorrow at 2pm", zone))
+        #expect(dentist.kind == .event)
+        #expect(dentist.title == "Dentist appointment")
+        #expect(dentist.start == Self.date(c, 2026, 11, 19, 14, 0))
+        let undated = try #require(Self.make("New event team party", zone))
+        #expect(undated.title == "team party")
+        #expect(undated.start == Self.date(c, 2026, 11, 18))
+        #expect(undated.isAllDay)
+        #expect(undated.newEvent() != nil)
+        #expect(undated.summary == "Today")
+        let asked = try #require(Self.make("Remind me to book an appointment tomorrow", zone))
+        #expect(asked.kind == .reminder)
+        let events = try #require(Self.make("Plan events tomorrow", zone))
+        #expect(events.kind == .reminder)
+    }
+
     @Test("lunch tomorrow at one is a timed event with one hour", arguments: zones)
     func lunchTomorrowAtOneIsATimedEventWithOneHour(zone: String) throws {
         let c = Self.calendar(zone)
-        let d = try #require(Self.make("Lunch with Sarah at 1pm tomorrow", zone))
+        let d = try #require(Self.make("Event Lunch with Sarah at 1pm tomorrow", zone))
         #expect(d.kind == .event)
         #expect(d.title == "Lunch with Sarah")
         #expect(d.start == Self.date(c, 2026, 11, 19, 13, 0))
