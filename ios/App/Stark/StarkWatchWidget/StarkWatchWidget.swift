@@ -109,7 +109,7 @@ struct ComplicationView: View {
         ZStack {
             AccessoryWidgetBackground()
             VStack(spacing: -2) {
-                Text(face.weekday).font(.caption2.weight(.semibold)).widgetAccentable()
+                Text(face.weekday).font(.caption2.weight(.semibold)).foregroundStyle(.red).widgetAccentable()
                 Text(face.day).font(.title2.weight(.semibold))
             }
             .minimumScaleFactor(0.6)
@@ -122,7 +122,7 @@ struct ComplicationView: View {
     private var corner: some View {
         Text(face.day)
             .font(.title2.weight(.semibold))
-            .widgetLabel(face.weekday)
+            .widgetLabel { Text(face.weekday).foregroundStyle(.red) }
             .accessibilityLabel(face.accessibilityLabel)
     }
 }
