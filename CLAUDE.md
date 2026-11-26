@@ -464,3 +464,8 @@ Web app (Go + React): see web/CLAUDE.md.
 - **v2.0.55 (build 57), TestFlight (2026-11-26)**: owner confirmed build 56 saves a watch add as a reminder, then asked to remove the Add/Cancel screen: `WatchAddModel.add` sends at once; the saved screen shows the notice, title and date. The "Dictation is processed by Apple" line now shows only on the fallback sheet (privacy page unchanged). 1367 tests. Not yet verified on device.
 - **v2.0.56 (build 58), TestFlight (2026-11-26)**: owner still saw "Added to eladio · iCloud / Done" and wanted it gone: a save with no warning now shows a checkmark for 1 s and closes by itself (view only, replaces build 57's title/date screen); waiting, failed and warning screens stay. Not yet verified on device.
 - **Confirmed on device (owner, 2026-11-26)**: build 58's watch add flow (+, enter text, checkmark, closes by itself): "this looks good". Still not reported: the date complications and red day name, midnight rollover, phone out of reach, Siri over a few days.
+
+## Website and App Store listing log (2026-11-26)
+
+- **Done**: home page rewritten for the 3.0 features (marked as not yet on the App Store) and deployed; listing text drafted with keyword evidence in `docs/app-store-listing.md`. `make test-fast`, `make e2e`.
+- **Not done**: App Store Connect is NOT updated (Chrome extension not connected). Live version is still 2.0.0, with an outdated description. Open before any 3.0 submission: 2.0.0's in-app items are not read by 3.0 (owner decision), watch screenshots, watch `PrivacyInfo.xcprivacy`, marketing version 3.0.0 build.
