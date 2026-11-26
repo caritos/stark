@@ -25,16 +25,16 @@ public struct WatchAddDraft: Equatable, Codable, Sendable {
         self.summary = summary
     }
 
-    /// Nil for empty or whitespace-only dictation. Text the parser does not understand becomes a
-    /// reminder with no date. A suggestion with a start is an event unless the phrase said
+    /// Nil for empty or whitespace-only dictation. A reminder with no date (including text the parser
+    /// does not understand) is date-only, due today, so it shows in Up Next. A suggestion with a start is an event unless the phrase said
     /// "remind me to"/"todo"/"task"; a repeat with no date becomes a date-only reminder from today
     /// (a repeating reminder needs a due date).
     public static func make(dictation: String, now: Date, calendar: Calendar = .current) -> WatchAddDraft? {
         let text = dictation.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
         guard let suggestion = QuickAddParser.parse(text, now: now, calendar: calendar) else {
-            return WatchAddDraft(kind: .reminder, title: text, start: nil, end: nil, isAllDay: false,
-                                 recurrence: nil, summary: "Reminder, no date")
+            return WatchAddDraft(kind: .reminder, title: text, start: calendar.startOfDay(for: now), end: nil,
+                                 isAllDay: true, recurrence: nil, summary: "Reminder, Today")
         }
         let values = suggestion.formValues(currentStart: suggestion.start ?? now)
         let isEvent = suggestion.start != nil && suggestion.kind != .reminder
@@ -44,15 +44,11 @@ public struct WatchAddDraft: Equatable, Codable, Sendable {
                                  isAllDay: values.allDay ?? false, recurrence: suggestion.recurrence,
                                  summary: suggestion.summary)
         }
-        var start = suggestion.start
-        var hasTime = suggestion.hasTime
-        if start == nil, suggestion.recurrence != nil {
-            start = calendar.startOfDay(for: now)
-            hasTime = false
-        }
+        let start = suggestion.start ?? calendar.startOfDay(for: now)
+        let hasTime = suggestion.start != nil && suggestion.hasTime
+        let summary = suggestion.start == nil && suggestion.recurrence == nil ? "Reminder, Today" : suggestion.summary
         return WatchAddDraft(kind: .reminder, title: suggestion.title, start: start, end: nil,
-                             isAllDay: start != nil && !hasTime, recurrence: suggestion.recurrence,
-                             summary: suggestion.summary)
+                             isAllDay: !hasTime, recurrence: suggestion.recurrence, summary: summary)
     }
 
     public func newEvent() -> NewEvent? {

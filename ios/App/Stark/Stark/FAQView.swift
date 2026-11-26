@@ -56,7 +56,7 @@ struct FAQView: View {
             answer: """
             Yes, on TestFlight for now. It lets you glance at Up Next (today's and tomorrow's events \
             and due reminders) and in complications (the round and corner ones show the day and date), \
-            complete a reminder, and add an item by voice. \
+            complete a reminder, and add an item by voice (a reminder with no date is due today). \
             Your iPhone sends the watch a copy of the list over the system's phone-to-watch link (by Bluetooth, Wi-Fi or Apple's relay), \
             with the calendars you show in Stark; the watch does not read your calendar itself, so \
             completing and adding go through your iPhone. If the iPhone is out of reach a request \

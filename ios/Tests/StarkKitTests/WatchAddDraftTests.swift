@@ -52,15 +52,17 @@ struct WatchAddDraftTests {
         #expect(d.newReminder()?.recurrence == d.recurrence)
     }
 
-    @Test("unrecognised text becomes a reminder with no date", arguments: zones)
-    func unrecognisedTextBecomesAReminderWithNoDate(zone: String) throws {
+    @Test("text with no date becomes a date-only reminder due today", arguments: zones)
+    func textWithNoDateBecomesAReminderDueToday(zone: String) throws {
+        let c = Self.calendar(zone)
         let d = try #require(Self.make("  Call mom ", zone))
         #expect(d.kind == .reminder)
         #expect(d.title == "Call mom")
-        #expect(d.start == nil)
+        #expect(d.start == Self.date(c, 2026, 11, 18))
+        #expect(d.isAllDay)
         #expect(d.end == nil)
         #expect(d.recurrence == nil)
-        #expect(d.summary == "Reminder, no date")
+        #expect(d.summary == "Reminder, Today")
     }
 
     @Test("empty and whitespace give no draft", arguments: zones)
@@ -85,7 +87,19 @@ struct WatchAddDraftTests {
     func newEventIsNilForAReminderDraft(zone: String) throws {
         let d = try #require(Self.make("Call mom", zone))
         #expect(d.newEvent() == nil)
-        #expect(d.newReminder()?.due == nil)
+        let r = try #require(d.newReminder())
+        #expect(r.due == Self.date(Self.calendar(zone), 2026, 11, 18))
+        #expect(!r.dueHasTime)
+    }
+
+    @Test("remind me to with no date is also due today", arguments: zones)
+    func remindMeWithNoDateIsDueToday(zone: String) throws {
+        let d = try #require(Self.make("Remind me to buy milk", zone))
+        #expect(d.kind == .reminder)
+        #expect(d.title == "buy milk")
+        #expect(d.start == Self.date(Self.calendar(zone), 2026, 11, 18))
+        #expect(d.isAllDay)
+        #expect(d.summary == "Reminder, Today")
     }
 
     @Test("draft round trips through JSON", arguments: zones)
