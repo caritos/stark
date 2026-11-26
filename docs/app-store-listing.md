@@ -63,6 +63,6 @@ Crowded (median ratings over 20,000): daily planner, schedule planner, calendar 
 ## Before submitting
 - Ship a build with marketing version 3.0 (`NEXT_MARKETING_VERSION=3.0`); TestFlight builds are 2.0.x.
 - Settled 2026-11-26: no importer and no upgrade warning for 2.0.0's in-app items; the owner is the only user.
-- Apple Watch screenshots, and `PrivacyInfo.xcprivacy` for the watch targets.
+- `PrivacyInfo.xcprivacy` for the watch targets (the two Apple Watch screenshots were uploaded 2026-11-26: watch Series 12 simulator, 416x496, made-up data, 24-hour times; files in `~/src/aso-screenshots/out/stark/watch/`).
 - Existing 3.0 draft screenshots (2026-11-22) have no widget or watch frame.
 - App privacy answers: Coarse Location (done 2026-11-18); re-check.
