@@ -55,8 +55,6 @@ Stark now works directly with Apple Calendar and Reminders. Your items live ther
 - Quick add, templates and calendar sets
 - Join buttons for video calls, time zone cards and optional weather
 
-Upgrading from 2.0? Items kept only inside Stark 2.0 are not shown in this version and are not moved to Apple's apps. Check before you update.
-
 ## Keyword evidence and limits
 Public iTunes Search API, US, top 10, 2026-11-26 (not the App Store's own ranking, and no popularity or difficulty data).
 Weak competition (apps under 1,000 ratings): year calendar 7/9, timeboxing 7/9, week planner 5/9, time blocking 4/9, calendar widget 4/9, agenda widget 4/10.
@@ -64,7 +62,7 @@ Crowded (median ratings over 20,000): daily planner, schedule planner, calendar 
 
 ## Before submitting
 - Ship a build with marketing version 3.0.0 (`NEXT_MARKETING_VERSION=3.0.0`); TestFlight builds are 2.0.x.
-- Upgrade warning: 2.0.0 users have items inside Stark that 3.0 does not read or import (the import was removed in phase 3). Owner decision needed.
+- Settled 2026-11-26: no importer and no upgrade warning for 2.0.0's in-app items; the owner is the only user.
 - Apple Watch screenshots, and `PrivacyInfo.xcprivacy` for the watch targets.
 - Existing 3.0.0 draft screenshots (2026-11-22) have no widget or watch frame.
 - App privacy answers: Coarse Location (done 2026-11-18); re-check.
