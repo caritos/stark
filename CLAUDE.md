@@ -476,3 +476,4 @@ Web app (Go + React): see web/CLAUDE.md.
 - **v3.0 (build 59) uploaded (2026-11-26)** with privacy manifests in the watch app, watch widget and iOS widget (and 1C8F.1 added to the app's); `check-archive.sh` fails without them (test red first). Not submitted.
 - **3.0 draft ready (2026-11-26)**: build 59 attached, App Review notes rewritten (the old ones claimed no network and no permissions), both read back. Release is set to automatic after approval. NOT submitted; the owner presses Add for Review. Not yet verified: build 59 on device, Lock Screen widgets.
 - **Confirmed on device (owner, 2026-11-26)**: the Lock Screen widget shows upcoming items.
+- **China mainland removed (2026-11-26, owner)**: availability 175 -> 174 countries ("Processing to Not Available"). **Submission**: owner asked to click Add for Review; blocked by unanswered age rating questions (Social Media, Social Media Disabled Under 13, Shared Location). Not submitted yet.
