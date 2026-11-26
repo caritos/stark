@@ -64,6 +64,6 @@ Crowded (median ratings over 20,000): daily planner, schedule planner, calendar 
 Build 59 (3.0) attached; listing text, name, subtitle, keywords, Apple Watch screenshots and new App Review notes saved. Release option: "Automatically release this version". NOT submitted.
 
 ## Before submitting
-- Install build 59 from TestFlight and check it, including the Lock Screen widgets (never seen running).
+- Lock Screen widget confirmed on the owner's phone (2026-11-26): it shows upcoming items.
 - iPhone screenshots are from 2026-11-22 and show no widgets.
 - No importer or upgrade warning for 2.0.0 items (settled: the owner is the only user).
